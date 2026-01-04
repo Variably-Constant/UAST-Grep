@@ -40,6 +40,7 @@ pub mod ffi_sarif;
 pub mod ffi_uast;
 pub mod grammars;
 pub mod matching;
+pub mod native_loader;
 pub mod parser;
 #[cfg(feature = "python")]
 pub mod python;
@@ -50,6 +51,7 @@ pub mod scanner;
 pub mod tiers;
 pub mod tree;
 pub mod uast;
+pub mod verify;
 pub mod wasm_loader;
 
 // Re-export FFI types for convenience

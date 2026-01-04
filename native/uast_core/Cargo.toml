@@ -54,23 +54,23 @@ lazy_static = "1.5"     # Lazy static for FFI handle storage
 regex = "1.11"          # Regex support for pattern constraints
 
 # CLI dependencies
-clap = { version = "1.0.0", features = ["derive", "color"] }  # Command-line argument parsing
+clap = { version = "4.5", features = ["derive", "color"] }  # Command-line argument parsing
 console = "0.15"        # Terminal colors and styling
 indicatif = "0.17"      # Progress bars
 ignore = "0.4"          # .gitignore-aware file walking
 
 # Built-in grammars (optional, enabled via 'builtin-grammars' feature)
 # These grammars are compatible with tree-sitter 0.25 (ABI version 15)
-tree-sitter-rust = { version = "1.0.0", optional = true }
-tree-sitter-c = { version = "1.0.0", optional = true }
-tree-sitter-cpp = { version = "1.0.0", optional = true }
+tree-sitter-rust = { version = "0.24", optional = true }
+tree-sitter-c = { version = "0.23", optional = true }
+tree-sitter-cpp = { version = "0.23", optional = true }
 
 # WASM grammar loading support (optional, enabled via 'wasm' feature)
-dirs-next = { version = "1.0.0", optional = true }  # Home directory detection for grammar cache
-ureq = { version = "1.0.0", optional = true }      # HTTP client for downloading grammars
+dirs-next = { version = "2.0", optional = true }  # Home directory detection for grammar cache
+ureq = { version = "2.9", optional = true }       # HTTP client for downloading grammars
 
 # Python bindings (optional, enabled via 'python' feature)
-pyo3 = { version = "1.0.0", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.23", features = ["extension-module"], optional = true }
 
 [build-dependencies]
 cc = "1.0"  # Compile grammar C sources

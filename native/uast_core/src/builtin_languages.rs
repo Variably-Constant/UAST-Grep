@@ -1,12 +1,13 @@
 //! Language bindings for tree-sitter grammars.
 //!
-//! # Two-Tier Architecture
+//! # Three-Tier Architecture
 //!
 //! - **Tier 1+2 (Built-in)**: 37 commonly-used languages compiled into the binary
 //! - **Tier 3 (WASM)**: 34 niche/large languages loaded on-demand from .wasm files
+//! - **Tier 3b (Native DLL)**: Fallback for languages that cannot compile to WASM
 //!
-//! The `get_language` function tries built-in first, then falls back to WASM.
-//! This provides fast access for common languages while supporting all 71.
+//! The `get_language` function tries built-in first, then WASM, then native DLL.
+//! This provides fast access for common languages while supporting all 71+.
 //!
 //! # Built-in Languages (Tier 1+2)
 //!
@@ -26,10 +27,16 @@
 //! d, crystal, cuda, haskell, swift, perl, arduino, agda, ocaml, apex, dart,
 //! groovy, commonlisp, zig, awk, vim, r, bitbake, ada, cairo, dhall, cue,
 //! doxygen, comment
+//!
+//! # Native DLL Languages (Tier 3b - WASM fallback)
+//!
+//! Some grammars (doxygen, vim, cobol) cannot be compiled to WASM due to
+//! external scanner complexity. These are loaded from native DLLs as fallback.
 
 use tree_sitter::Language;
 use crate::tiers::{is_builtin, is_wasm};
 use crate::wasm_loader;
+use crate::native_loader;
 
 // ============================================================================
 // External Language Declarations (Tier 1+2: 37 built-in grammars)
@@ -167,11 +174,24 @@ pub fn get_builtin_language(name: &str) -> Option<Language> {
     Some(unsafe { Language::from_raw(ptr as *const _) })
 }
 
-/// Get a language by name, trying built-in first then WASM.
+/// Get a language by name, trying built-in first, then WASM, then native DLL.
 ///
 /// This is the main entry point for language lookup. It:
 /// 1. Checks built-in languages (Tier 1+2) - instant, no loading
 /// 2. Falls back to WASM languages (Tier 3) - loads from disk on first use
+/// 3. Falls back to native DLL (Tier 3b) - for languages that can't compile to WASM
+///
+/// # Loading Priority
+///
+/// For languages that prefer native loading (doxygen, vim, cobol):
+/// 1. Built-in (if available)
+/// 2. Native DLL (preferred for WASM-incompatible grammars)
+/// 3. WASM (fallback)
+///
+/// For all other languages:
+/// 1. Built-in
+/// 2. WASM
+/// 3. Native DLL (fallback)
 ///
 /// # Example
 ///
@@ -181,6 +201,9 @@ pub fn get_builtin_language(name: &str) -> Option<Language> {
 ///
 /// // WASM language - loads sql.wasm on first use
 /// let sql = get_language("sql").unwrap();
+///
+/// // Native DLL fallback - loads tree-sitter-doxygen.dll if WASM unavailable
+/// let doxygen = get_language("doxygen").unwrap();
 /// ```
 pub fn get_language(name: &str) -> Option<Language> {
     // Try built-in first (fast path)
@@ -188,8 +211,25 @@ pub fn get_language(name: &str) -> Option<Language> {
         return Some(lang);
     }
 
-    // Fall back to WASM (Tier 3 languages)
-    wasm_loader::load_wasm_grammar(name)
+    // For languages known to prefer native loading, try native first
+    if native_loader::prefers_native(name) {
+        if let Some(lang) = native_loader::load_native_grammar(name) {
+            return Some(lang);
+        }
+        // Still try WASM as fallback (in case WASM version becomes available)
+        if let Some(lang) = wasm_loader::load_wasm_grammar(name) {
+            return Some(lang);
+        }
+        return None;
+    }
+
+    // For other languages, try WASM first (Tier 3)
+    if let Some(lang) = wasm_loader::load_wasm_grammar(name) {
+        return Some(lang);
+    }
+
+    // Fall back to native DLL (Tier 3b) if WASM not available
+    native_loader::load_native_grammar(name)
 }
 
 /// List all built-in (Tier 1+2) language names.
@@ -216,7 +256,7 @@ pub fn available_builtin_languages() -> Vec<&'static str> {
     ]
 }
 
-/// List all available languages (built-in + WASM).
+/// List all available languages (built-in + WASM + native).
 pub fn available_languages() -> Vec<String> {
     let mut langs: Vec<String> = available_builtin_languages()
         .into_iter()
@@ -230,13 +270,23 @@ pub fn available_languages() -> Vec<String> {
         }
     }
 
+    // Add any additional native grammars that are available locally
+    for lang in native_loader::available_native_grammars() {
+        if !langs.contains(&lang) {
+            langs.push(lang);
+        }
+    }
+
     langs.sort();
     langs
 }
 
-/// Check if a language is available (either built-in or WASM).
+/// Check if a language is available (built-in, WASM, or native).
 pub fn is_language_available(name: &str) -> bool {
-    is_builtin(name) || is_wasm(name) || wasm_loader::is_wasm_available(name)
+    is_builtin(name)
+        || is_wasm(name)
+        || wasm_loader::is_wasm_available(name)
+        || native_loader::is_native_available(name)
 }
 
 /// Get file extensions for a language.
