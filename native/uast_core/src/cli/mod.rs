@@ -8,6 +8,7 @@
 //! - `scan` - Scan with YAML rules
 //! - `languages` - List supported languages
 //! - `ts-query` - Execute native tree-sitter query
+//! - `verify` - Verify grammar availability and validity
 
 pub mod languages;
 pub mod output;
@@ -15,6 +16,7 @@ pub mod parse;
 pub mod run;
 pub mod scan;
 pub mod ts_query;
+pub mod verify;
 
 use clap::{Parser, Subcommand};
 
@@ -56,6 +58,9 @@ pub enum Commands {
     /// Execute native tree-sitter query
     #[command(name = "ts-query")]
     TsQuery(ts_query::TsQueryArgs),
+
+    /// Verify grammar availability and validity
+    Verify(verify::VerifyArgs),
 }
 
 /// Execute the CLI with the given arguments
@@ -68,5 +73,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Scan(args) => scan::execute(args, cli.quiet, cli.verbose),
         Commands::Languages(args) => languages::execute(args, cli.quiet),
         Commands::TsQuery(args) => ts_query::execute(args, cli.quiet, cli.verbose),
+        Commands::Verify(args) => verify::execute(args, cli.quiet, cli.verbose),
     }
 }
