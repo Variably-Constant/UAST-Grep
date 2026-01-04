@@ -332,7 +332,7 @@ jobs:
           body: |
             ## UAST-Grep ${{ steps.version.outputs.version }}
 
-            High-performance Unified AST-based code search powered by tree-sitter.
+            Cross-language AST search and SAST tool powered by tree-sitter.
 
             ### Downloads
 
@@ -364,4 +364,86 @@ jobs:
 
             ### Checksums
             See `checksums.txt` for SHA256 verification.
+
+            ### Package Registries
+            - **crates.io**: `cargo install uast-grep`
+            - **PyPI**: `pip install uast-grep`
+            - **NuGet**: `dotnet add package UAST.Net`
           files: release/*
+
+  # ==========================================================================
+  # Publish to crates.io
+  # ==========================================================================
+  publish-crates:
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-') }}  # Skip pre-releases (e.g., v1.0.0-beta)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        working-directory: native/uast_core
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # ==========================================================================
+  # Publish to PyPI
+  # ==========================================================================
+  publish-pypi:
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install maturin
+        run: pip install maturin
+
+      - name: Build wheel
+        working-directory: python
+        run: maturin build --release
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/target/wheels/
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  # ==========================================================================
+  # Publish to NuGet
+  # ==========================================================================
+  publish-nuget:
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Pack NuGet
+        run: dotnet pack src/UAST.Net/UAST.Net.csproj -c Release
+
+      - name: Publish to NuGet
+        run: dotnet nuget push src/UAST.Net/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

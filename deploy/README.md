@@ -1,25 +1,60 @@
 # UAST-Grep Deployment Guide
 
-> **INTERNAL DOCUMENT** - This file is excluded from git.
->
-> Complete guide for releasing UAST-Grep to all package registries.
+Complete guide for releasing UAST-Grep to all package registries.
 
 ## Overview
 
 UAST-Grep is distributed through four channels:
 
-| Channel | Package | Audience |
-|---------|---------|----------|
-| **GitHub Releases** | Binaries + WASM | CLI users |
-| **crates.io** | `uast-grep` | Rust developers |
-| **NuGet** | `UAST.Native` | .NET developers |
-| **PyPI** | `uast-grep` | Python developers |
+| Channel | Package | Audience | Automation |
+|---------|---------|----------|------------|
+| **GitHub Releases** | Binaries + WASM | CLI users | ✅ Automatic on tag push |
+| **crates.io** | `uast-grep` | Rust developers | ✅ Automatic on release |
+| **NuGet** | `UAST.Net` | .NET developers | ✅ Automatic on release |
+| **PyPI** | `uast-grep` | Python developers | ✅ Automatic on release |
 
 ---
 
-## Quick Release Workflow
+## Quick Release Workflow (Recommended)
 
-For a standard release, run these scripts in order:
+The easiest way to release is to push a version tag - GitHub Actions handles everything:
+
+```bash
+# 1. Update version numbers
+.\Check-Version.ps1 -Version "1.0.0" -Update
+
+# 2. Commit and tag
+git add -A
+git commit -m "chore: Release v1.0.0"
+git tag v1.0.0
+git push origin main --tags
+
+# 3. GitHub Actions automatically:
+#    - Builds binaries for all platforms
+#    - Builds WASM grammars
+#    - Creates GitHub Release
+#    - Publishes to crates.io
+#    - Publishes to PyPI
+#    - Publishes to NuGet
+```
+
+## Required Repository Secrets
+
+Before your first release, add these secrets to your GitHub repository:
+
+**Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret Name | Where to Get It |
+|-------------|-----------------|
+| `CARGO_REGISTRY_TOKEN` | https://crates.io/settings/tokens |
+| `PYPI_API_TOKEN` | https://pypi.org/manage/account/token/ |
+| `NUGET_API_KEY` | https://www.nuget.org/account/apikeys |
+
+---
+
+## Manual Release Workflow (Alternative)
+
+For manual releases without GitHub Actions:
 
 ```powershell
 # 1. Verify/update version across all files
@@ -454,4 +489,4 @@ cross build --target x86_64-unknown-linux-gnu
 
 ---
 
-*Last updated: 2026-01-03*
+*Last updated: 2026-01-04*
