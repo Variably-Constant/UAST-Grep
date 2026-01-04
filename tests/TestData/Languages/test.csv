@@ -1,0 +1,16 @@
+id,name,age,email,status,score,created_at,tags
+1,Alice Johnson,30,alice@example.com,active,85.5,2024-01-15T10:30:00Z,"developer,senior"
+2,Bob Smith,25,bob@example.com,active,92.0,2024-01-16T11:45:00Z,designer
+3,Charlie Brown,35,charlie@example.com,inactive,78.5,2024-01-17T09:15:00Z,"manager,team-lead"
+4,Diana Ross,28,diana@example.com,active,88.0,2024-01-18T14:20:00Z,developer
+5,"O'Connor, Patrick",45,patrick@example.com,active,91.5,2024-01-19T16:00:00Z,"executive,vp"
+6,Eva Martinez,32,eva@example.com,pending,75.0,2024-01-20T08:30:00Z,analyst
+7,Frank Wilson,29,"frank.wilson@example.com",active,82.5,2024-01-21T12:00:00Z,"developer,junior"
+8,"Lee, Susan",38,susan.lee@example.com,active,95.0,2024-01-22T10:00:00Z,"architect,senior"
+9,George Chen,27,george@example.com,inactive,70.0,2024-01-23T15:30:00Z,intern
+10,Helen Park,33,helen@example.com,active,87.5,2024-01-24T11:15:00Z,"manager,product"
+11,"Fields, with ""quotes""",40,fields@example.com,active,90.0,2024-01-25T09:45:00Z,special
+12,Multiline Name,26,multi@example.com,active,84.0,2024-01-26T13:00:00Z,tester
+13,Empty Fields,22,,pending,0.0,2024-01-27T14:30:00Z,
+14,Numbers Only,31,numbers123@example.com,active,100.0,2024-01-28T16:45:00Z,"123,456"
+15,Unicode Test,29,unicode@example.com,active,89.5,2024-01-29T08:00:00Z,日本語テスト

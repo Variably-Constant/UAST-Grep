@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>UAST.Parsers</RootNamespace>
+    <Description>UAST language parsers - parse 11 languages into unified AST</Description>
+  </PropertyGroup>
+
+  <!-- Release performance optimizations -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Tree-sitter parsing uses our dynamic loader (Dynamic/*.cs):
+      - Supports ANY language with a tree-sitter grammar
+      - Grammar DLLs loaded from runtimes/{rid}/native/tree-sitter-{name}.dll
+      - See DirectTreeSitterScanner.cs for direct (fast) scanning
+      - See TreeSitter/*.cs mappers for UAST conversion (also use dynamic loader)
+    -->
+
+    <!-- Roslyn for C# parsing (MIT licensed) -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+
+    <!-- PowerShell parser (for cross-platform PS parsing) -->
+    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UAST.Core\UAST.Core.csproj" />
+    <ProjectReference Include="..\UAST.Native\UAST.Native.csproj" />
+  </ItemGroup>
+
+</Project>

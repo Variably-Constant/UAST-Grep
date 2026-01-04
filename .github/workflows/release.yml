@@ -1,0 +1,367 @@
+# Unified Release Workflow
+#
+# Creates a single release containing:
+# - Cross-platform native binaries (Windows, Linux, macOS)
+# - All 34 Tier 3 WASM grammar files
+# - Checksums for verification
+#
+# Trigger: Push a tag like v1.0.0
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+  TREE_SITTER_VERSION: "0.26.3"
+  EMSCRIPTEN_VERSION: "3.1.50"
+
+jobs:
+  # ==========================================================================
+  # Build native binaries for all platforms
+  # ==========================================================================
+  build-binaries:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: uast-grep-windows-x64
+            ext: .exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: uast-grep-linux-x64
+            ext: ""
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: uast-grep-linux-arm64
+            ext: ""
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: uast-grep-macos-x64
+            ext: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: uast-grep-macos-arm64
+            ext: ""
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Build release binary
+        working-directory: native/uast_core
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
+      - name: Package binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir -p dist
+          cp native/uast_core/target/${{ matrix.target }}/release/uast-grep.exe dist/
+          cp native/uast_core/target/${{ matrix.target }}/release/uast_core.dll dist/
+
+      - name: Package binary (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p dist
+          cp native/uast_core/target/${{ matrix.target }}/release/uast-grep dist/
+          cp native/uast_core/target/${{ matrix.target }}/release/libuast_core.so dist/ 2>/dev/null || \
+          cp native/uast_core/target/${{ matrix.target }}/release/libuast_core.dylib dist/ 2>/dev/null || true
+
+      - name: Create archive
+        run: |
+          cd dist
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            7z a -tzip ../${{ matrix.artifact }}.zip *
+          else
+            tar -czvf ../${{ matrix.artifact }}.tar.gz *
+          fi
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}.zip
+            ${{ matrix.artifact }}.tar.gz
+          if-no-files-found: ignore
+
+  # ==========================================================================
+  # Build all WASM grammars
+  # ==========================================================================
+  build-wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install tree-sitter CLI
+        run: |
+          npm install -g tree-sitter-cli@${{ env.TREE_SITTER_VERSION }}
+          tree-sitter --version
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+
+      - name: Create output directory
+        run: mkdir -p grammars-wasm
+
+      - name: Build all WASM grammars
+        run: |
+          # All 34 Tier 3 grammars
+          declare -A GRAMMARS=(
+            ["verilog"]="https://github.com/tree-sitter/tree-sitter-verilog"
+            ["latex"]="https://github.com/latex-lsp/tree-sitter-latex"
+            ["sql"]="https://github.com/DerekStride/tree-sitter-sql"
+            ["fortran"]="https://github.com/stadelmanma/tree-sitter-fortran"
+            ["fsharp"]="https://github.com/ionide/tree-sitter-fsharp:fsharp"
+            ["kotlin"]="https://github.com/fwcd/tree-sitter-kotlin"
+            ["cobol"]="https://github.com/yutaro-sakamoto/tree-sitter-cobol"
+            ["scala"]="https://github.com/tree-sitter/tree-sitter-scala"
+            ["objc"]="https://github.com/tree-sitter-grammars/tree-sitter-objc"
+            ["julia"]="https://github.com/tree-sitter/tree-sitter-julia"
+            ["d"]="https://github.com/gdamore/tree-sitter-d"
+            ["crystal"]="https://github.com/keidax/tree-sitter-crystal"
+            ["cuda"]="https://github.com/tree-sitter-grammars/tree-sitter-cuda"
+            ["haskell"]="https://github.com/tree-sitter/tree-sitter-haskell"
+            ["swift"]="https://github.com/alex-pinkus/tree-sitter-swift"
+            ["perl"]="https://github.com/tree-sitter-perl/tree-sitter-perl"
+            ["arduino"]="https://github.com/tree-sitter-grammars/tree-sitter-arduino"
+            ["agda"]="https://github.com/tree-sitter/tree-sitter-agda"
+            ["ocaml"]="https://github.com/tree-sitter/tree-sitter-ocaml:grammars/ocaml"
+            ["apex"]="https://github.com/aheber/tree-sitter-sfapex:sfapex"
+            ["dart"]="https://github.com/UserNobody14/tree-sitter-dart"
+            ["groovy"]="https://github.com/murtaza64/tree-sitter-groovy"
+            ["commonlisp"]="https://github.com/theHamsta/tree-sitter-commonlisp"
+            ["zig"]="https://github.com/tree-sitter-grammars/tree-sitter-zig"
+            ["awk"]="https://github.com/Beaglefoot/tree-sitter-awk"
+            ["vim"]="https://github.com/tree-sitter-grammars/tree-sitter-vim"
+            ["r"]="https://github.com/r-lib/tree-sitter-r"
+            ["bitbake"]="https://github.com/tree-sitter-grammars/tree-sitter-bitbake"
+            ["ada"]="https://github.com/briot/tree-sitter-ada"
+            ["cairo"]="https://github.com/tree-sitter-grammars/tree-sitter-cairo"
+            ["dhall"]="https://github.com/jbellerb/tree-sitter-dhall"
+            ["cue"]="https://github.com/eonpatapon/tree-sitter-cue"
+            ["doxygen"]="https://github.com/tree-sitter-grammars/tree-sitter-doxygen"
+            ["comment"]="https://github.com/stsewd/tree-sitter-comment"
+          )
+
+          TEMP_DIR=$(mktemp -d)
+          SUCCEEDED=0
+          FAILED=0
+
+          for name in "${!GRAMMARS[@]}"; do
+            echo "::group::Building $name"
+
+            SPEC="${GRAMMARS[$name]}"
+            if [[ "$SPEC" == *":"* ]]; then
+              REPO="${SPEC%%:*}"
+              SUBDIR="${SPEC#*:}"
+            else
+              REPO="$SPEC"
+              SUBDIR=""
+            fi
+
+            CLONE_DIR="$TEMP_DIR/$name"
+            if ! git clone --depth 1 "$REPO" "$CLONE_DIR" 2>&1; then
+              echo "::error::Failed to clone $name"
+              FAILED=$((FAILED + 1))
+              echo "::endgroup::"
+              continue
+            fi
+
+            if [ -n "$SUBDIR" ]; then
+              GRAMMAR_DIR="$CLONE_DIR/$SUBDIR"
+            else
+              GRAMMAR_DIR="$CLONE_DIR"
+            fi
+
+            cd "$GRAMMAR_DIR"
+
+            if tree-sitter build --wasm 2>&1; then
+              WASM_FILE=$(find . -maxdepth 1 -name "*.wasm" -type f | head -1)
+              if [ -n "$WASM_FILE" ]; then
+                cp "$WASM_FILE" "$GITHUB_WORKSPACE/grammars-wasm/${name}.wasm"
+                echo "✓ Built ${name}.wasm"
+                SUCCEEDED=$((SUCCEEDED + 1))
+              else
+                echo "::error::No WASM file generated for $name"
+                FAILED=$((FAILED + 1))
+              fi
+            else
+              echo "::error::Build failed for $name"
+              FAILED=$((FAILED + 1))
+            fi
+
+            cd "$GITHUB_WORKSPACE"
+            echo "::endgroup::"
+          done
+
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Succeeded: $SUCCEEDED / ${#GRAMMARS[@]}" >> $GITHUB_STEP_SUMMARY
+          echo "- Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
+
+          ls -lh grammars-wasm/
+
+      - name: Create WASM checksums
+        run: |
+          cd grammars-wasm
+          sha256sum *.wasm > checksums-wasm.txt
+
+      - name: Create WASM bundle
+        run: |
+          cd grammars-wasm
+          zip -9 ../grammars-wasm.zip *.wasm checksums-wasm.txt
+
+      - name: Upload individual WASM files
+        uses: actions/upload-artifact@v4
+        with:
+          name: grammars-wasm-individual
+          path: grammars-wasm/*.wasm
+
+      - name: Upload WASM bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: grammars-wasm-bundle
+          path: grammars-wasm.zip
+
+      - name: Upload WASM checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: grammars-wasm-checksums
+          path: grammars-wasm/checksums-wasm.txt
+
+  # ==========================================================================
+  # Create unified release
+  # ==========================================================================
+  release:
+    needs: [build-binaries, build-wasm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+
+          # Copy binary archives (but not grammars-wasm.zip yet)
+          find artifacts -name "uast-grep-*.zip" -exec cp {} release/ \;
+          find artifacts -name "uast-grep-*.tar.gz" -exec cp {} release/ \;
+
+          # Copy WASM bundle
+          find artifacts -name "grammars-wasm.zip" -exec cp {} release/ \;
+
+          # Copy individual WASM files (for on-demand download)
+          find artifacts -name "*.wasm" -exec cp {} release/ \;
+
+          # Copy WASM checksums
+          find artifacts -name "checksums-wasm.txt" -exec cp {} release/ \;
+
+          # Create master checksum file
+          cd release
+          sha256sum *.zip *.tar.gz *.wasm 2>/dev/null > checksums.txt || true
+
+          echo "Release contents:"
+          ls -lh
+
+          echo "## Release Assets" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          for f in *; do
+            SIZE=$(ls -lh "$f" | awk '{print $5}')
+            echo "| $f | $SIZE |" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "UAST-Grep ${{ steps.version.outputs.version }}"
+          draft: false
+          prerelease: false
+          body: |
+            ## UAST-Grep ${{ steps.version.outputs.version }}
+
+            High-performance Unified AST-based code search powered by tree-sitter.
+
+            ### Downloads
+
+            #### Native Binaries (37 built-in languages)
+            | Platform | Architecture | File |
+            |----------|--------------|------|
+            | Windows | x64 | `uast-grep-windows-x64.zip` |
+            | Linux | x64 | `uast-grep-linux-x64.tar.gz` |
+            | Linux | ARM64 | `uast-grep-linux-arm64.tar.gz` |
+            | macOS | x64 (Intel) | `uast-grep-macos-x64.tar.gz` |
+            | macOS | ARM64 (Apple Silicon) | `uast-grep-macos-arm64.tar.gz` |
+
+            #### WASM Grammars (34 additional languages)
+            Download `grammars-wasm.zip` for SQL, Kotlin, Swift, Haskell, and 30 more languages.
+
+            Extract to `~/.uast-grep/grammars/` or set `UAST_WASM_PATH` environment variable.
+
+            ### Built-in Languages (Tier 1+2)
+            powershell, c#, json, yaml, xml, toml, csv, dockerfile, hcl, bicep, nix, bash,
+            html, css, javascript, typescript, tsx, vue, angular, markdown, python, go,
+            java, c, cpp, rust, ruby, php, lua, cmake, make, proto, graphql, elixir,
+            erlang, clojure, elm
+
+            ### WASM Languages (Tier 3)
+            verilog, latex, sql, fortran, fsharp, kotlin, cobol, scala, objc, julia,
+            d, crystal, cuda, haskell, swift, perl, arduino, agda, ocaml, apex, dart,
+            groovy, commonlisp, zig, awk, vim, r, bitbake, ada, cairo, dhall, cue,
+            doxygen, comment
+
+            ### Checksums
+            See `checksums.txt` for SHA256 verification.
+          files: release/*

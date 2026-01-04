@@ -1,0 +1,123 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
+    <RootNamespace>UAST.Net</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Package Metadata -->
+    <PackageId>UAST.Net</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>UAST-Grep Contributors</Authors>
+    <Description>Cross-language AST search and analysis library. Provides unified pattern matching across 70+ programming languages using a Rust-backed tree-sitter engine.</Description>
+    <PackageTags>ast;parsing;tree-sitter;code-analysis;pattern-matching;linting</PackageTags>
+    <PackageProjectUrl>https://github.com/your-org/UAST-Grep</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/your-org/UAST-Grep</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Documentation -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- Rust crate location -->
+    <RustCrateDir>$(MSBuildProjectDirectory)\..\..\native\uast_core</RustCrateDir>
+    <RustTargetDir>$(RustCrateDir)\target</RustTargetDir>
+  </PropertyGroup>
+
+
+  <!-- Release optimizations -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+  </PropertyGroup>
+
+  <!--
+    Native Library Build Strategy:
+
+    By default, we use the pre-built DLL from publish_rust/ (fast builds).
+    To rebuild the Rust library, use: dotnet build /p:BuildRust=true
+
+    The pre-built DLL should be updated when Rust code changes by running:
+      cd native/uast_core
+      cargo build (double dash)release
+      copy target\release\uast_core.dll ..\..\publish_rust\runtimes\win-x64\native\
+  -->
+
+  <!-- Pre-built DLL location -->
+  <PropertyGroup>
+    <PrebuiltDllDir>$(MSBuildProjectDirectory)\..\..\publish_rust\runtimes\win-x64\native</PrebuiltDllDir>
+    <NativeRuntimeDir>$(MSBuildProjectDirectory)\runtimes\win-x64\native</NativeRuntimeDir>
+    <NativeLibName>uast_core.dll</NativeLibName>
+  </PropertyGroup>
+
+  <!-- Build Rust crate ONLY when explicitly requested with -p:BuildRust=true -->
+  <Target Name="BuildRustCore" BeforeTargets="Build" Condition="'$(BuildRust)' == 'true' And Exists('$(RustCrateDir)')">
+    <Message Importance="High" Text="Building Rust crate uast_core (this takes ~3 min)..." />
+
+    <PropertyGroup>
+      <RustProfile Condition="'$(Configuration)' == 'Release'">release</RustProfile>
+      <RustProfile Condition="'$(Configuration)' != 'Release'">debug</RustProfile>
+      <RustProfileFlag Condition="'$(Configuration)' == 'Release'">--release</RustProfileFlag>
+    </PropertyGroup>
+
+    <Exec Command="cargo build $(RustProfileFlag)"
+          WorkingDirectory="$(RustCrateDir)"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="false" />
+
+    <Message Importance="High" Text="Rust build complete." />
+  </Target>
+
+  <!-- Copy native library to runtimes folder after Rust build -->
+  <Target Name="CopyRustLibrary" AfterTargets="BuildRustCore" BeforeTargets="Build" Condition="'$(BuildRust)' == 'true' And Exists('$(RustCrateDir)')">
+    <PropertyGroup>
+      <RustOutputDir>$(RustTargetDir)\$(RustProfile)</RustOutputDir>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(NativeRuntimeDir)" Condition="!Exists('$(NativeRuntimeDir)')" />
+
+    <Copy SourceFiles="$(RustOutputDir)\$(NativeLibName)"
+          DestinationFolder="$(NativeRuntimeDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(RustOutputDir)\$(NativeLibName)')" />
+  </Target>
+
+  <!-- Use pre-built DLL when not building Rust (default, fast path) -->
+  <Target Name="CopyPrebuiltLibrary" BeforeTargets="Build" Condition="'$(BuildRust)' != 'true'">
+    <MakeDir Directories="$(NativeRuntimeDir)" Condition="!Exists('$(NativeRuntimeDir)')" />
+
+    <!-- Copy from pre-built location if runtimes folder is empty/missing -->
+    <Copy SourceFiles="$(PrebuiltDllDir)\$(NativeLibName)"
+          DestinationFolder="$(NativeRuntimeDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(PrebuiltDllDir)\$(NativeLibName)') And !Exists('$(NativeRuntimeDir)\$(NativeLibName)')" />
+
+    <Warning Text="Pre-built uast_core.dll not found. Run: dotnet build -p:BuildRust=true"
+             Condition="!Exists('$(NativeRuntimeDir)\$(NativeLibName)') And !Exists('$(PrebuiltDllDir)\$(NativeLibName)')" />
+  </Target>
+
+  <!-- Native library runtime assets -->
+  <ItemGroup>
+    <None Include="runtimes\**\*" Pack="true" PackagePath="runtimes" CopyToOutputDirectory="PreserveNewest" Condition="Exists('runtimes')" />
+    <!-- Also copy to output root for development -->
+    <None Include="runtimes\win-x64\native\uast_core.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('runtimes\win-x64\native\uast_core.dll')" />
+  </ItemGroup>
+
+  <!-- Package content -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\..\README.md')" />
+  </ItemGroup>
+
+  <!-- Package references -->
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+
+</Project>

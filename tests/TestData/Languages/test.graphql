@@ -1,0 +1,558 @@
+# GraphQL Test File for UAST-Grep
+# Tests: types, queries, mutations, subscriptions, directives, fragments
+
+# =============================================================================
+# Schema Definition
+# =============================================================================
+
+"""
+Root schema definition for UAST-Grep GraphQL API.
+This schema demonstrates various GraphQL features.
+"""
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+# =============================================================================
+# Scalar Types
+# =============================================================================
+
+"Custom scalar for date-time values"
+scalar DateTime
+
+"Custom scalar for JSON data"
+scalar JSON
+
+"Custom scalar for URL values"
+scalar URL
+
+"Custom scalar for email addresses"
+scalar Email
+
+# =============================================================================
+# Enums
+# =============================================================================
+
+"User role enumeration"
+enum Role {
+  "Administrator with full access"
+  ADMIN
+
+  "Regular user with limited access"
+  USER
+
+  "Guest with read-only access"
+  GUEST
+
+  "Moderator with content management access"
+  MODERATOR
+}
+
+"Post status enumeration"
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  DELETED
+}
+
+"Sort order enumeration"
+enum SortOrder {
+  ASC
+  DESC
+}
+
+# =============================================================================
+# Input Types
+# =============================================================================
+
+"Input for creating a new user"
+input CreateUserInput {
+  username: String!
+  email: Email!
+  password: String!
+  firstName: String
+  lastName: String
+  role: Role = USER
+}
+
+"Input for updating an existing user"
+input UpdateUserInput {
+  username: String
+  email: Email
+  firstName: String
+  lastName: String
+  role: Role
+  isActive: Boolean
+}
+
+"Input for creating a new post"
+input CreatePostInput {
+  title: String!
+  content: String!
+  excerpt: String
+  status: PostStatus = DRAFT
+  tagIds: [ID!]
+}
+
+"Input for filtering posts"
+input PostFilterInput {
+  status: PostStatus
+  authorId: ID
+  tagId: ID
+  search: String
+  createdAfter: DateTime
+  createdBefore: DateTime
+}
+
+"Input for pagination"
+input PaginationInput {
+  page: Int = 1
+  limit: Int = 10
+  sortBy: String = "createdAt"
+  sortOrder: SortOrder = DESC
+}
+
+# =============================================================================
+# Interfaces
+# =============================================================================
+
+"Base interface for all nodes"
+interface Node {
+  "Unique identifier"
+  id: ID!
+}
+
+"Interface for timestamped entities"
+interface Timestamped {
+  "Creation timestamp"
+  createdAt: DateTime!
+
+  "Last update timestamp"
+  updatedAt: DateTime
+}
+
+"Interface for entities with audit info"
+interface Auditable implements Timestamped {
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy: User
+  updatedBy: User
+}
+
+# =============================================================================
+# Union Types
+# =============================================================================
+
+"Search result can be either User or Post"
+union SearchResult = User | Post | Tag
+
+"Activity feed item"
+union ActivityItem = Post | Comment | UserAction
+
+# =============================================================================
+# Object Types
+# =============================================================================
+
+"User type representing a registered user"
+type User implements Node & Timestamped {
+  id: ID!
+  username: String!
+  email: Email! @auth(requires: ADMIN)
+  firstName: String
+  lastName: String
+  fullName: String @deprecated(reason: "Use firstName and lastName instead")
+  role: Role!
+  isActive: Boolean!
+  avatar: URL
+  bio: String
+  createdAt: DateTime!
+  updatedAt: DateTime
+  lastLogin: DateTime
+
+  "Posts authored by this user"
+  posts(
+    status: PostStatus
+    first: Int = 10
+    after: String
+  ): PostConnection!
+
+  "Comments made by this user"
+  comments(first: Int = 10): [Comment!]!
+
+  "Users followed by this user"
+  following: [User!]!
+
+  "Users following this user"
+  followers: [User!]!
+
+  "Statistics for this user"
+  stats: UserStats!
+}
+
+"User statistics"
+type UserStats {
+  postCount: Int!
+  commentCount: Int!
+  followerCount: Int!
+  followingCount: Int!
+  totalViews: Int!
+}
+
+"Post type representing a blog post"
+type Post implements Node & Auditable {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  excerpt: String
+  status: PostStatus!
+  viewCount: Int!
+  author: User!
+  tags: [Tag!]!
+  comments(first: Int = 10, after: String): CommentConnection!
+  publishedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime
+  createdBy: User
+  updatedBy: User
+
+  "Check if current user can edit this post"
+  canEdit: Boolean! @auth
+}
+
+"Comment type"
+type Comment implements Node & Timestamped {
+  id: ID!
+  content: String!
+  author: User!
+  post: Post!
+  parent: Comment
+  replies: [Comment!]!
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+"Tag type"
+type Tag implements Node {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  posts(first: Int = 10): [Post!]!
+  postCount: Int!
+}
+
+"User action for activity feed"
+type UserAction implements Node {
+  id: ID!
+  user: User!
+  action: String!
+  target: Node
+  createdAt: DateTime!
+}
+
+# =============================================================================
+# Connection Types (Relay-style pagination)
+# =============================================================================
+
+"Page info for cursor-based pagination"
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+  totalCount: Int!
+}
+
+"Connection for posts"
+type PostConnection {
+  edges: [PostEdge!]!
+  pageInfo: PageInfo!
+}
+
+"Edge for post connection"
+type PostEdge {
+  node: Post!
+  cursor: String!
+}
+
+"Connection for comments"
+type CommentConnection {
+  edges: [CommentEdge!]!
+  pageInfo: PageInfo!
+}
+
+"Edge for comment connection"
+type CommentEdge {
+  node: Comment!
+  cursor: String!
+}
+
+# =============================================================================
+# Queries
+# =============================================================================
+
+type Query {
+  "Get current authenticated user"
+  me: User @auth
+
+  "Get user by ID"
+  user(id: ID!): User
+
+  "Get user by username"
+  userByUsername(username: String!): User
+
+  "List all users with pagination"
+  users(
+    filter: String
+    pagination: PaginationInput
+  ): [User!]! @auth(requires: ADMIN)
+
+  "Get post by ID"
+  post(id: ID!): Post
+
+  "Get post by slug"
+  postBySlug(slug: String!): Post
+
+  "List posts with filtering and pagination"
+  posts(
+    filter: PostFilterInput
+    pagination: PaginationInput
+  ): PostConnection!
+
+  "Search across all content"
+  search(
+    query: String!
+    types: [String!]
+    first: Int = 10
+  ): [SearchResult!]!
+
+  "Get tag by ID or slug"
+  tag(id: ID, slug: String): Tag
+
+  "List all tags"
+  tags: [Tag!]!
+
+  "Get node by global ID"
+  node(id: ID!): Node
+
+  "Get multiple nodes by IDs"
+  nodes(ids: [ID!]!): [Node]!
+
+  "Get activity feed"
+  activityFeed(first: Int = 20, after: String): [ActivityItem!]! @auth
+}
+
+# =============================================================================
+# Mutations
+# =============================================================================
+
+type Mutation {
+  # User mutations
+  "Create a new user"
+  createUser(input: CreateUserInput!): CreateUserPayload!
+
+  "Update an existing user"
+  updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload! @auth
+
+  "Delete a user"
+  deleteUser(id: ID!): DeleteUserPayload! @auth(requires: ADMIN)
+
+  "Follow a user"
+  followUser(userId: ID!): FollowUserPayload! @auth
+
+  "Unfollow a user"
+  unfollowUser(userId: ID!): UnfollowUserPayload! @auth
+
+  # Post mutations
+  "Create a new post"
+  createPost(input: CreatePostInput!): CreatePostPayload! @auth
+
+  "Update an existing post"
+  updatePost(id: ID!, input: CreatePostInput!): UpdatePostPayload! @auth
+
+  "Delete a post"
+  deletePost(id: ID!): DeletePostPayload! @auth
+
+  "Publish a post"
+  publishPost(id: ID!): PublishPostPayload! @auth
+
+  # Comment mutations
+  "Add a comment"
+  addComment(postId: ID!, content: String!, parentId: ID): AddCommentPayload! @auth
+
+  "Delete a comment"
+  deleteComment(id: ID!): DeleteCommentPayload! @auth
+
+  # Auth mutations
+  "Login with credentials"
+  login(email: Email!, password: String!): AuthPayload!
+
+  "Logout current user"
+  logout: Boolean! @auth
+
+  "Refresh authentication token"
+  refreshToken(token: String!): AuthPayload!
+}
+
+# =============================================================================
+# Mutation Payloads
+# =============================================================================
+
+type CreateUserPayload {
+  user: User
+  errors: [Error!]
+}
+
+type UpdateUserPayload {
+  user: User
+  errors: [Error!]
+}
+
+type DeleteUserPayload {
+  success: Boolean!
+  errors: [Error!]
+}
+
+type FollowUserPayload {
+  user: User
+  follower: User
+}
+
+type UnfollowUserPayload {
+  user: User
+  follower: User
+}
+
+type CreatePostPayload {
+  post: Post
+  errors: [Error!]
+}
+
+type UpdatePostPayload {
+  post: Post
+  errors: [Error!]
+}
+
+type DeletePostPayload {
+  success: Boolean!
+}
+
+type PublishPostPayload {
+  post: Post
+  errors: [Error!]
+}
+
+type AddCommentPayload {
+  comment: Comment
+  errors: [Error!]
+}
+
+type DeleteCommentPayload {
+  success: Boolean!
+}
+
+type AuthPayload {
+  token: String!
+  refreshToken: String!
+  user: User!
+  expiresAt: DateTime!
+}
+
+type Error {
+  field: String
+  message: String!
+  code: String
+}
+
+# =============================================================================
+# Subscriptions
+# =============================================================================
+
+type Subscription {
+  "Subscribe to new posts"
+  postCreated: Post!
+
+  "Subscribe to post updates"
+  postUpdated(id: ID!): Post!
+
+  "Subscribe to new comments on a post"
+  commentAdded(postId: ID!): Comment!
+
+  "Subscribe to user activity"
+  userActivity(userId: ID!): ActivityItem! @auth
+
+  "Subscribe to notifications"
+  notificationReceived: Notification! @auth
+}
+
+type Notification implements Node {
+  id: ID!
+  type: String!
+  message: String!
+  read: Boolean!
+  createdAt: DateTime!
+  data: JSON
+}
+
+# =============================================================================
+# Directives
+# =============================================================================
+
+"Marks a field as requiring authentication"
+directive @auth(
+  requires: Role = USER
+) on FIELD_DEFINITION | OBJECT
+
+"Marks a field as deprecated"
+directive @deprecated(
+  reason: String = "No longer supported"
+) on FIELD_DEFINITION | ENUM_VALUE
+
+"Specifies caching behavior"
+directive @cacheControl(
+  maxAge: Int
+  scope: CacheControlScope
+) on FIELD_DEFINITION | OBJECT
+
+enum CacheControlScope {
+  PUBLIC
+  PRIVATE
+}
+
+"Rate limiting directive"
+directive @rateLimit(
+  limit: Int!
+  duration: Int!
+) on FIELD_DEFINITION
+
+# =============================================================================
+# Fragments (typically in .graphql files with queries)
+# =============================================================================
+
+# Example fragments that would be used in queries:
+#
+# fragment UserBasic on User {
+#   id
+#   username
+#   email
+#   role
+# }
+#
+# fragment PostDetails on Post {
+#   id
+#   title
+#   slug
+#   content
+#   status
+#   author {
+#     ...UserBasic
+#   }
+#   tags {
+#     id
+#     name
+#   }
+# }

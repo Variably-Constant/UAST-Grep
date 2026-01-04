@@ -1,0 +1,255 @@
+# YAML Test File for UAST-Grep
+# Tests: scalars, sequences, mappings, anchors, multi-line strings
+---
+# Document metadata
+name: UAST-Grep Test Configuration
+version: "1.0.0"
+description: YAML test file for UAST-Grep parser testing
+
+# Boolean values
+enabled: true
+disabled: false
+yes_value: yes
+no_value: no
+on_value: on
+off_value: off
+
+# Numeric values
+count: 42
+negative: -17
+float_value: 3.14159
+scientific: 1.23e10
+hex_value: 0xFF
+octal_value: 0o755
+infinity_pos: .inf
+infinity_neg: -.inf
+not_a_number: .nan
+
+# Null values
+null_value: null
+tilde_null: ~
+empty_value:
+
+# Strings
+simple_string: Hello World
+quoted_single: 'Single quoted with ''escaped'' quotes'
+quoted_double: "Double quoted with \"escaped\" quotes and \n newline"
+unquoted: This is an unquoted string
+with_colon: "Value: with colon"
+special_chars: "Symbols: @#$%^&*()"
+
+# Multi-line strings
+literal_block: |
+  This is a literal block scalar.
+  Line breaks are preserved.
+  Indentation is stripped.
+
+  Blank lines are kept.
+
+folded_block: >
+  This is a folded block scalar.
+  Line breaks become spaces.
+  Indentation is stripped.
+
+  Blank lines become line breaks.
+
+literal_keep: |+
+  Literal with trailing newlines kept.
+
+
+literal_strip: |-
+  Literal with trailing newlines stripped.
+
+
+# Sequences (arrays)
+simple_list:
+  - item1
+  - item2
+  - item3
+
+inline_list: [one, two, three, four]
+
+nested_list:
+  - - nested1a
+    - nested1b
+  - - nested2a
+    - nested2b
+
+mixed_list:
+  - string value
+  - 123
+  - true
+  - null
+  - key: value
+  - [1, 2, 3]
+
+# Mappings (objects)
+simple_mapping:
+  key1: value1
+  key2: value2
+  key3: value3
+
+inline_mapping: {name: test, value: 42, enabled: true}
+
+nested_mapping:
+  level1:
+    level2:
+      level3:
+        deep_value: "Found it!"
+        deep_array: [1, 2, 3]
+
+# Complex keys
+? - complex
+  - key
+: complex value
+
+? {name: key_object}
+: value for object key
+
+# Anchors and aliases
+defaults: &defaults
+  adapter: postgres
+  host: localhost
+  port: 5432
+
+development:
+  <<: *defaults
+  database: dev_db
+
+production:
+  <<: *defaults
+  database: prod_db
+  host: prod.example.com
+
+# More anchor examples
+base_config: &base
+  timeout: 30
+  retries: 3
+  logging:
+    level: info
+    format: json
+
+extended_config:
+  <<: *base
+  timeout: 60  # Override
+  extra: value
+
+# Sequences with anchors
+colors:
+  - &primary_color
+    name: blue
+    hex: "#0000FF"
+  - name: secondary
+    base: *primary_color
+
+# Tags (type hints)
+explicit_string: !!str 123
+explicit_int: !!int "456"
+explicit_float: !!float "3.14"
+explicit_bool: !!bool "yes"
+explicit_null: !!null ""
+
+# Binary data (base64)
+binary_data: !!binary |
+  R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7
+
+# Timestamp
+timestamp_iso: 2024-01-15T10:30:00Z
+timestamp_space: 2024-01-15 10:30:00
+date_only: 2024-01-15
+
+# Set (unique values)
+languages: !!set
+  TypeScript: null
+  Python: null
+  Rust: null
+  Go: null
+
+# Ordered mapping
+ordered: !!omap
+  - first: 1
+  - second: 2
+  - third: 3
+
+# Environment-like configuration
+settings:
+  max_items: 100
+  min_items: 1
+  default_name: UAST-Grep
+
+  features:
+    parsing: true
+    validation: true
+    formatting: false
+
+    caching:
+      enabled: true
+      ttl: 3600
+      max_size: 100MB
+
+  thresholds:
+    warning: 0.75
+    error: 0.90
+    critical: 0.99
+
+# Array of objects
+languages_list:
+  - id: 1
+    name: TypeScript
+    extension: .ts
+    tier: 1
+    features:
+      - classes
+      - interfaces
+      - generics
+    active: true
+
+  - id: 2
+    name: Python
+    extension: .py
+    tier: 1
+    features:
+      - classes
+      - decorators
+      - async
+    active: true
+
+  - id: 3
+    name: Rust
+    extension: .rs
+    tier: 1
+    features:
+      - structs
+      - traits
+      - lifetimes
+    active: true
+
+# Patterns with special regex characters
+patterns:
+  - name: function
+    regex: "^function\\s+\\w+"
+    priority: 1
+    options:
+      case_sensitive: true
+      multiline: false
+
+  - name: class
+    regex: "^class\\s+\\w+"
+    priority: 2
+
+# Mappings as values
+status_codes:
+  200: OK
+  404: Not Found
+  500: Server Error
+
+# Document end marker
+...
+
+---
+# Second document in same file
+document: 2
+purpose: Multi-document YAML test
+items:
+  - second doc item 1
+  - second doc item 2

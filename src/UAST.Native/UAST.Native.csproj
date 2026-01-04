@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
+    <RootNamespace>UAST.Native</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Rust build configuration -->
+    <RustCrateDir>$(MSBuildProjectDirectory)\..\..\native\uast_core</RustCrateDir>
+    <RustTargetDir>$(RustCrateDir)\target</RustTargetDir>
+  </PropertyGroup>
+
+  <!-- Build Rust crate before C# compilation -->
+  <Target Name="BuildRustCore" BeforeTargets="Build" Condition="'$(SkipRustBuild)' != 'true'">
+    <Message Importance="High" Text="Building Rust crate uast_core..." />
+
+    <!-- Determine build profile -->
+    <PropertyGroup>
+      <RustProfile Condition="'$(Configuration)' == 'Release'">release</RustProfile>
+      <RustProfile Condition="'$(Configuration)' != 'Release'">debug</RustProfile>
+      <RustProfileFlag Condition="'$(Configuration)' == 'Release'">--release</RustProfileFlag>
+    </PropertyGroup>
+
+    <!-- Run cargo build -->
+    <Exec Command="cargo build $(RustProfileFlag)"
+          WorkingDirectory="$(RustCrateDir)"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="false" />
+
+    <Message Importance="High" Text="Rust build complete." />
+  </Target>
+
+  <!-- Copy native library to runtimes folder after Rust build -->
+  <Target Name="CopyRustLibrary" AfterTargets="BuildRustCore" BeforeTargets="Build" Condition="'$(SkipRustBuild)' != 'true'">
+    <PropertyGroup>
+      <RustOutputDir>$(RustTargetDir)\$(RustProfile)</RustOutputDir>
+      <NativeLibName>uast_core.dll</NativeLibName>
+      <NativeRuntimeDir>$(MSBuildProjectDirectory)\runtimes\win-x64\native</NativeRuntimeDir>
+    </PropertyGroup>
+
+    <!-- Create runtimes directory if it doesn't exist -->
+    <MakeDir Directories="$(NativeRuntimeDir)" Condition="!Exists('$(NativeRuntimeDir)')" />
+
+    <!-- Copy the DLL -->
+    <Copy SourceFiles="$(RustOutputDir)\$(NativeLibName)"
+          DestinationFolder="$(NativeRuntimeDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Release performance optimizations -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UAST.Core\UAST.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Native library runtime assets -->
+  <ItemGroup>
+    <None Include="runtimes\**\*" Pack="true" CopyToOutputDirectory="PreserveNewest">
+      <Link>runtimes\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
+    <!-- Also copy to output root for development -->
+    <None Include="runtimes\win-x64\native\uast_core.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('runtimes\win-x64\native\uast_core.dll')" />
+  </ItemGroup>
+
+</Project>

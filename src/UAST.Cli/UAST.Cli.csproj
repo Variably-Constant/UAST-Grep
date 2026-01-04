@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
+    <RootNamespace>UAST.Cli</RootNamespace>
+    <AssemblyName>UAST-Grep</AssemblyName>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <!-- Release performance optimizations -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- CLI framework -->
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="System.CommandLine.NamingConventionBinder" Version="2.0.0-beta4.22272.1" />
+
+    <!-- Console output -->
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UAST.Core\UAST.Core.csproj" />
+    <ProjectReference Include="..\UAST.Parsers\UAST.Parsers.csproj" />
+    <ProjectReference Include="..\UAST.Native\UAST.Native.csproj" />
+  </ItemGroup>
+
+  <!-- Copy uast_core.dll to output -->
+  <ItemGroup>
+    <None Include="..\..\native\uast_core\target\release\uast_core.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Condition="Exists('..\..\native\uast_core\target\release\uast_core.dll')" />
+  </ItemGroup>
+
+  <!-- Embed native query patterns -->
+  <ItemGroup>
+    <EmbeddedResource Include="Queries\Native\*.scm" Condition="Exists('Queries\Native\')" />
+  </ItemGroup>
+
+</Project>

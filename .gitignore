@@ -1,0 +1,106 @@
+# AI instructions (not for public repo)
+CLAUDE.md
+.claude/
+
+# =============================================================================
+# BINARY FILES - All binaries are excluded, published via GitHub Releases
+# =============================================================================
+*.dll
+*.exe
+*.pdb
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+
+# Rust publish output
+publish_rust/
+
+# Pre-built native runtimes (users build from source or download releases)
+src/UAST.Native/runtimes/
+
+# =============================================================================
+# BUILD OUTPUTS
+# =============================================================================
+
+# .NET build
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+src/**/bin/
+src/**/obj/
+tests/**/bin/
+tests/**/obj/
+
+# Rust build
+target/
+native/uast_core/target/
+tools/rust-parser/target/
+
+# Python build
+python/target/
+python/.venv/
+.venv/
+venv/
+*.whl
+*.egg-info/
+__pycache__/
+.pytest_cache/
+dist/
+
+# WASM grammar output
+native/uast_core/grammars-wasm/
+
+# mdBook output
+docs/book/
+
+# =============================================================================
+# PACKAGES
+# =============================================================================
+*.nupkg
+.nuget/
+packages/
+node_modules/
+
+# =============================================================================
+# IDE & EDITOR
+# =============================================================================
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.userprefs
+.vscode/settings.json
+
+# =============================================================================
+# TEST & CACHE
+# =============================================================================
+TestResults/
+*.trx
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# =============================================================================
+# LANGUAGE-SPECIFIC TOOLS
+# =============================================================================
+
+# Swift
+tools/swift-parser/.build/
+
+# Java
+*.class
+
+# PHP
+tools/php-parser/vendor/
+tools/php-parser/composer.phar
+tools/php-parser/composer-setup.php
+
+# Node
+tools/ts-parser/node_modules/

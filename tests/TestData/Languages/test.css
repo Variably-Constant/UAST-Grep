@@ -1,0 +1,414 @@
+/**
+ * CSS Test File for UAST-Grep
+ * Tests: selectors, properties, at-rules, variables, nesting
+ */
+
+/* CSS Custom Properties (Variables) */
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2ecc71;
+    --accent-color: #e74c3c;
+    --text-color: #333333;
+    --background-color: #ffffff;
+    --border-radius: 4px;
+    --spacing-unit: 8px;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --transition-duration: 0.3s;
+}
+
+/* Universal selector */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Element selector */
+body {
+    font-family: var(--font-family);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+/* Class selector */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: calc(var(--spacing-unit) * 2);
+}
+
+/* ID selector */
+#main-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: var(--primary-color);
+}
+
+/* Descendant selector */
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: var(--spacing-unit);
+}
+
+/* Child selector */
+nav > ul > li {
+    position: relative;
+}
+
+/* Adjacent sibling */
+h1 + p {
+    margin-top: var(--spacing-unit);
+    font-size: 1.2em;
+}
+
+/* General sibling */
+h2 ~ p {
+    margin-top: calc(var(--spacing-unit) / 2);
+}
+
+/* Attribute selectors */
+input[type="text"] {
+    border: 1px solid #ccc;
+    padding: var(--spacing-unit);
+}
+
+input[type="email"] {
+    border: 1px solid #ccc;
+}
+
+a[href^="https://"] {
+    color: green;
+}
+
+a[href$=".pdf"] {
+    background: url('pdf-icon.png') no-repeat left center;
+    padding-left: 20px;
+}
+
+a[href*="example"] {
+    font-weight: bold;
+}
+
+[data-theme="dark"] {
+    --background-color: #1a1a1a;
+    --text-color: #ffffff;
+}
+
+/* Pseudo-classes */
+a:hover,
+a:focus {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+a:visited {
+    color: purple;
+}
+
+a:active {
+    color: red;
+}
+
+input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+input:required {
+    border-left: 3px solid var(--accent-color);
+}
+
+input:valid {
+    border-color: var(--secondary-color);
+}
+
+input:invalid {
+    border-color: var(--accent-color);
+}
+
+li:first-child {
+    font-weight: bold;
+}
+
+li:last-child {
+    margin-bottom: 0;
+}
+
+li:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+li:nth-child(even) {
+    background-color: #fff;
+}
+
+tr:nth-of-type(2n) {
+    background-color: #f5f5f5;
+}
+
+p:not(.special) {
+    color: inherit;
+}
+
+:is(h1, h2, h3, h4, h5, h6) {
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+:where(article, section, aside) {
+    padding: var(--spacing-unit);
+}
+
+:has(> img) {
+    display: flex;
+    justify-content: center;
+}
+
+/* Pseudo-elements */
+p::first-line {
+    font-weight: bold;
+}
+
+p::first-letter {
+    font-size: 2em;
+    float: left;
+    margin-right: 4px;
+}
+
+a::before {
+    content: '\2022';
+    margin-right: 4px;
+}
+
+a::after {
+    content: ' \2192';
+}
+
+::selection {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+/* Flexbox */
+.flex-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-unit);
+}
+
+.flex-item {
+    flex: 1 1 300px;
+}
+
+/* Grid */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-rows: auto;
+    grid-gap: var(--spacing-unit);
+    grid-template-areas:
+        "header header header"
+        "sidebar main main"
+        "footer footer footer";
+}
+
+.grid-header {
+    grid-area: header;
+}
+
+.grid-sidebar {
+    grid-area: sidebar;
+}
+
+.grid-main {
+    grid-area: main;
+}
+
+.grid-footer {
+    grid-area: footer;
+}
+
+/* Transforms */
+.transform-example {
+    transform: rotate(45deg) scale(1.5) translateX(100px);
+    transform-origin: center center;
+}
+
+/* Transitions */
+.transition-example {
+    transition: all var(--transition-duration) ease-in-out;
+    transition-property: background-color, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.animated {
+    animation: fadeIn 0.5s ease-out forwards;
+    animation-delay: 0.2s;
+    animation-iteration-count: 1;
+}
+
+/* Media Queries */
+@media screen and (max-width: 768px) {
+    .container {
+        padding: var(--spacing-unit);
+    }
+
+    .flex-container {
+        flex-direction: column;
+    }
+
+    .grid-container {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "header"
+            "main"
+            "sidebar"
+            "footer";
+    }
+}
+
+@media screen and (min-width: 1200px) {
+    body {
+        font-size: 18px;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: #1a1a1a;
+        --text-color: #f0f0f0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media print {
+    .no-print {
+        display: none;
+    }
+
+    body {
+        font-size: 12pt;
+    }
+}
+
+/* @supports for feature detection */
+@supports (display: grid) {
+    .container {
+        display: grid;
+    }
+}
+
+@supports not (gap: 10px) {
+    .flex-container > * {
+        margin: 5px;
+    }
+}
+
+/* @font-face */
+@font-face {
+    font-family: 'CustomFont';
+    src: url('fonts/custom.woff2') format('woff2'),
+         url('fonts/custom.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* @import (usually at top) */
+/* @import url('reset.css'); */
+
+/* Layer cascade */
+@layer base, components, utilities;
+
+@layer base {
+    body {
+        font-family: system-ui;
+    }
+}
+
+@layer utilities {
+    .hidden {
+        display: none !important;
+    }
+
+    .visible {
+        display: block !important;
+    }
+}
+
+/* Container queries */
+@container (min-width: 400px) {
+    .card {
+        flex-direction: row;
+    }
+}
+
+/* Nesting (CSS Nesting Module) */
+.card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    & .title {
+        font-size: 1.25em;
+        font-weight: bold;
+    }
+
+    & .content {
+        padding: var(--spacing-unit);
+    }
+
+    &:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    @media (min-width: 768px) {
+        & {
+            padding: calc(var(--spacing-unit) * 2);
+        }
+    }
+}

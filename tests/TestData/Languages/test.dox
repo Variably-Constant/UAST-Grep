@@ -1,0 +1,333 @@
+/**
+ * @file test.dox
+ * @brief Doxygen Test File for UAST-Grep
+ * @author Test Author <test@example.com>
+ * @version 1.0.0
+ * @date 2024-01-15
+ * @copyright Copyright (c) 2024 UAST-Grep
+ *
+ * @mainpage UAST-Grep Documentation
+ *
+ * This is the main documentation page for the UAST-Grep project.
+ *
+ * @section intro_sec Introduction
+ *
+ * UAST-Grep is a cross-language AST grep tool supporting 74 languages
+ * with a unified schema.
+ *
+ * @section features_sec Features
+ *
+ * - Cross-language AST parsing
+ * - Unified AST schema
+ * - Pattern matching
+ * - Code search
+ *
+ * @section install_sec Installation
+ *
+ * @subsection step1 Step 1: Clone Repository
+ * @code{.sh}
+ * git clone https://github.com/example/UAST-Grep
+ * cd UAST-Grep
+ * @endcode
+ *
+ * @subsection step2 Step 2: Build
+ * @code{.sh}
+ * dotnet build
+ * @endcode
+ *
+ * @page architecture Architecture Overview
+ *
+ * @section arch_overview Overview
+ *
+ * The architecture consists of the following components:
+ *
+ * @dot
+ * digraph architecture {
+ *     node [shape=box];
+ *     Parser -> AST;
+ *     AST -> Mapper;
+ *     Mapper -> UAST;
+ *     UAST -> Query;
+ * }
+ * @enddot
+ *
+ * @section components Components
+ *
+ * @subsection parser Parser
+ * The parser component reads source files and generates ASTs.
+ *
+ * @subsection mapper Mapper
+ * The mapper converts language-specific ASTs to the unified schema.
+ */
+
+/**
+ * @defgroup core Core Module
+ * @brief Core functionality for AST processing
+ * @{
+ */
+
+/**
+ * @brief Maximum number of items to process
+ * @note This is a compile-time constant
+ */
+#define MAX_ITEMS 100
+
+/**
+ * @brief Default name for the processor
+ */
+#define DEFAULT_NAME "UAST-Grep"
+
+/**
+ * @}
+ */
+
+/**
+ * @defgroup types Type Definitions
+ * @brief Type definitions used throughout the codebase
+ * @{
+ */
+
+/**
+ * @brief Status codes for operations
+ */
+enum Status {
+    STATUS_OK = 200,          /**< Operation succeeded */
+    STATUS_NOT_FOUND = 404,   /**< Resource not found */
+    STATUS_ERROR = 500        /**< Internal error */
+};
+
+/**
+ * @brief User role enumeration
+ */
+typedef enum {
+    ROLE_ADMIN,      /**< Administrator with full access */
+    ROLE_USER,       /**< Regular user */
+    ROLE_GUEST,      /**< Guest with limited access */
+    ROLE_MODERATOR   /**< Moderator role */
+} Role;
+
+/**
+ * @}
+ */
+
+/**
+ * @defgroup structs Data Structures
+ * @brief Data structures for the processor
+ * @{
+ */
+
+/**
+ * @brief Represents a person entity
+ *
+ * @details
+ * This structure holds information about a person including
+ * their name, age, and contact information.
+ *
+ * @par Example
+ * @code{.c}
+ * Person p = {
+ *     .name = "Alice",
+ *     .age = 30,
+ *     .email = "alice@example.com",
+ *     .active = true
+ * };
+ * @endcode
+ *
+ * @see PersonList
+ * @see createPerson()
+ */
+typedef struct {
+    char* name;     /**< Full name of the person */
+    int age;        /**< Age in years (must be >= 0) */
+    char* email;    /**< Email address (may be NULL) */
+    bool active;    /**< Whether the person is active */
+} Person;
+
+/**
+ * @brief Configuration for the data processor
+ *
+ * @invariant maxItems > 0
+ * @invariant name != NULL
+ */
+typedef struct {
+    const char* name;     /**< Processor name */
+    int maxItems;         /**< Maximum items to process */
+    bool enableCache;     /**< Enable caching */
+    struct {
+        int warning;      /**< Warning threshold (0-100) */
+        int error;        /**< Error threshold (0-100) */
+        int critical;     /**< Critical threshold (0-100) */
+    } thresholds;         /**< Threshold configuration */
+} Config;
+
+/**
+ * @}
+ */
+
+/**
+ * @defgroup functions Functions
+ * @brief Function declarations and documentation
+ * @{
+ */
+
+/**
+ * @brief Initialize the processor with default configuration
+ *
+ * @param[out] processor Pointer to processor to initialize
+ * @param[in] name Name for the processor (uses DEFAULT_NAME if NULL)
+ *
+ * @return Status code
+ * @retval STATUS_OK Initialization successful
+ * @retval STATUS_ERROR Initialization failed
+ *
+ * @pre processor != NULL
+ * @post processor->name != NULL
+ *
+ * @note Thread-safe after initialization
+ * @warning Memory must be freed with destroyProcessor()
+ *
+ * @see destroyProcessor()
+ * @see configureProcessor()
+ *
+ * @since 1.0.0
+ */
+Status initProcessor(Processor* processor, const char* name);
+
+/**
+ * @brief Process an array of items
+ *
+ * @param[in,out] processor The processor instance
+ * @param[in] items Array of items to process
+ * @param[in] count Number of items in array
+ * @param[out] results Output array for results (must be pre-allocated)
+ *
+ * @return Number of items processed, or -1 on error
+ *
+ * @throws ProcessingException On processing failure
+ *
+ * @par Complexity
+ * O(n) where n is the number of items
+ *
+ * @par Example
+ * @code{.c}
+ * int items[] = {1, 2, 3, 4, 5};
+ * int results[5];
+ * int count = processItems(&processor, items, 5, results);
+ * @endcode
+ *
+ * @deprecated Use processItemsAsync() for better performance
+ */
+int processItems(Processor* processor, const int* items, size_t count, int* results);
+
+/**
+ * @brief Transform a single item
+ *
+ * @tparam T The type of item to transform
+ * @param item The item to transform
+ * @return Transformed item
+ *
+ * @par Algorithm
+ * -# If item > 0, multiply by 2
+ * -# If item < 0, negate
+ * -# If item == 0, return 0
+ */
+template<typename T>
+T transform(T item);
+
+/**
+ * @brief Calculate the sum of two numbers
+ *
+ * @param a First number
+ * @param b Second number
+ * @return Sum of a and b
+ *
+ * @f[
+ *   result = a + b
+ * @f]
+ *
+ * @remark This is a pure function with no side effects
+ */
+int calculateSum(int a, int b);
+
+/**
+ * @brief Callback function type for async operations
+ *
+ * @param result The result of the operation
+ * @param error Error message if any (NULL on success)
+ * @param userData User-provided context data
+ */
+typedef void (*CompletionCallback)(int result, const char* error, void* userData);
+
+/**
+ * @}
+ */
+
+/**
+ * @defgroup macros Utility Macros
+ * @brief Helpful macros for common operations
+ * @{
+ */
+
+/**
+ * @brief Get the size of an array
+ * @param arr The array
+ * @return Number of elements in the array
+ */
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+/**
+ * @brief Clamp a value between min and max
+ * @param x Value to clamp
+ * @param low Minimum value
+ * @param high Maximum value
+ * @return Clamped value
+ */
+#define CLAMP(x, low, high) ((x) < (low) ? (low) : ((x) > (high) ? (high) : (x)))
+
+/**
+ * @}
+ */
+
+/**
+ * @page examples Example Usage
+ *
+ * @section basic_example Basic Example
+ *
+ * @include examples/basic.c
+ *
+ * @section advanced_example Advanced Example
+ *
+ * @snippet examples/advanced.c ProcessorSetup
+ *
+ * @section error_handling Error Handling
+ *
+ * @code{.c}
+ * Status status = initProcessor(&proc, "MyProcessor");
+ * if (status != STATUS_OK) {
+ *     fprintf(stderr, "Failed to initialize processor\n");
+ *     return 1;
+ * }
+ * @endcode
+ */
+
+/**
+ * @page changelog Changelog
+ *
+ * @section v100 Version 1.0.0 (2024-01-15)
+ *
+ * - Initial release
+ * - Support for 74 languages
+ * - Unified AST schema
+ *
+ * @section v090 Version 0.9.0 (2024-01-01)
+ *
+ * - Beta release
+ * - 48 languages supported
+ */
+
+/**
+ * @todo Add support for more languages
+ * @todo Implement caching layer
+ * @bug Memory leak in processItems when count > MAX_ITEMS
+ * @bug #123 Crash on empty input
+ */

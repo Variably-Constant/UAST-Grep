@@ -1,0 +1,267 @@
+# TOML Test File for UAST-Grep
+# Tests: tables, arrays, key-value pairs, data types, inline tables
+
+# =============================================================================
+# Basic Key-Value Pairs
+# =============================================================================
+
+# String values
+name = "UAST-Grep"
+description = "TOML test file for parser testing"
+version = "1.0.0"
+author = "Test Author <test@example.com>"
+
+# String with escapes
+escaped = "Line1\nLine2\tTabbed"
+literal = 'No escaping here: \n \t \u0000'
+unicode = "Unicode: \u03B1\u03B2\u03B3"  # Greek letters
+
+# Multi-line strings
+multi_basic = """
+This is a multi-line
+basic string with
+automatic newlines."""
+
+multi_literal = '''
+This is a multi-line
+literal string.
+No escaping: \n \t'''
+
+multi_trimmed = """\
+    The quick brown \
+    fox jumps over \
+    the lazy dog."""
+
+# Numbers
+integer = 42
+negative = -17
+hex = 0xDEADBEEF
+octal = 0o755
+binary = 0b11010110
+
+float_simple = 3.14159
+float_exp = 6.022e23
+float_neg_exp = 1.23e-4
+inf_positive = inf
+inf_negative = -inf
+not_a_number = nan
+
+# Booleans
+enabled = true
+disabled = false
+
+# Dates and Times
+date = 2024-01-15
+time = 14:30:00
+datetime_utc = 2024-01-15T14:30:00Z
+datetime_offset = 2024-01-15T14:30:00-05:00
+datetime_local = 2024-01-15T14:30:00
+
+# =============================================================================
+# Arrays
+# =============================================================================
+
+# Simple arrays
+integers = [1, 2, 3, 4, 5]
+floats = [1.0, 2.5, 3.7]
+strings = ["one", "two", "three"]
+booleans = [true, false, true]
+mixed = ["string", 123, true, 2024-01-15]
+
+# Multi-line arrays
+languages = [
+    "TypeScript",
+    "Python",
+    "Rust",
+    "Go",
+    "C#",
+]
+
+nested = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9],
+]
+
+# Array of inline tables
+people = [
+    { name = "Alice", age = 30 },
+    { name = "Bob", age = 25 },
+    { name = "Charlie", age = 35 },
+]
+
+# =============================================================================
+# Tables
+# =============================================================================
+
+[metadata]
+author = "Test Author"
+email = "test@example.com"
+created = 2024-01-15T10:30:00Z
+license = "MIT"
+
+[settings]
+max_items = 100
+min_items = 1
+default_name = "UAST-Grep"
+timeout = 30.0
+
+[settings.features]
+parsing = true
+validation = true
+formatting = false
+
+[settings.features.caching]
+enabled = true
+ttl = 3600
+max_size = "100MB"
+strategy = "LRU"
+
+[settings.thresholds]
+warning = 0.75
+error = 0.90
+critical = 0.99
+
+# =============================================================================
+# Dotted Keys
+# =============================================================================
+
+# These are equivalent to nested tables
+physical.color = "orange"
+physical.shape = "round"
+
+site."google.com" = true  # Quoted key for special characters
+
+# =============================================================================
+# Inline Tables
+# =============================================================================
+
+point = { x = 1, y = 2, z = 3 }
+person = { name = "Alice", age = 30, email = "alice@example.com" }
+config = { debug = true, level = "info", output = "stdout" }
+
+# Nested inline tables
+nested_inline = { outer = { inner = { value = 42 } } }
+
+# =============================================================================
+# Array of Tables
+# =============================================================================
+
+[[languages]]
+id = 1
+name = "TypeScript"
+extension = ".ts"
+tier = 1
+features = ["classes", "interfaces", "generics"]
+active = true
+
+[[languages]]
+id = 2
+name = "Python"
+extension = ".py"
+tier = 1
+features = ["classes", "decorators", "async"]
+active = true
+
+[[languages]]
+id = 3
+name = "Rust"
+extension = ".rs"
+tier = 1
+features = ["structs", "traits", "lifetimes"]
+active = true
+
+# Nested array of tables
+[[servers]]
+name = "alpha"
+ip = "10.0.0.1"
+role = "web"
+
+[[servers.ports]]
+port = 80
+protocol = "http"
+
+[[servers.ports]]
+port = 443
+protocol = "https"
+
+[[servers]]
+name = "beta"
+ip = "10.0.0.2"
+role = "db"
+
+[[servers.ports]]
+port = 5432
+protocol = "postgresql"
+
+# =============================================================================
+# Complex Example: Package Configuration
+# =============================================================================
+
+[package]
+name = "UAST-Grep"
+version = "1.0.0"
+edition = "2021"
+authors = ["Test Author <test@example.com>"]
+description = "Cross-language AST grep tool"
+license = "MIT"
+repository = "https://github.com/example/UAST-Grep"
+readme = "README.md"
+keywords = ["ast", "parser", "grep", "search"]
+categories = ["development-tools", "text-processing"]
+
+[package.metadata.docs]
+targets = ["x86_64-unknown-linux-gnu"]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[package.binary]]
+name = "uast"
+path = "src/main.rs"
+
+[[package.binary]]
+name = "uast-server"
+path = "src/server/main.rs"
+required-features = ["server"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"], optional = true }
+clap = { version = "4.0", features = ["derive", "env"] }
+
+[dependencies.tree-sitter]
+version = "0.20"
+features = ["parallel"]
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.0"
+
+[build-dependencies]
+cc = "1.0"
+
+[features]
+default = ["std"]
+std = []
+server = ["tokio"]
+full = ["std", "server"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+# =============================================================================
+# Special Characters in Keys
+# =============================================================================
+
+"key with spaces" = "value"
+"key.with.dots" = "value"
+'key-with-dashes' = "value"
+key_with_underscores = "value"
+"127.0.0.1" = "localhost"

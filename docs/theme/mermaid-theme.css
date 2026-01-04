@@ -1,0 +1,76 @@
+/* UAST-Grep Mermaid Theme - Matches brand colors */
+
+/* Base mermaid styling that works with all mdBook themes */
+.mermaid {
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0;
+}
+
+/* Dark theme (navy, coal, ayu) adjustments */
+.navy .mermaid,
+.coal .mermaid,
+.ayu .mermaid {
+    --uast-node-bg: #1e293b;
+    --uast-node-border: #2563eb;
+    --uast-node-text: #f8fafc;
+    --uast-link-color: #60a5fa;
+    --uast-accent: #059669;
+    --uast-warning: #f59e0b;
+}
+
+/* Light theme adjustments */
+.light .mermaid,
+.rust .mermaid {
+    --uast-node-bg: #f1f5f9;
+    --uast-node-border: #2563eb;
+    --uast-node-text: #1e293b;
+    --uast-link-color: #1d4ed8;
+    --uast-accent: #059669;
+    --uast-warning: #d97706;
+}
+
+/* Flowchart node styling */
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon,
+.mermaid .node path {
+    stroke-width: 2px;
+}
+
+/* Edge labels */
+.mermaid .edgeLabel {
+    font-size: 0.85em;
+}
+
+/* Make diagrams responsive */
+.mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Class diagram specific */
+.mermaid .classGroup rect {
+    rx: 4px;
+    ry: 4px;
+}
+
+/* Sequence diagram specific */
+.mermaid .sequenceNumber {
+    fill: white;
+}
+
+/* State diagram specific */
+.mermaid .stateGroup rect {
+    rx: 8px;
+    ry: 8px;
+}
+
+/* Print adjustments */
+@media print {
+    .mermaid {
+        page-break-inside: avoid;
+    }
+}

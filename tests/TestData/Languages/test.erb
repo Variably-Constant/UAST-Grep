@@ -1,0 +1,222 @@
+<%#
+  ERB/EJS Template Test File for UAST-Grep
+  Tests: expressions, control flow, includes, helpers
+%>
+
+<%# Variables and configuration %>
+<% max_items = 100 %>
+<% default_name = "UAST-Grep" %>
+<% version = "1.0.0" %>
+<% current_user = @user || { name: "Guest", role: "guest", authenticated: false } %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= @page_title || default_name %></title>
+
+    <%# Conditional stylesheet %>
+    <% if @theme == "dark" %>
+        <link rel="stylesheet" href="/css/dark.css">
+    <% else %>
+        <link rel="stylesheet" href="/css/light.css">
+    <% end %>
+
+    <%# Asset helpers %>
+    <%= stylesheet_link_tag 'application', media: 'all' %>
+    <%= javascript_include_tag 'application' %>
+    <%= csrf_meta_tags %>
+
+    <style>
+        .container { max-width: 1200px; margin: 0 auto; }
+        .hidden { display: none; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <%# Header with authentication check %>
+    <header>
+        <nav>
+            <% if current_user[:authenticated] %>
+                <span>Welcome, <%= h(current_user[:name]) %></span>
+                <% if current_user[:role] == "admin" %>
+                    <a href="/admin">Admin Panel</a>
+                <% end %>
+                <%= link_to "Logout", logout_path, method: :delete %>
+            <% else %>
+                <%= link_to "Login", login_path %>
+                <%= link_to "Register", register_path %>
+            <% end %>
+        </nav>
+    </header>
+
+    <%# Flash messages %>
+    <% flash.each do |type, message| %>
+        <div class="alert alert-<%= type %>">
+            <%= message %>
+        </div>
+    <% end %>
+
+    <%# Main content %>
+    <main class="container">
+        <h1><%= @title || "UAST-Grep Test" %></h1>
+
+        <%# Iteration over items %>
+        <% if @items && @items.any? %>
+            <ul class="items-list">
+                <% @items.each_with_index do |item, index| %>
+                    <li class="<%= index.even? ? 'even' : 'odd' %>">
+                        <%# Safe output (escaped) %>
+                        <strong><%= item[:name] %></strong>
+
+                        <%# Raw output (unescaped) - use carefully! %>
+                        <%== item[:html_description] if item[:html_description] %>
+
+                        <%# Conditional display %>
+                        <% if item[:active] %>
+                            <span class="badge badge-success">Active</span>
+                        <% elsif item[:pending] %>
+                            <span class="badge badge-warning">Pending</span>
+                        <% else %>
+                            <span class="badge badge-danger">Inactive</span>
+                        <% end %>
+
+                        <%# Nested loops %>
+                        <% if item[:tags] %>
+                            <ul class="tags">
+                                <% item[:tags].each do |tag| %>
+                                    <li><%= tag %></li>
+                                <% end %>
+                            </ul>
+                        <% end %>
+                    </li>
+                <% end %>
+            </ul>
+
+            <%# Pagination %>
+            <%= will_paginate @items %>
+        <% else %>
+            <p class="no-items">No items found.</p>
+        <% end %>
+
+        <%# Form with Rails helpers %>
+        <%= form_with model: @item, local: true do |f| %>
+            <div class="form-group">
+                <%= f.label :name %>
+                <%= f.text_field :name, class: 'form-control', placeholder: 'Enter name' %>
+                <% if @item.errors[:name].any? %>
+                    <span class="error"><%= @item.errors[:name].first %></span>
+                <% end %>
+            </div>
+
+            <div class="form-group">
+                <%= f.label :description %>
+                <%= f.text_area :description, rows: 4, class: 'form-control' %>
+            </div>
+
+            <div class="form-group">
+                <%= f.label :category %>
+                <%= f.select :category, @categories, { prompt: 'Select category' }, class: 'form-control' %>
+            </div>
+
+            <div class="form-group">
+                <%= f.check_box :active %>
+                <%= f.label :active, 'Active' %>
+            </div>
+
+            <div class="form-group">
+                <% @options.each do |option| %>
+                    <%= f.radio_button :option, option[:value] %>
+                    <%= f.label "option_#{option[:value]}", option[:label] %>
+                <% end %>
+            </div>
+
+            <%= f.submit 'Save', class: 'btn btn-primary' %>
+        <% end %>
+
+        <%# Partials %>
+        <%= render 'shared/sidebar' %>
+        <%= render partial: 'items/card', collection: @featured_items, as: :item %>
+        <%= render 'footer', year: Time.current.year %>
+
+        <%# Content for layout sections %>
+        <% content_for :sidebar do %>
+            <div class="sidebar-content">
+                <h3>Related Items</h3>
+                <%= render @related_items %>
+            </div>
+        <% end %>
+
+        <%# Table with data %>
+        <% if @data_table %>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <% @data_table[:headers].each do |header| %>
+                            <th><%= header %></th>
+                        <% end %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% @data_table[:rows].each do |row| %>
+                        <tr>
+                            <% row.each do |cell| %>
+                                <td><%= cell %></td>
+                            <% end %>
+                        </tr>
+                    <% end %>
+                </tbody>
+            </table>
+        <% end %>
+
+        <%# Case/when equivalent using case %>
+        <%
+            status_message = case @status
+                             when :success then "Operation successful"
+                             when :error then "An error occurred"
+                             when :pending then "Operation pending"
+                             else "Unknown status"
+                             end
+        %>
+        <p class="status"><%= status_message %></p>
+
+        <%# Date/time formatting %>
+        <p>Current time: <%= l(Time.current, format: :long) %></p>
+        <p>Created: <%= time_ago_in_words(@item.created_at) %> ago</p>
+
+        <%# Number formatting %>
+        <p>Price: <%= number_to_currency(@item.price) %></p>
+        <p>Quantity: <%= number_with_delimiter(@item.quantity) %></p>
+        <p>Percentage: <%= number_to_percentage(@item.discount, precision: 1) %></p>
+
+        <%# Translation/i18n %>
+        <p><%= t('messages.welcome', name: current_user[:name]) %></p>
+
+        <%# Debug output (development only) %>
+        <% if Rails.env.development? %>
+            <pre class="debug"><%= debug(@item) %></pre>
+        <% end %>
+    </main>
+
+    <%# JavaScript with embedded Ruby %>
+    <script>
+        const config = {
+            maxItems: <%= max_items %>,
+            defaultName: "<%= j(default_name) %>",
+            version: "<%= version %>",
+            currentUser: <%= raw(@current_user.to_json) %>,
+            items: <%= raw(@items.to_json) %>,
+            csrfToken: "<%= form_authenticity_token %>"
+        };
+
+        <% if @show_notification %>
+            alert("<%= j(@notification_message) %>");
+        <% end %>
+    </script>
+
+    <%# Yield content %>
+    <%= yield :scripts %>
+</body>
+</html>

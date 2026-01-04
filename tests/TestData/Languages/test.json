@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "UAST-Grep Test Configuration",
+  "version": "1.0.0",
+  "description": "JSON test file for UAST-Grep parser testing",
+  "enabled": true,
+  "count": 42,
+  "ratio": 3.14159,
+  "nullable": null,
+  "emptyString": "",
+  "tags": ["parser", "ast", "testing", "json"],
+  "emptyArray": [],
+  "metadata": {
+    "author": "Test Author",
+    "created": "2024-01-15T10:30:00Z",
+    "modified": "2024-01-20T15:45:00Z",
+    "license": "MIT"
+  },
+  "settings": {
+    "maxItems": 100,
+    "minItems": 1,
+    "defaultName": "UAST-Grep",
+    "features": {
+      "parsing": true,
+      "validation": true,
+      "formatting": false,
+      "caching": {
+        "enabled": true,
+        "ttl": 3600,
+        "maxSize": "100MB"
+      }
+    },
+    "thresholds": {
+      "warning": 0.75,
+      "error": 0.90,
+      "critical": 0.99
+    }
+  },
+  "languages": [
+    {
+      "id": 1,
+      "name": "TypeScript",
+      "extension": ".ts",
+      "tier": 1,
+      "features": ["classes", "interfaces", "generics"],
+      "active": true
+    },
+    {
+      "id": 2,
+      "name": "Python",
+      "extension": ".py",
+      "tier": 1,
+      "features": ["classes", "decorators", "async"],
+      "active": true
+    },
+    {
+      "id": 3,
+      "name": "Rust",
+      "extension": ".rs",
+      "tier": 1,
+      "features": ["structs", "traits", "lifetimes"],
+      "active": true
+    }
+  ],
+  "patterns": [
+    {
+      "name": "function",
+      "regex": "^function\\s+\\w+",
+      "priority": 1,
+      "options": {
+        "caseSensitive": true,
+        "multiline": false
+      }
+    },
+    {
+      "name": "class",
+      "regex": "^class\\s+\\w+",
+      "priority": 2,
+      "options": {
+        "caseSensitive": true,
+        "multiline": true
+      }
+    }
+  ],
+  "mappings": {
+    "typescript": "TypeScriptMapper",
+    "javascript": "JavaScriptMapper",
+    "python": "PythonMapper",
+    "go": "GoMapper",
+    "rust": "RustMapper"
+  },
+  "nestedArrays": [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+  ],
+  "mixedArray": [
+    "string",
+    123,
+    true,
+    null,
+    {"key": "value"},
+    [1, 2, 3]
+  ],
+  "escapeSequences": {
+    "newline": "line1\nline2",
+    "tab": "col1\tcol2",
+    "quote": "He said \"Hello\"",
+    "backslash": "path\\to\\file",
+    "unicode": "Symbol: \u00A9 \u2022 \u2713"
+  },
+  "longText": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+  "numbers": {
+    "integer": 42,
+    "negative": -17,
+    "float": 3.14159,
+    "scientific": 1.23e10,
+    "negativeScientific": -4.56e-7,
+    "zero": 0,
+    "maxSafeInteger": 9007199254740991
+  },
+  "booleans": {
+    "trueValue": true,
+    "falseValue": false
+  },
+  "deeplyNested": {
+    "level1": {
+      "level2": {
+        "level3": {
+          "level4": {
+            "level5": {
+              "value": "deep value",
+              "array": [1, 2, 3]
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": {
+    "200": "OK",
+    "404": "Not Found",
+    "500": "Server Error"
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/users",
+      "description": "Get all users",
+      "responses": {
+        "200": {"description": "Success"},
+        "401": {"description": "Unauthorized"}
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "description": "Create user",
+      "body": {
+        "required": ["name", "email"],
+        "properties": {
+          "name": {"type": "string"},
+          "email": {"type": "string", "format": "email"},
+          "age": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  ]
+}

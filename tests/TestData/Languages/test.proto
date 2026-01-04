@@ -1,0 +1,435 @@
+// Protocol Buffers Test File for UAST-Grep
+// Tests: messages, enums, services, options, nested types
+
+syntax = "proto3";
+
+package uast.grep.test;
+
+// Import statements
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+// Options
+option java_package = "com.example.uastgrep";
+option java_multiple_files = true;
+option java_outer_classname = "UastGrepProto";
+option go_package = "github.com/example/UAST-Grep/proto";
+option csharp_namespace = "UastGrep.Proto";
+option objc_class_prefix = "PSG";
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+// User role enumeration
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_ADMIN = 1;
+  ROLE_USER = 2;
+  ROLE_GUEST = 3;
+  ROLE_MODERATOR = 4;
+}
+
+// Post status enumeration
+enum PostStatus {
+  POST_STATUS_UNSPECIFIED = 0;
+  POST_STATUS_DRAFT = 1;
+  POST_STATUS_PUBLISHED = 2;
+  POST_STATUS_ARCHIVED = 3;
+  POST_STATUS_DELETED = 4;
+}
+
+// Sort order
+enum SortOrder {
+  SORT_ORDER_UNSPECIFIED = 0;
+  SORT_ORDER_ASC = 1;
+  SORT_ORDER_DESC = 2;
+}
+
+// Error code enumeration
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_NOT_FOUND = 1;
+  ERROR_CODE_PERMISSION_DENIED = 2;
+  ERROR_CODE_INVALID_ARGUMENT = 3;
+  ERROR_CODE_ALREADY_EXISTS = 4;
+  ERROR_CODE_INTERNAL = 5;
+}
+
+// =============================================================================
+// Messages
+// =============================================================================
+
+// User message with various field types
+message User {
+  // Unique identifier
+  int64 id = 1;
+
+  // String fields
+  string username = 2;
+  string email = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;
+
+  // Enum field
+  Role role = 7;
+
+  // Boolean field
+  bool is_active = 8;
+
+  // Timestamp fields
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  google.protobuf.Timestamp last_login = 11;
+
+  // Optional field (proto3 explicit)
+  optional string avatar_url = 12;
+
+  // Repeated field (array)
+  repeated string tags = 13;
+
+  // Nested message
+  UserSettings settings = 14;
+
+  // Map field
+  map<string, string> metadata = 15;
+
+  // Oneof field
+  oneof contact {
+    string phone = 16;
+    string mobile = 17;
+  }
+
+  // Nested message definition
+  message UserSettings {
+    bool email_notifications = 1;
+    bool push_notifications = 2;
+    string timezone = 3;
+    string language = 4;
+    Theme theme = 5;
+
+    enum Theme {
+      THEME_UNSPECIFIED = 0;
+      THEME_LIGHT = 1;
+      THEME_DARK = 2;
+      THEME_SYSTEM = 3;
+    }
+  }
+
+  // Reserved fields and names
+  reserved 100, 101, 200 to 300;
+  reserved "old_field", "deprecated_field";
+}
+
+// Post message
+message Post {
+  int64 id = 1;
+  string title = 2;
+  string slug = 3;
+  string content = 4;
+  string excerpt = 5;
+  PostStatus status = 6;
+  int32 view_count = 7;
+
+  // Reference to user
+  int64 author_id = 8;
+
+  // Full user object (for embedded responses)
+  User author = 9;
+
+  // Repeated message field
+  repeated Tag tags = 10;
+
+  // Timestamps
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  google.protobuf.Timestamp published_at = 13;
+}
+
+// Tag message
+message Tag {
+  int64 id = 1;
+  string name = 2;
+  string slug = 3;
+  string description = 4;
+  int32 post_count = 5;
+}
+
+// Comment message
+message Comment {
+  int64 id = 1;
+  string content = 2;
+  int64 post_id = 3;
+  int64 author_id = 4;
+  User author = 5;
+
+  // Self-referencing for nested comments
+  int64 parent_id = 6;
+  repeated Comment replies = 7;
+
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// =============================================================================
+// Request/Response Messages
+// =============================================================================
+
+// Get user request
+message GetUserRequest {
+  oneof identifier {
+    int64 id = 1;
+    string username = 2;
+    string email = 3;
+  }
+}
+
+// Get user response
+message GetUserResponse {
+  User user = 1;
+}
+
+// List users request with pagination
+message ListUsersRequest {
+  // Pagination
+  int32 page = 1;
+  int32 page_size = 2;
+
+  // Sorting
+  string sort_by = 3;
+  SortOrder sort_order = 4;
+
+  // Filtering
+  string filter = 5;
+  Role role_filter = 6;
+  google.protobuf.BoolValue is_active_filter = 7;
+}
+
+// List users response
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+  bool has_next_page = 5;
+}
+
+// Create user request
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string first_name = 4;
+  string last_name = 5;
+  Role role = 6;
+}
+
+// Create user response
+message CreateUserResponse {
+  User user = 1;
+}
+
+// Update user request
+message UpdateUserRequest {
+  int64 id = 1;
+
+  // Wrapper types for optional updates
+  google.protobuf.StringValue username = 2;
+  google.protobuf.StringValue email = 3;
+  google.protobuf.StringValue first_name = 4;
+  google.protobuf.StringValue last_name = 5;
+  google.protobuf.StringValue bio = 6;
+
+  // Field mask for partial updates
+  repeated string update_mask = 10;
+}
+
+// Update user response
+message UpdateUserResponse {
+  User user = 1;
+}
+
+// Delete user request
+message DeleteUserRequest {
+  int64 id = 1;
+}
+
+// Delete user response
+message DeleteUserResponse {
+  bool success = 1;
+}
+
+// Create post request
+message CreatePostRequest {
+  string title = 1;
+  string content = 2;
+  string excerpt = 3;
+  PostStatus status = 4;
+  repeated int64 tag_ids = 5;
+}
+
+// Create post response
+message CreatePostResponse {
+  Post post = 1;
+}
+
+// List posts request
+message ListPostsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  PostStatus status_filter = 3;
+  int64 author_id_filter = 4;
+  repeated int64 tag_id_filter = 5;
+  string search_query = 6;
+}
+
+// List posts response
+message ListPostsResponse {
+  repeated Post posts = 1;
+  int32 total_count = 2;
+  PageInfo page_info = 3;
+
+  message PageInfo {
+    bool has_next_page = 1;
+    bool has_previous_page = 2;
+    string next_cursor = 3;
+    string previous_cursor = 4;
+  }
+}
+
+// Search request
+message SearchRequest {
+  string query = 1;
+  repeated string types = 2; // "user", "post", "tag"
+  int32 limit = 3;
+}
+
+// Search response
+message SearchResponse {
+  repeated SearchResult results = 1;
+  int32 total_count = 2;
+
+  message SearchResult {
+    oneof item {
+      User user = 1;
+      Post post = 2;
+      Tag tag = 3;
+    }
+    float score = 10;
+  }
+}
+
+// Error message
+message Error {
+  ErrorCode code = 1;
+  string message = 2;
+  string field = 3;
+  map<string, string> details = 4;
+}
+
+// =============================================================================
+// Services
+// =============================================================================
+
+// User service
+service UserService {
+  // Get a single user
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // List users with pagination
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  // Create a new user
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // Update an existing user
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // Delete a user
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // Stream user updates
+  rpc WatchUser(GetUserRequest) returns (stream User);
+
+  // Bidirectional streaming for chat
+  rpc Chat(stream ChatMessage) returns (stream ChatMessage);
+}
+
+// Chat message for bidirectional streaming
+message ChatMessage {
+  string content = 1;
+  int64 sender_id = 2;
+  google.protobuf.Timestamp sent_at = 3;
+}
+
+// Post service
+service PostService {
+  // CRUD operations
+  rpc GetPost(GetPostRequest) returns (GetPostResponse);
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
+  rpc UpdatePost(UpdatePostRequest) returns (UpdatePostResponse);
+  rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty);
+
+  // Publishing
+  rpc PublishPost(PublishPostRequest) returns (Post);
+
+  // Server streaming for activity feed
+  rpc GetActivityFeed(ActivityFeedRequest) returns (stream ActivityItem);
+}
+
+// Additional request messages
+message GetPostRequest {
+  oneof identifier {
+    int64 id = 1;
+    string slug = 2;
+  }
+}
+
+message GetPostResponse {
+  Post post = 1;
+}
+
+message UpdatePostRequest {
+  int64 id = 1;
+  string title = 2;
+  string content = 3;
+  repeated string update_mask = 10;
+}
+
+message UpdatePostResponse {
+  Post post = 1;
+}
+
+message DeletePostRequest {
+  int64 id = 1;
+}
+
+message PublishPostRequest {
+  int64 id = 1;
+  google.protobuf.Timestamp scheduled_at = 2;
+}
+
+message ActivityFeedRequest {
+  int64 user_id = 1;
+  int32 limit = 2;
+}
+
+message ActivityItem {
+  string type = 1;
+  google.protobuf.Any payload = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+}
+
+// Search service
+service SearchService {
+  // Unified search
+  rpc Search(SearchRequest) returns (SearchResponse);
+
+  // Client streaming for bulk search
+  rpc BulkSearch(stream SearchRequest) returns (SearchResponse);
+}

@@ -1,0 +1,62 @@
+[book]
+title = "UAST-Grep Documentation"
+authors = ["Mark Newton"]
+description = "Cross-language AST search tool documentation"
+language = "en"
+multilingual = false
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = true
+use-default-preprocessors = true
+
+# Mermaid diagram support
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "ayu"
+smart-punctuation = true
+mathjax-support = false
+copy-fonts = true
+additional-css = ["theme/custom.css", "theme/mermaid-theme.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+no-section-label = false
+git-repository-url = "https://github.com/Variably-Constant/UAST-Grep"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/Variably-Constant/UAST-Grep/edit/main/docs/src/{path}"
+site-url = "/UAST-Grep/"
+cname = ""
+input-404 = "404.md"
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.playground]
+editable = false
+copyable = true
+copy-js = true
+line-numbers = true
+runnable = false
+
+[output.html.code]
+hidelines = { python = "~", rust = "#" }
+
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30
+use-hierarchical-headings = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
+copy-js = true
+
+[preprocessor.links]
+
+[preprocessor.index]

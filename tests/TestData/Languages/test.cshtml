@@ -1,0 +1,269 @@
+@*
+    Razor Test File for UAST-Grep
+    Tests: code blocks, expressions, directives, tag helpers, components
+*@
+
+@page "/test"
+@model TestModel
+@using System.Collections.Generic
+@using Microsoft.AspNetCore.Mvc.Rendering
+@inject ILogger<TestModel> Logger
+@inject IConfiguration Configuration
+
+@{
+    // Code block
+    ViewData["Title"] = "UAST-Grep Razor Test";
+    Layout = "_Layout";
+
+    var pageTitle = "Test Page";
+    var items = new List<string> { "Item 1", "Item 2", "Item 3" };
+    var count = 0;
+    var isActive = true;
+    var currentDate = DateTime.Now;
+}
+
+@* This is a Razor comment *@
+
+<!-- HTML comment -->
+
+<div class="container">
+    @* Implicit expression *@
+    <h1>@pageTitle</h1>
+    <p>Current time: @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")</p>
+    <p>Model value: @Model.Name</p>
+
+    @* Explicit expression *@
+    <p>Items count: @(items.Count)</p>
+    <p>Calculated: @(2 + 2)</p>
+    <p>Concatenated: @("Hello " + Model.Name)</p>
+
+    @* Email literal (not expression) *@
+    <p>Contact: test@example.com</p>
+
+    @* Escaped @ symbol *@
+    <p>Twitter: @@username</p>
+
+    @* Conditional rendering *@
+    @if (Model.IsAuthenticated)
+    {
+        <div class="authenticated">
+            <p>Welcome, @Model.UserName!</p>
+            @if (Model.IsAdmin)
+            {
+                <p>You have admin privileges.</p>
+            }
+        </div>
+    }
+    else if (Model.AllowGuests)
+    {
+        <p>Welcome, Guest!</p>
+    }
+    else
+    {
+        <p>Please log in.</p>
+    }
+
+    @* Switch statement *@
+    @switch (Model.Status)
+    {
+        case "Active":
+            <span class="badge badge-success">Active</span>
+            break;
+        case "Pending":
+            <span class="badge badge-warning">Pending</span>
+            break;
+        case "Inactive":
+            <span class="badge badge-danger">Inactive</span>
+            break;
+        default:
+            <span class="badge badge-secondary">Unknown</span>
+            break;
+    }
+
+    @* For loop *@
+    <ul>
+        @for (int i = 0; i < items.Count; i++)
+        {
+            <li>Index @i: @items[i]</li>
+        }
+    </ul>
+
+    @* Foreach loop *@
+    <ul class="items-list">
+        @foreach (var item in Model.Items)
+        {
+            <li class="@(item.IsActive ? "active" : "inactive")">
+                <strong>@item.Name</strong>: @item.Description
+            </li>
+        }
+    </ul>
+
+    @* While loop *@
+    @while (count < 3)
+    {
+        <p>Count: @count</p>
+        count++;
+    }
+
+    @* Try-catch *@
+    @try
+    {
+        <p>@Model.RiskyProperty</p>
+    }
+    catch (Exception ex)
+    {
+        <p class="error">Error: @ex.Message</p>
+    }
+
+    @* Using statement *@
+    @using (Html.BeginForm("Submit", "Home", FormMethod.Post))
+    {
+        <input type="text" name="name" />
+        <button type="submit">Submit</button>
+    }
+
+    @* Lock statement *@
+    @lock (Model.SyncLock)
+    {
+        <p>Thread-safe content</p>
+    }
+
+    @* HTML helpers *@
+    <div class="form-group">
+        @Html.LabelFor(m => m.Email)
+        @Html.TextBoxFor(m => m.Email, new { @class = "form-control" })
+        @Html.ValidationMessageFor(m => m.Email)
+    </div>
+
+    @Html.DropDownListFor(
+        m => m.SelectedOption,
+        Model.Options,
+        "Select an option",
+        new { @class = "form-control" }
+    )
+
+    @Html.ActionLink("Go to Home", "Index", "Home", null, new { @class = "btn btn-primary" })
+
+    @* Partial views *@
+    @await Html.PartialAsync("_PartialView", Model.PartialModel)
+
+    <partial name="_AnotherPartial" model="Model.Data" />
+
+    @* Sections *@
+    @section Scripts {
+        <script src="~/js/test.js"></script>
+        <script>
+            console.log("Inline script in section");
+        </script>
+    }
+
+    @section Styles {
+        <link rel="stylesheet" href="~/css/test.css" />
+        <style>
+            .custom-style { color: blue; }
+        </style>
+    }
+
+    @* Tag Helpers *@
+    <form asp-action="Submit" asp-controller="Home" method="post">
+        <div class="form-group">
+            <label asp-for="Name"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+
+        <select asp-for="Category" asp-items="Model.Categories" class="form-control">
+            <option value="">Select...</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+    <a asp-controller="Home" asp-action="Details" asp-route-id="@Model.Id">
+        View Details
+    </a>
+
+    <img asp-append-version="true" src="~/images/logo.png" alt="Logo" />
+
+    <environment include="Development">
+        <link rel="stylesheet" href="~/css/dev.css" />
+    </environment>
+    <environment exclude="Development">
+        <link rel="stylesheet" href="~/css/prod.min.css" />
+    </environment>
+
+    <cache expires-after="@TimeSpan.FromMinutes(5)">
+        <p>Cached content: @DateTime.Now</p>
+    </cache>
+
+    @* Component Tag Helpers (Blazor-style) *@
+    <component type="typeof(CounterComponent)" render-mode="ServerPrerendered" />
+
+    @* Raw HTML output *@
+    @Html.Raw(Model.HtmlContent)
+    @((MarkupString)Model.TrustedHtml)
+
+    @* Local functions *@
+    @{
+        string FormatDate(DateTime date) => date.ToString("MMMM dd, yyyy");
+        int CalculateTotal(IEnumerable<int> values) => values.Sum();
+    }
+
+    <p>Formatted date: @FormatDate(currentDate)</p>
+    <p>Total: @CalculateTotal(new[] { 1, 2, 3, 4, 5 })</p>
+
+    @* Templated delegate *@
+    @{
+        Func<dynamic, object> itemTemplate = @<li>@item.Name - @item.Value</li>;
+    }
+
+    <ul>
+        @foreach (var item in Model.TemplateItems)
+        {
+            @itemTemplate(item)
+        }
+    </ul>
+
+    @* Render body (for layout) *@
+    @RenderBody()
+
+    @* Render section *@
+    @if (IsSectionDefined("OptionalSection"))
+    {
+        @RenderSection("OptionalSection", required: false)
+    }
+
+    @* URL helpers *@
+    <a href="@Url.Action("Index", "Home")">Home</a>
+    <a href="@Url.RouteUrl("default", new { controller = "Home", action = "About" })">About</a>
+    <a href="@Url.Content("~/content/file.pdf")">Download PDF</a>
+</div>
+
+@* Functions block *@
+@functions {
+    public string GetGreeting(string name)
+    {
+        return $"Hello, {name}!";
+    }
+
+    public int Add(int a, int b) => a + b;
+
+    private bool IsValidEmail(string email)
+    {
+        return email.Contains("@") && email.Contains(".");
+    }
+}
+
+@* Inject services directly in view *@
+@inject IWebHostEnvironment Environment
+
+<footer>
+    <p>Environment: @Environment.EnvironmentName</p>
+    <p>Config Value: @Configuration["AppSettings:SiteName"]</p>
+</footer>

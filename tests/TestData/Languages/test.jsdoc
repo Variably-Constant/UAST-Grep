@@ -1,0 +1,455 @@
+/**
+ * JSDoc Test File for UAST-Grep
+ * Tests: type annotations, documentation tags, examples
+ *
+ * @file test.jsdoc
+ * @author Test Author <test@example.com>
+ * @copyright 2024 UAST-Grep
+ * @license MIT
+ * @version 1.0.0
+ * @since 1.0.0
+ */
+
+/**
+ * Maximum number of items allowed.
+ * @constant {number}
+ * @default 100
+ */
+const MAX_ITEMS = 100;
+
+/**
+ * Default name for the application.
+ * @constant {string}
+ * @default "UAST-Grep"
+ */
+const DEFAULT_NAME = "UAST-Grep";
+
+/**
+ * User role enumeration.
+ * @readonly
+ * @enum {string}
+ */
+const Role = {
+  /** Administrator with full access */
+  ADMIN: 'admin',
+  /** Regular user with limited access */
+  USER: 'user',
+  /** Guest with read-only access */
+  GUEST: 'guest',
+  /** Moderator with content management access */
+  MODERATOR: 'moderator'
+};
+
+/**
+ * Status codes for posts.
+ * @readonly
+ * @enum {number}
+ */
+const PostStatus = {
+  DRAFT: 0,
+  PUBLISHED: 1,
+  ARCHIVED: 2,
+  DELETED: 3
+};
+
+/**
+ * @typedef {Object} Person
+ * @property {string} name - The person's name
+ * @property {number} age - The person's age
+ * @property {string} [email] - Optional email address
+ * @property {Date} [birthDate] - Optional birth date
+ * @property {boolean} isActive - Whether the person is active
+ * @property {string[]} tags - Array of tags
+ * @property {Object.<string, any>} metadata - Key-value metadata
+ */
+
+/**
+ * @typedef {Object} Address
+ * @property {string} street - Street address
+ * @property {string} city - City name
+ * @property {string} state - State or province
+ * @property {string} postalCode - Postal/ZIP code
+ * @property {string} country - Country name
+ */
+
+/**
+ * @typedef {Object} UserProfile
+ * @property {Person} person - Person information
+ * @property {Address} address - Address information
+ * @property {Role} role - User role
+ * @property {Date} createdAt - Creation timestamp
+ * @property {Date} [updatedAt] - Last update timestamp
+ */
+
+/**
+ * Configuration options for the processor.
+ * @typedef {Object} ProcessorConfig
+ * @property {string} [name='Default'] - Processor name
+ * @property {number} [maxItems=100] - Maximum items to process
+ * @property {boolean} [enableCache=true] - Whether to enable caching
+ * @property {LogLevel} [logLevel='info'] - Logging level
+ * @property {Function} [onError] - Error callback
+ * @property {Function} [onComplete] - Completion callback
+ */
+
+/**
+ * Log level type.
+ * @typedef {'debug'|'info'|'warn'|'error'} LogLevel
+ */
+
+/**
+ * Callback function type.
+ * @callback ProcessCallback
+ * @param {Error|null} error - Error if any
+ * @param {*} result - Processing result
+ * @returns {void}
+ */
+
+/**
+ * Transform function type.
+ * @callback TransformFn
+ * @param {*} item - Item to transform
+ * @param {number} index - Item index
+ * @param {Array} array - Original array
+ * @returns {*} Transformed item
+ */
+
+/**
+ * Base processor class for data processing.
+ *
+ * @class
+ * @classdesc Provides base functionality for processing items.
+ * @abstract
+ */
+class BaseProcessor {
+  /**
+   * Creates a new BaseProcessor instance.
+   *
+   * @constructor
+   * @param {string} [name='Default'] - Processor name
+   */
+  constructor(name = 'Default') {
+    /**
+     * Processor name.
+     * @type {string}
+     * @private
+     */
+    this._name = name;
+
+    /**
+     * Item count.
+     * @type {number}
+     * @protected
+     */
+    this._count = 0;
+  }
+
+  /**
+   * Gets the processor name.
+   * @type {string}
+   * @readonly
+   */
+  get name() {
+    return this._name;
+  }
+
+  /**
+   * Gets the item count.
+   * @type {number}
+   * @readonly
+   */
+  get count() {
+    return this._count;
+  }
+
+  /**
+   * Processes items.
+   *
+   * @abstract
+   * @param {Array<*>} items - Items to process
+   * @returns {Array<*>} Processed items
+   * @throws {Error} Must be implemented by subclass
+   */
+  process(items) {
+    throw new Error('Must be implemented by subclass');
+  }
+
+  /**
+   * Logs a message.
+   *
+   * @param {string} message - Message to log
+   * @param {LogLevel} [level='info'] - Log level
+   * @returns {void}
+   */
+  log(message, level = 'info') {
+    console.log(`[${this._name}] [${level.toUpperCase()}] ${message}`);
+  }
+}
+
+/**
+ * Data processor for transforming items.
+ *
+ * @class
+ * @extends BaseProcessor
+ * @implements {Processor}
+ *
+ * @example
+ * const processor = new DataProcessor('MyProcessor');
+ * const result = processor.process([1, 2, 3]);
+ * console.log(result); // [2, 4, 6]
+ */
+class DataProcessor extends BaseProcessor {
+  /**
+   * Creates a new DataProcessor instance.
+   *
+   * @constructor
+   * @param {string} [name='DataProcessor'] - Processor name
+   * @param {ProcessorConfig} [config={}] - Configuration options
+   */
+  constructor(name = 'DataProcessor', config = {}) {
+    super(name);
+
+    /**
+     * Configuration options.
+     * @type {ProcessorConfig}
+     * @private
+     */
+    this._config = {
+      maxItems: config.maxItems || MAX_ITEMS,
+      enableCache: config.enableCache !== false,
+      logLevel: config.logLevel || 'info',
+      ...config
+    };
+
+    /**
+     * Cache storage.
+     * @type {Map<string, *>}
+     * @private
+     */
+    this._cache = new Map();
+  }
+
+  /**
+   * Processes items with transformation.
+   *
+   * @override
+   * @param {Array<*>} items - Items to process
+   * @returns {Array<*>} Processed items
+   *
+   * @example
+   * const result = processor.process(['hello', 'world']);
+   * // Returns: ['HELLO', 'WORLD']
+   *
+   * @fires DataProcessor#processComplete
+   * @fires DataProcessor#error
+   *
+   * @see {@link BaseProcessor#process}
+   */
+  process(items) {
+    if (!Array.isArray(items)) {
+      throw new TypeError('Items must be an array');
+    }
+
+    const results = [];
+
+    for (const item of items) {
+      results.push(this._transform(item));
+    }
+
+    this._count = results.length;
+
+    /**
+     * Process complete event.
+     * @event DataProcessor#processComplete
+     * @type {object}
+     * @property {number} count - Number of items processed
+     * @property {Array} results - Processing results
+     */
+
+    return results;
+  }
+
+  /**
+   * Transforms a single item.
+   *
+   * @private
+   * @param {*} item - Item to transform
+   * @returns {*} Transformed item
+   */
+  _transform(item) {
+    if (Array.isArray(item)) {
+      return item.map(x => x * 2);
+    } else if (typeof item === 'string') {
+      return item.toUpperCase();
+    } else if (typeof item === 'number') {
+      return item * 2;
+    }
+    return item;
+  }
+
+  /**
+   * Gets cached value.
+   *
+   * @param {string} key - Cache key
+   * @returns {*|undefined} Cached value or undefined
+   */
+  getCached(key) {
+    return this._cache.get(key);
+  }
+
+  /**
+   * Sets cached value.
+   *
+   * @param {string} key - Cache key
+   * @param {*} value - Value to cache
+   * @returns {this} This instance for chaining
+   */
+  setCached(key, value) {
+    this._cache.set(key, value);
+    return this;
+  }
+}
+
+/**
+ * Calculates the sum of two numbers.
+ *
+ * @function
+ * @param {number} a - First number
+ * @param {number} b - Second number
+ * @returns {number} Sum of a and b
+ *
+ * @example
+ * const result = calculateSum(5, 3);
+ * console.log(result); // 8
+ */
+function calculateSum(a, b) {
+  return a + b;
+}
+
+/**
+ * Maps items using a transform function.
+ *
+ * @template T - Input type
+ * @template R - Output type
+ * @param {T[]} items - Items to map
+ * @param {function(T, number, T[]): R} fn - Transform function
+ * @returns {R[]} Mapped items
+ *
+ * @example
+ * const doubled = mapItems([1, 2, 3], x => x * 2);
+ * // Returns: [2, 4, 6]
+ */
+function mapItems(items, fn) {
+  return items.map(fn);
+}
+
+/**
+ * Filters items using a predicate function.
+ *
+ * @template T
+ * @param {T[]} items - Items to filter
+ * @param {function(T): boolean} predicate - Filter predicate
+ * @returns {T[]} Filtered items
+ */
+function filterItems(items, predicate) {
+  return items.filter(predicate);
+}
+
+/**
+ * Asynchronously fetches data from a URL.
+ *
+ * @async
+ * @function
+ * @param {string} url - URL to fetch
+ * @param {Object} [options={}] - Fetch options
+ * @param {string} [options.method='GET'] - HTTP method
+ * @param {Object} [options.headers] - Request headers
+ * @param {*} [options.body] - Request body
+ * @returns {Promise<*>} Fetched data
+ * @throws {Error} If fetch fails
+ *
+ * @example
+ * const data = await fetchData('https://api.example.com/data');
+ */
+async function fetchData(url, options = {}) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Creates a throttled version of a function.
+ *
+ * @param {Function} func - Function to throttle
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Throttled function
+ *
+ * @example
+ * const throttledLog = throttle(console.log, 1000);
+ * throttledLog('Hello'); // Logs immediately
+ * throttledLog('World'); // Ignored if within 1000ms
+ */
+function throttle(func, wait) {
+  /** @type {number|null} */
+  let lastCall = null;
+
+  return function(...args) {
+    const now = Date.now();
+    if (!lastCall || now - lastCall >= wait) {
+      lastCall = now;
+      return func.apply(this, args);
+    }
+  };
+}
+
+/**
+ * @namespace Utils
+ * @description Utility functions namespace
+ */
+const Utils = {
+  /**
+   * Formats a date to ISO string.
+   * @memberof Utils
+   * @param {Date} date - Date to format
+   * @returns {string} ISO formatted date string
+   */
+  formatDate(date) {
+    return date.toISOString();
+  },
+
+  /**
+   * Parses JSON safely.
+   * @memberof Utils
+   * @param {string} json - JSON string
+   * @param {*} [defaultValue=null] - Default value if parsing fails
+   * @returns {*} Parsed object or default value
+   */
+  parseJSON(json, defaultValue = null) {
+    try {
+      return JSON.parse(json);
+    } catch {
+      return defaultValue;
+    }
+  }
+};
+
+/**
+ * @module DataProcessor
+ * @description Main data processing module
+ */
+module.exports = {
+  DataProcessor,
+  BaseProcessor,
+  calculateSum,
+  mapItems,
+  filterItems,
+  fetchData,
+  throttle,
+  Utils,
+  Role,
+  PostStatus,
+  MAX_ITEMS,
+  DEFAULT_NAME
+};

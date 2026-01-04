@@ -1,0 +1,40 @@
+# Cross-platform Clang configuration for tree-sitter grammars
+#
+# Why Clang?
+# - Some tree-sitter grammars use VLAs (Variable Length Arrays) in their C code
+# - MSVC (Windows default) doesn't support VLAs
+# - Clang supports VLAs on all platforms (Windows, Linux, macOS)
+# - GCC also supports VLAs but Clang is more consistent across platforms
+#
+# ABI Compatibility:
+# - Windows: Clang targets the same x64 ABI as MSVC - fully compatible with C#/P/Invoke
+# - Linux: Clang targets the System V ABI - standard for .NET Core
+# - macOS: Clang targets the Apple ABI - standard for .NET Core
+
+[env]
+CC = "clang"
+CXX = "clang++"
+
+# Windows x64 (MSVC ABI with Clang compiler)
+[target.x86_64-pc-windows-msvc]
+# Optional: Use LLD linker for faster linking
+# linker = "lld-link"
+
+# Windows ARM64
+[target.aarch64-pc-windows-msvc]
+# linker = "lld-link"
+
+# Linux x64 (GNU ABI)
+[target.x86_64-unknown-linux-gnu]
+# Clang is typically available on Linux via package manager
+
+# Linux ARM64
+[target.aarch64-unknown-linux-gnu]
+
+# macOS x64 (Intel)
+[target.x86_64-apple-darwin]
+# Clang is the default compiler on macOS
+
+# macOS ARM64 (Apple Silicon)
+[target.aarch64-apple-darwin]
+# Clang is the default compiler on macOS

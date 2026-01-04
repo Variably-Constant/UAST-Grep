@@ -1,0 +1,291 @@
+<!-- DTD Test File for UAST-Grep -->
+<!-- Tests: element declarations, attribute declarations, entities, notations -->
+
+<!-- ============================================================ -->
+<!-- Root Element -->
+<!-- ============================================================ -->
+
+<!ELEMENT configuration (metadata, settings, languages*, patterns*, mappings?)>
+<!ATTLIST configuration
+    version CDATA #REQUIRED
+    xmlns CDATA #IMPLIED
+    xmlns:xsi CDATA #IMPLIED
+>
+
+<!-- ============================================================ -->
+<!-- Metadata Section -->
+<!-- ============================================================ -->
+
+<!ELEMENT metadata (name, description?, author*, created?, modified?)>
+
+<!ELEMENT name (#PCDATA)>
+<!ATTLIST name
+    id ID #IMPLIED
+>
+
+<!ELEMENT description (#PCDATA)>
+<!ATTLIST description
+    lang (en|es|fr|de|ja|zh) "en"
+>
+
+<!ELEMENT author (#PCDATA)>
+<!ATTLIST author
+    email CDATA #IMPLIED
+    role (admin|contributor|reviewer) #IMPLIED
+>
+
+<!ELEMENT created (#PCDATA)>
+<!ELEMENT modified (#PCDATA)>
+
+<!-- ============================================================ -->
+<!-- Settings Section -->
+<!-- ============================================================ -->
+
+<!ELEMENT settings (setting*, features?, thresholds?, caching?)>
+<!ATTLIST settings
+    id ID #IMPLIED
+    enabled (true|false) "true"
+>
+
+<!ELEMENT setting (#PCDATA)>
+<!ATTLIST setting
+    name NMTOKEN #REQUIRED
+    type (string|integer|boolean|float) "string"
+    required (true|false) "false"
+>
+
+<!ELEMENT features (feature+)>
+
+<!ELEMENT feature (option*)>
+<!ATTLIST feature
+    name NMTOKEN #REQUIRED
+    enabled (true|false) "true"
+>
+
+<!ELEMENT option (#PCDATA)>
+<!ATTLIST option
+    key NMTOKEN #REQUIRED
+>
+
+<!ELEMENT thresholds (threshold+)>
+
+<!ELEMENT threshold EMPTY>
+<!ATTLIST threshold
+    level (warning|error|critical) #REQUIRED
+    value CDATA #REQUIRED
+>
+
+<!ELEMENT caching (ttl, maxSize, strategy?)>
+<!ATTLIST caching
+    enabled (true|false) "true"
+>
+
+<!ELEMENT ttl (#PCDATA)>
+<!ATTLIST ttl
+    unit (seconds|minutes|hours|days) "seconds"
+>
+
+<!ELEMENT maxSize (#PCDATA)>
+<!ATTLIST maxSize
+    unit (B|KB|MB|GB) "MB"
+>
+
+<!ELEMENT strategy (#PCDATA)>
+
+<!-- ============================================================ -->
+<!-- Languages Section -->
+<!-- ============================================================ -->
+
+<!ELEMENT languages (language+)>
+<!ATTLIST languages
+    count CDATA #IMPLIED
+>
+
+<!ELEMENT language (langName, extension, tier, langFeatures?, mapperClass?)>
+<!ATTLIST language
+    id ID #REQUIRED
+    active (true|false) "true"
+>
+
+<!ELEMENT langName (#PCDATA)>
+<!ELEMENT extension (#PCDATA)>
+<!ELEMENT tier (#PCDATA)>
+<!ELEMENT mapperClass (#PCDATA)>
+
+<!ELEMENT langFeatures (langFeature+)>
+<!ELEMENT langFeature (#PCDATA)>
+
+<!-- ============================================================ -->
+<!-- Patterns Section -->
+<!-- ============================================================ -->
+
+<!ELEMENT patterns (pattern+)>
+
+<!ELEMENT pattern (regex, patternOptions?)>
+<!ATTLIST pattern
+    name NMTOKEN #REQUIRED
+    priority CDATA "1"
+>
+
+<!ELEMENT regex (#PCDATA)>
+<!ELEMENT patternOptions EMPTY>
+<!ATTLIST patternOptions
+    caseSensitive (true|false) "true"
+    multiline (true|false) "false"
+    dotAll (true|false) "false"
+>
+
+<!-- ============================================================ -->
+<!-- Mappings Section -->
+<!-- ============================================================ -->
+
+<!ELEMENT mappings (mapper+)>
+
+<!ELEMENT mapper (nodeTypes?)>
+<!ATTLIST mapper
+    language NMTOKEN #REQUIRED
+    class CDATA #REQUIRED
+>
+
+<!ELEMENT nodeTypes (nodeType+)>
+<!ELEMENT nodeType EMPTY>
+<!ATTLIST nodeType
+    name NMTOKEN #REQUIRED
+>
+
+<!-- ============================================================ -->
+<!-- Entity Declarations -->
+<!-- ============================================================ -->
+
+<!-- General Entities -->
+<!ENTITY appName "UAST-Grep">
+<!ENTITY version "1.0.0">
+<!ENTITY author "Test Author">
+<!ENTITY copyright "Copyright 2024 &appName;">
+
+<!-- Parameter Entities (for DTD modularity) -->
+<!ENTITY % common.attrs "
+    id ID #IMPLIED
+    class NMTOKENS #IMPLIED
+">
+
+<!ENTITY % content.model "(#PCDATA | emphasis | code)*">
+
+<!-- External Entity Reference -->
+<!ENTITY % common SYSTEM "common.dtd">
+
+<!-- Character Entity References -->
+<!ENTITY nbsp "&#160;">
+<!ENTITY copy "&#169;">
+<!ENTITY reg "&#174;">
+<!ENTITY trade "&#8482;">
+<!ENTITY mdash "&#8212;">
+<!ENTITY ldquo "&#8220;">
+<!ENTITY rdquo "&#8221;">
+
+<!-- ============================================================ -->
+<!-- Additional Elements -->
+<!-- ============================================================ -->
+
+<!ELEMENT emphasis (#PCDATA)>
+<!ATTLIST emphasis
+    type (strong|em|mark) "em"
+>
+
+<!ELEMENT code (#PCDATA)>
+<!ATTLIST code
+    lang NMTOKEN #IMPLIED
+>
+
+<!ELEMENT link (#PCDATA)>
+<!ATTLIST link
+    href CDATA #REQUIRED
+    title CDATA #IMPLIED
+    target (self|blank|parent|top) #IMPLIED
+>
+
+<!ELEMENT image EMPTY>
+<!ATTLIST image
+    src CDATA #REQUIRED
+    alt CDATA #REQUIRED
+    width CDATA #IMPLIED
+    height CDATA #IMPLIED
+>
+
+<!-- ============================================================ -->
+<!-- Mixed Content Elements -->
+<!-- ============================================================ -->
+
+<!ELEMENT paragraph %content.model;>
+
+<!ELEMENT documentation (paragraph | codeBlock | list | table)*>
+
+<!ELEMENT codeBlock (#PCDATA)>
+<!ATTLIST codeBlock
+    language NMTOKEN #IMPLIED
+    title CDATA #IMPLIED
+>
+
+<!ELEMENT list (item+)>
+<!ATTLIST list
+    type (ordered|unordered|definition) "unordered"
+>
+
+<!ELEMENT item %content.model;>
+
+<!ELEMENT table (caption?, thead?, tbody, tfoot?)>
+<!ELEMENT caption (#PCDATA)>
+<!ELEMENT thead (tr+)>
+<!ELEMENT tbody (tr+)>
+<!ELEMENT tfoot (tr+)>
+<!ELEMENT tr (th | td)+>
+<!ELEMENT th (#PCDATA)>
+<!ELEMENT td (#PCDATA)>
+<!ATTLIST th
+    scope (row|col|rowgroup|colgroup) #IMPLIED
+    colspan CDATA #IMPLIED
+    rowspan CDATA #IMPLIED
+>
+<!ATTLIST td
+    colspan CDATA #IMPLIED
+    rowspan CDATA #IMPLIED
+>
+
+<!-- ============================================================ -->
+<!-- Notation Declarations -->
+<!-- ============================================================ -->
+
+<!NOTATION gif SYSTEM "image/gif">
+<!NOTATION jpeg SYSTEM "image/jpeg">
+<!NOTATION png SYSTEM "image/png">
+<!NOTATION svg SYSTEM "image/svg+xml">
+<!NOTATION pdf SYSTEM "application/pdf">
+
+<!-- ============================================================ -->
+<!-- Conditional Sections (for internal DTD subsets) -->
+<!-- ============================================================ -->
+
+<!--
+<![ INCLUDE [
+    <!ELEMENT debug (#PCDATA)>
+]]>
+
+<![ IGNORE [
+    <!ELEMENT deprecated (#PCDATA)>
+]]>
+-->
+
+<!-- ============================================================ -->
+<!-- Comments and Documentation -->
+<!-- ============================================================ -->
+
+<!--
+    This DTD defines the structure for UAST-Grep configuration files.
+
+    Usage:
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE configuration SYSTEM "test.dtd">
+    <configuration version="1.0">
+        ...
+    </configuration>
+-->

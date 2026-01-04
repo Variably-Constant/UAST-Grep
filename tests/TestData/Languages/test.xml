@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XML Test File for UAST-Grep
+    Tests: elements, attributes, namespaces, CDATA, processing instructions
+-->
+<?xml-stylesheet type="text/xsl" href="transform.xsl"?>
+<!DOCTYPE configuration [
+    <!ENTITY appName "UAST-Grep">
+    <!ENTITY version "1.0.0">
+    <!ENTITY copyright "Copyright 2024">
+]>
+
+<configuration
+    xmlns="http://example.com/config"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:custom="http://example.com/custom"
+    xsi:schemaLocation="http://example.com/config config.xsd"
+    version="1.0">
+
+    <!-- Application metadata -->
+    <metadata>
+        <name>&appName;</name>
+        <version>&version;</version>
+        <description>XML test file for UAST-Grep parser testing</description>
+        <author email="test@example.com">Test Author</author>
+        <created>2024-01-15T10:30:00Z</created>
+        <license type="MIT">&copyright;</license>
+    </metadata>
+
+    <!-- Settings section -->
+    <settings id="main-settings" enabled="true">
+        <setting name="maxItems" type="integer">100</setting>
+        <setting name="minItems" type="integer">1</setting>
+        <setting name="defaultName" type="string">&appName;</setting>
+
+        <features>
+            <feature name="parsing" enabled="true">
+                <option key="strict">true</option>
+                <option key="validate">true</option>
+            </feature>
+            <feature name="validation" enabled="true">
+                <option key="schema">config.xsd</option>
+            </feature>
+            <feature name="formatting" enabled="false"/>
+        </features>
+
+        <caching enabled="true">
+            <ttl unit="seconds">3600</ttl>
+            <maxSize unit="MB">100</maxSize>
+            <strategy>LRU</strategy>
+        </caching>
+
+        <thresholds>
+            <threshold level="warning" value="0.75"/>
+            <threshold level="error" value="0.90"/>
+            <threshold level="critical" value="0.99"/>
+        </thresholds>
+    </settings>
+
+    <!-- Languages configuration -->
+    <languages count="3">
+        <language id="1" active="true">
+            <name>TypeScript</name>
+            <extension>.ts</extension>
+            <tier>1</tier>
+            <features>
+                <feature>classes</feature>
+                <feature>interfaces</feature>
+                <feature>generics</feature>
+            </features>
+        </language>
+        <language id="2" active="true">
+            <name>Python</name>
+            <extension>.py</extension>
+            <tier>1</tier>
+            <features>
+                <feature>classes</feature>
+                <feature>decorators</feature>
+                <feature>async</feature>
+            </features>
+        </language>
+        <language id="3" active="true">
+            <name>Rust</name>
+            <extension>.rs</extension>
+            <tier>1</tier>
+            <features>
+                <feature>structs</feature>
+                <feature>traits</feature>
+                <feature>lifetimes</feature>
+            </features>
+        </language>
+    </languages>
+
+    <!-- Patterns with CDATA section -->
+    <patterns>
+        <pattern name="function" priority="1">
+            <regex><![CDATA[^function\s+\w+\s*\(.*\)\s*\{]]></regex>
+            <options caseSensitive="true" multiline="false"/>
+        </pattern>
+        <pattern name="class" priority="2">
+            <regex><![CDATA[^class\s+\w+\s*(extends\s+\w+)?\s*\{]]></regex>
+            <options caseSensitive="true" multiline="true"/>
+        </pattern>
+        <pattern name="special-chars" priority="3">
+            <regex><![CDATA[<>&"']]></regex>
+            <description>Pattern with special XML characters</description>
+        </pattern>
+    </patterns>
+
+    <!-- Mappings with namespaced elements -->
+    <mappings>
+        <custom:mapper language="typescript" class="TypeScriptMapper">
+            <custom:nodeTypes>
+                <custom:type name="function"/>
+                <custom:type name="class"/>
+                <custom:type name="interface"/>
+            </custom:nodeTypes>
+        </custom:mapper>
+        <custom:mapper language="python" class="PythonMapper">
+            <custom:nodeTypes>
+                <custom:type name="function"/>
+                <custom:type name="class"/>
+                <custom:type name="decorator"/>
+            </custom:nodeTypes>
+        </custom:mapper>
+    </mappings>
+
+    <!-- Nested structure -->
+    <hierarchy>
+        <level depth="1" name="root">
+            <level depth="2" name="child1">
+                <level depth="3" name="grandchild1">
+                    <value>Deep value 1</value>
+                </level>
+                <level depth="3" name="grandchild2">
+                    <value>Deep value 2</value>
+                </level>
+            </level>
+            <level depth="2" name="child2">
+                <level depth="3" name="grandchild3">
+                    <value>Deep value 3</value>
+                </level>
+            </level>
+        </level>
+    </hierarchy>
+
+    <!-- Mixed content -->
+    <documentation>
+        <paragraph>
+            This is a <emphasis>mixed content</emphasis> example with
+            <link href="https://example.com">links</link> and
+            <code>inline code</code> elements.
+        </paragraph>
+        <note type="warning">
+            Special characters: &lt; &gt; &amp; &quot; &apos;
+        </note>
+    </documentation>
+
+    <!-- Empty and self-closing elements -->
+    <emptyElements>
+        <empty/>
+        <selfClosing attribute="value"/>
+        <withWhitespace>   </withWhitespace>
+        <withNewlines>
+
+        </withNewlines>
+    </emptyElements>
+
+    <!-- Numeric and boolean values -->
+    <values>
+        <integer>42</integer>
+        <negative>-17</negative>
+        <float>3.14159</float>
+        <scientific>1.23E10</scientific>
+        <boolean-true>true</boolean-true>
+        <boolean-false>false</boolean-false>
+        <null xsi:nil="true"/>
+    </values>
+
+    <!-- Comments inside elements -->
+    <comments>
+        <!-- This is a comment inside an element -->
+        <item>Value 1</item>
+        <!-- Another comment -->
+        <item>Value 2</item>
+    </comments>
+
+    <!-- Processing instruction -->
+    <?custom-processor option1="value1" option2="value2"?>
+
+    <!-- Long text content -->
+    <description>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+        nisi ut aliquip ex ea commodo consequat.
+    </description>
+
+</configuration>

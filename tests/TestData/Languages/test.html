@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<!--
+    HTML Test File for UAST-Grep
+    Tests: elements, attributes, nesting, comments
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="UAST-Grep test file for HTML parsing">
+    <meta name="author" content="Test Author">
+
+    <title>UAST-Grep HTML Test</title>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <!-- Inline styles -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .highlight {
+            background-color: yellow;
+            padding: 2px 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header section -->
+    <header id="main-header" class="site-header" role="banner">
+        <nav aria-label="Main navigation">
+            <ul class="nav-list">
+                <li><a href="/" class="nav-link active">Home</a></li>
+                <li><a href="/about" class="nav-link">About</a></li>
+                <li><a href="/contact" class="nav-link">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main content -->
+    <main id="content" class="main-content">
+        <article class="post" data-id="123" data-category="testing">
+            <header>
+                <h1>UAST-Grep Test Document</h1>
+                <p class="meta">
+                    Published on <time datetime="2024-01-15">January 15, 2024</time>
+                    by <span class="author">Test Author</span>
+                </p>
+            </header>
+
+            <section class="content">
+                <h2>Section 1: Text Elements</h2>
+                <p>This is a paragraph with <strong>bold text</strong>,
+                   <em>italic text</em>, and <code>inline code</code>.</p>
+
+                <p>Here's a <a href="https://example.com" target="_blank" rel="noopener">link</a>
+                   and an <abbr title="Abbreviation">ABBR</abbr> element.</p>
+
+                <blockquote cite="https://example.com/quote">
+                    <p>This is a blockquote with attribution.</p>
+                    <footer>— <cite>Author Name</cite></footer>
+                </blockquote>
+
+                <h2>Section 2: Lists</h2>
+                <h3>Unordered List</h3>
+                <ul>
+                    <li>Item one</li>
+                    <li>Item two
+                        <ul>
+                            <li>Nested item A</li>
+                            <li>Nested item B</li>
+                        </ul>
+                    </li>
+                    <li>Item three</li>
+                </ul>
+
+                <h3>Ordered List</h3>
+                <ol start="1">
+                    <li>First step</li>
+                    <li>Second step</li>
+                    <li>Third step</li>
+                </ol>
+
+                <h3>Definition List</h3>
+                <dl>
+                    <dt>Term 1</dt>
+                    <dd>Definition of term 1</dd>
+                    <dt>Term 2</dt>
+                    <dd>Definition of term 2</dd>
+                </dl>
+
+                <h2>Section 3: Table</h2>
+                <table class="data-table" border="1">
+                    <caption>Sample Data Table</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>First</td>
+                            <td>100</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Second</td>
+                            <td>200</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2">Total</td>
+                            <td>300</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <h2>Section 4: Form</h2>
+                <form action="/submit" method="post" id="contact-form" novalidate>
+                    <fieldset>
+                        <legend>Contact Information</legend>
+
+                        <div class="form-group">
+                            <label for="name">Name:</label>
+                            <input type="text" id="name" name="name" required
+                                   placeholder="Enter your name" autocomplete="name">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email:</label>
+                            <input type="email" id="email" name="email" required
+                                   placeholder="Enter your email" autocomplete="email">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Phone:</label>
+                            <input type="tel" id="phone" name="phone"
+                                   pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message:</label>
+                            <textarea id="message" name="message" rows="4" cols="50"
+                                      placeholder="Enter your message"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="category">Category:</label>
+                            <select id="category" name="category">
+                                <option value="">Select...</option>
+                                <option value="general">General Inquiry</option>
+                                <option value="support">Technical Support</option>
+                                <option value="sales">Sales</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="checkbox" id="subscribe" name="subscribe" value="yes">
+                            <label for="subscribe">Subscribe to newsletter</label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Preferred contact method:</label>
+                            <input type="radio" id="contact-email" name="contact" value="email">
+                            <label for="contact-email">Email</label>
+                            <input type="radio" id="contact-phone" name="contact" value="phone">
+                            <label for="contact-phone">Phone</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <button type="reset" class="btn btn-secondary">Reset</button>
+                    </fieldset>
+                </form>
+
+                <h2>Section 5: Media</h2>
+                <figure>
+                    <img src="image.jpg" alt="Sample image" width="300" height="200" loading="lazy">
+                    <figcaption>Figure 1: A sample image</figcaption>
+                </figure>
+
+                <picture>
+                    <source media="(min-width: 800px)" srcset="large.jpg">
+                    <source media="(min-width: 400px)" srcset="medium.jpg">
+                    <img src="small.jpg" alt="Responsive image">
+                </picture>
+
+                <video controls width="400" poster="poster.jpg">
+                    <source src="video.mp4" type="video/mp4">
+                    <source src="video.webm" type="video/webm">
+                    Your browser does not support video.
+                </video>
+
+                <audio controls>
+                    <source src="audio.mp3" type="audio/mpeg">
+                    Your browser does not support audio.
+                </audio>
+
+                <h2>Section 6: Semantic Elements</h2>
+                <details open>
+                    <summary>Click to expand</summary>
+                    <p>This content is collapsible.</p>
+                </details>
+
+                <dialog id="modal">
+                    <h2>Modal Dialog</h2>
+                    <p>This is a dialog element.</p>
+                    <button>Close</button>
+                </dialog>
+
+                <progress value="70" max="100">70%</progress>
+                <meter value="0.7" min="0" max="1">70%</meter>
+            </section>
+        </article>
+
+        <aside class="sidebar">
+            <h3>Related Links</h3>
+            <ul>
+                <li><a href="/related1">Related Article 1</a></li>
+                <li><a href="/related2">Related Article 2</a></li>
+            </ul>
+        </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer id="site-footer" class="site-footer">
+        <p>&copy; 2024 UAST-Grep. All rights reserved.</p>
+        <address>
+            Contact: <a href="mailto:test@example.com">test@example.com</a>
+        </address>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="app.js" defer></script>
+    <script type="module">
+        // Inline module script
+        import { init } from './modules/init.js';
+        init();
+    </script>
+    <script>
+        // Inline regular script
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+        });
+    </script>
+</body>
+</html>
