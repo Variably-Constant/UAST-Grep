@@ -64,12 +64,13 @@ These languages have grammars too large for built-in inclusion:
 | **Kotlin** | `.kt`, `.kts` | ~5MB |
 | **Scala** | `.scala`, `.sc` | ~4MB |
 | **Swift** | `.swift` | ~3MB |
-| **SQL** | `.sql` | ~3MB |
-| **LaTeX** | `.tex`, `.sty` | ~6MB |
-| **Verilog** | `.v`, `.sv` | ~4MB |
-| **COBOL** | `.cob`, `.cbl` | ~3MB |
-| **Fortran** | `.f`, `.f90`, `.f95` | ~3MB |
-| **F#** | `.fs`, `.fsi`, `.fsx` | ~4MB |
+| **SQL** | `.sql` | ~10MB |
+| **LaTeX** | `.tex`, `.sty` | ~4MB |
+| **Verilog** | `.v`, `.sv` | ~18MB |
+| **Fortran** | `.f`, `.f90`, `.f95` | ~7MB |
+| **F#** | `.fs`, `.fsi`, `.fsx` | ~6MB |
+
+> **Note:** COBOL, Doxygen, and Vim cannot compile to WASM and are provided as [Native Languages](native.md) instead.
 
 ### System Languages
 
@@ -101,7 +102,6 @@ These languages have grammars too large for built-in inclusion:
 |----------|------------|-------|
 | **Zig** | `.zig` | Systems programming |
 | **AWK** | `.awk` | Text processing |
-| **Vim** | `.vim` | Vim script |
 | **R** | `.r`, `.R` | Statistics |
 | **Cairo** | `.cairo` | Blockchain |
 | **Dhall** | `.dhall` | Configuration |
@@ -113,8 +113,9 @@ These languages have grammars too large for built-in inclusion:
 
 | Language | Extensions | Purpose |
 |----------|------------|---------|
-| **Doxygen** | Various | Documentation comments |
 | **Comment** | Various | Generic comment parsing |
+
+> **Note:** Doxygen is available as a [Native Language](native.md) due to C library dependencies.
 
 ## Using WASM Languages
 

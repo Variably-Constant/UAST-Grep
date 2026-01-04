@@ -1,22 +1,31 @@
 # Language Support Overview
 
-UAST-Grep supports **71 programming languages** through a two-tier grammar system.
+UAST-Grep supports **71 programming languages** through a three-tier grammar system.
 
-## Two-Tier Architecture
+## Three-Tier Architecture
 
-### Built-in Languages (37)
+### Built-in Languages (37) - Tier 1+2
 
 Built-in grammars are compiled directly into the binary:
 - **Zero loading time** - Ready instantly
 - **No network required** - Works offline
 - **Small footprint** - All 37 grammars in ~29MB
 
-### WASM Languages (34)
+### WASM Languages (31) - Tier 3
 
 WASM grammars are downloaded on first use:
 - **On-demand loading** - Only downloads what you need
 - **Cached locally** - Fast subsequent use
+- **Sandboxed execution** - Runs in WebAssembly sandbox
 - **Larger grammar support** - Some grammars are too large for built-in
+
+### Native Languages (3) - Tier 3b
+
+Some grammars cannot compile to WASM due to C library dependencies:
+- **Platform-specific** - Different files for Windows/Linux/macOS
+- **Native performance** - Direct execution, no sandbox overhead
+- **Auto-download** - Downloaded from GitHub releases when needed
+- **Languages:** COBOL, Doxygen, Vim (see [Native Languages](native.md))
 
 ## Complete Language List
 
@@ -38,11 +47,19 @@ WASM grammars are downloaded on first use:
 
 | Category | Languages |
 |----------|-----------|
-| **Large Grammars** | Verilog, LaTeX, SQL, Fortran, F#, Kotlin, COBOL, Scala |
+| **Large Grammars** | Verilog, LaTeX, SQL, Fortran, F#, Kotlin, Scala |
 | **System** | Objective-C, Julia, D, Crystal, CUDA, Haskell, Swift, Perl |
 | **Specialized** | Arduino, Agda, OCaml, Apex, Dart, Groovy, Common Lisp |
-| **Modern** | Zig, AWK, Vim, R, Bitbake, Ada, Cairo, Dhall, CUE |
-| **Meta** | Doxygen, Comment |
+| **Modern** | Zig, AWK, R, Bitbake, Ada, Cairo, Dhall, CUE |
+| **Meta** | Comment |
+
+### Native Languages (WASM-incompatible)
+
+| Language | Reason | More Info |
+|----------|--------|-----------|
+| **COBOL** | Uses C99 Variable Length Arrays | [Native Languages](native.md) |
+| **Doxygen** | Uses C stdio functions | [Native Languages](native.md) |
+| **Vim** | Uses wide character functions | [Native Languages](native.md) |
 
 ## Checking Language Support
 
@@ -61,11 +78,14 @@ Built-in Languages (37):
   proto, python, ruby, rust, toml, tsx, typescript, vue,
   xml, yaml
 
-WASM Languages (34):
-  ada, agda, apex, arduino, awk, cairo, clojure, cobol,
-  crystal, cue, cuda, d, dart, dhall, doxygen, fortran,
-  fsharp, groovy, haskell, julia, kotlin, latex, lisp,
-  objc, ocaml, perl, r, scala, sql, swift, verilog, vim, zig
+WASM Languages (31):
+  ada, agda, apex, arduino, awk, cairo, comment, commonlisp,
+  crystal, cue, cuda, d, dart, dhall, fortran, fsharp,
+  groovy, haskell, julia, kotlin, latex, objc, ocaml, perl,
+  r, scala, sql, swift, verilog, zig
+
+Native Languages (3):
+  cobol, doxygen, vim
 ```
 
 ### Check Specific Language
@@ -176,3 +196,4 @@ For detailed information about specific languages:
 - [C#](csharp.md) - C# patterns and best practices
 - [Built-in Languages](built-in.md) - Complete built-in reference
 - [WASM Languages](wasm.md) - WASM grammar details
+- [Native Languages](native.md) - Native DLL grammars (COBOL, Doxygen, Vim)

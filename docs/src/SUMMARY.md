@@ -26,6 +26,7 @@
 - [Overview](languages/overview.md)
 - [Built-in Languages](languages/built-in.md)
 - [WASM Languages](languages/wasm.md)
+- [Native Languages](languages/native.md)
 - [PowerShell](languages/powershell.md)
 - [C#](languages/csharp.md)
 
