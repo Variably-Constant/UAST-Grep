@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "uast-grep"
-version = "0.1.0"
+version = "1.0.0"
 description = "Cross-language AST search and analysis - Python bindings for UAST-Grep"
 readme = "README.md"
 license = { text = "MIT" }
@@ -62,7 +62,7 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "1.0.0"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
