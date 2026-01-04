@@ -1,12 +1,12 @@
 # UAST-Grep
 
-> **A high-performance cross-language AST search tool powered by tree-sitter**
+> **A cross-language AST search and SAST tool powered by tree-sitter**
 >
 > *Created by Mark Newton*
 
 ## What is UAST-Grep?
 
-UAST-Grep is a blazing-fast AST-based code search tool that works across **71 programming languages**. Unlike regex-based tools like `grep`, UAST-Grep understands your code's structure, letting you search for semantic patterns like "all function declarations" or "any try-catch block with an empty handler."
+UAST-Grep is an AST-based code search tool that works across **71 programming languages**. Unlike regex-based tools like `grep`, UAST-Grep understands your code's structure, letting you search for semantic patterns like "all function declarations" or "any try-catch block with an empty handler."
 
 The tool is built entirely in Rust for maximum performance, with bindings for Python and .NET.
 
@@ -32,8 +32,8 @@ uast-grep run -p FunctionDeclaration -l javascript ./src
 |---------|-------------|
 | **71 Languages** | 37 built-in + 34 on-demand WASM grammars |
 | **Cross-Language Patterns** | Write once, search any language with UAST patterns |
-| **Security Scanning** | YAML rules with severity levels and auto-fix |
-| **Blazing Fast** | 6ms startup, parallel scanning, Rust-powered |
+| **Security Scanning** | 3,873 built-in rules with SARIF output and auto-fix |
+| **Single Binary** | No runtime dependencies - download and run |
 | **SARIF Output** | First-class CI/CD integration |
 | **Multiple Bindings** | CLI, Python (PyO3), .NET (P/Invoke) |
 
@@ -82,17 +82,6 @@ The UAST (Unified AST) layer normalizes node types across languages:
 | `FunctionDeclaration` | `function_definition` | `function_declaration` | `function_item` | `method_declaration` |
 | `IfStatement` | `if_statement` | `if_statement` | `if_expression` | `if_statement` |
 | `TryStatement` | `try_statement` | `try_statement` | - | `try_statement` |
-
-## Performance
-
-UAST-Grep is designed for speed:
-
-| Operation | Time | vs .NET CLI |
-|-----------|------|-------------|
-| Startup | 6ms | **90x faster** |
-| Parse file | 16ms | **61x faster** |
-| Pattern search | 34ms | **31x faster** |
-| Binary size | 29MB | No dependencies |
 
 ## Architecture
 
@@ -197,6 +186,13 @@ curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download
 tar -xzf uast-grep-*.tar.gz
 ./uast-grep --version
 ```
+
+## Inspiration
+
+UAST-Grep draws inspiration from several sources:
+
+- **[ast-grep](https://github.com/ast-grep/ast-grep)** - The excellent tree-sitter-based code search tool by Herrington Darkholme. UAST-Grep builds on similar concepts with a focus on cross-language patterns via the Universal AST schema and embedded SAST rules.
+- **PowerShellEX** - A private PowerShell enhancement project where the need for cross-language semantic analysis and security scanning originated.
 
 ## License
 
