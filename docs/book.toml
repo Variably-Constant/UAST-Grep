@@ -3,7 +3,6 @@ title = "UAST-Grep Documentation"
 authors = ["Mark Newton"]
 description = "Cross-language AST search tool documentation"
 language = "en"
-multilingual = false
 src = "src"
 
 [build]
@@ -20,7 +19,6 @@ default-theme = "navy"
 preferred-dark-theme = "ayu"
 smart-punctuation = true
 mathjax-support = false
-copy-fonts = true
 additional-css = ["theme/custom.css", "theme/mermaid-theme.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 no-section-label = false
