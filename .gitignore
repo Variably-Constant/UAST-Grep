@@ -15,6 +15,12 @@ CLAUDE.md
 *.o
 *.obj
 
+# Exception: Grammar files (WASM and native DLLs) ARE tracked
+!native/uast_core/grammars-wasm/*.wasm
+!native/uast_core/grammars-native/*.dll
+!native/uast_core/grammars-native/*.so
+!native/uast_core/grammars-native/*.dylib
+
 # Rust publish output
 publish_rust/
 
@@ -51,8 +57,8 @@ __pycache__/
 .pytest_cache/
 dist/
 
-# WASM grammar output
-native/uast_core/grammars-wasm/
+# WASM/Native grammar directories (files are tracked via exceptions above)
+# Directory structure only - actual .wasm/.dll/.so/.dylib files are tracked
 
 # mdBook output
 docs/book/

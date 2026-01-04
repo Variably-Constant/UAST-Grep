@@ -111,129 +111,46 @@ jobs:
           if-no-files-found: ignore
 
   # ==========================================================================
-  # Build all WASM grammars
+  # Package pre-built WASM and native grammar files
   # ==========================================================================
-  build-wasm:
+  package-grammars:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install tree-sitter CLI
+      - name: Verify grammar files exist
         run: |
-          npm install -g tree-sitter-cli@${{ env.TREE_SITTER_VERSION }}
-          tree-sitter --version
+          echo "## Grammar Files Summary" >> $GITHUB_STEP_SUMMARY
 
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: ${{ env.EMSCRIPTEN_VERSION }}
+          # Count WASM files
+          WASM_COUNT=$(find native/uast_core/grammars-wasm -name "*.wasm" 2>/dev/null | wc -l)
+          echo "WASM grammars: $WASM_COUNT" >> $GITHUB_STEP_SUMMARY
 
-      - name: Create output directory
-        run: mkdir -p grammars-wasm
+          # Count native DLLs (if any)
+          NATIVE_COUNT=$(find native/uast_core/grammars-native -name "*.dll" -o -name "*.so" -o -name "*.dylib" 2>/dev/null | wc -l)
+          echo "Native grammars: $NATIVE_COUNT" >> $GITHUB_STEP_SUMMARY
 
-      - name: Build all WASM grammars
+          # List all grammar files
+          echo ""
+          echo "WASM grammars:"
+          ls -lh native/uast_core/grammars-wasm/*.wasm 2>/dev/null || echo "  (none)"
+
+          echo ""
+          echo "Native grammars:"
+          ls -lh native/uast_core/grammars-native/*.{dll,so,dylib} 2>/dev/null || echo "  (none)"
+
+      - name: Prepare grammar output directory
         run: |
-          # All 34 Tier 3 grammars
-          declare -A GRAMMARS=(
-            ["verilog"]="https://github.com/tree-sitter/tree-sitter-verilog"
-            ["latex"]="https://github.com/latex-lsp/tree-sitter-latex"
-            ["sql"]="https://github.com/DerekStride/tree-sitter-sql"
-            ["fortran"]="https://github.com/stadelmanma/tree-sitter-fortran"
-            ["fsharp"]="https://github.com/ionide/tree-sitter-fsharp:fsharp"
-            ["kotlin"]="https://github.com/fwcd/tree-sitter-kotlin"
-            ["cobol"]="https://github.com/yutaro-sakamoto/tree-sitter-cobol"
-            ["scala"]="https://github.com/tree-sitter/tree-sitter-scala"
-            ["objc"]="https://github.com/tree-sitter-grammars/tree-sitter-objc"
-            ["julia"]="https://github.com/tree-sitter/tree-sitter-julia"
-            ["d"]="https://github.com/gdamore/tree-sitter-d"
-            ["crystal"]="https://github.com/keidax/tree-sitter-crystal"
-            ["cuda"]="https://github.com/tree-sitter-grammars/tree-sitter-cuda"
-            ["haskell"]="https://github.com/tree-sitter/tree-sitter-haskell"
-            ["swift"]="https://github.com/alex-pinkus/tree-sitter-swift"
-            ["perl"]="https://github.com/tree-sitter-perl/tree-sitter-perl"
-            ["arduino"]="https://github.com/tree-sitter-grammars/tree-sitter-arduino"
-            ["agda"]="https://github.com/tree-sitter/tree-sitter-agda"
-            ["ocaml"]="https://github.com/tree-sitter/tree-sitter-ocaml:grammars/ocaml"
-            ["apex"]="https://github.com/aheber/tree-sitter-sfapex:sfapex"
-            ["dart"]="https://github.com/UserNobody14/tree-sitter-dart"
-            ["groovy"]="https://github.com/murtaza64/tree-sitter-groovy"
-            ["commonlisp"]="https://github.com/theHamsta/tree-sitter-commonlisp"
-            ["zig"]="https://github.com/tree-sitter-grammars/tree-sitter-zig"
-            ["awk"]="https://github.com/Beaglefoot/tree-sitter-awk"
-            ["vim"]="https://github.com/tree-sitter-grammars/tree-sitter-vim"
-            ["r"]="https://github.com/r-lib/tree-sitter-r"
-            ["bitbake"]="https://github.com/tree-sitter-grammars/tree-sitter-bitbake"
-            ["ada"]="https://github.com/briot/tree-sitter-ada"
-            ["cairo"]="https://github.com/tree-sitter-grammars/tree-sitter-cairo"
-            ["dhall"]="https://github.com/jbellerb/tree-sitter-dhall"
-            ["cue"]="https://github.com/eonpatapon/tree-sitter-cue"
-            ["doxygen"]="https://github.com/tree-sitter-grammars/tree-sitter-doxygen"
-            ["comment"]="https://github.com/stsewd/tree-sitter-comment"
-          )
+          mkdir -p grammars-wasm
+          mkdir -p grammars-native
 
-          TEMP_DIR=$(mktemp -d)
-          SUCCEEDED=0
-          FAILED=0
+          # Copy pre-built WASM files
+          cp native/uast_core/grammars-wasm/*.wasm grammars-wasm/ 2>/dev/null || true
 
-          for name in "${!GRAMMARS[@]}"; do
-            echo "::group::Building $name"
-
-            SPEC="${GRAMMARS[$name]}"
-            if [[ "$SPEC" == *":"* ]]; then
-              REPO="${SPEC%%:*}"
-              SUBDIR="${SPEC#*:}"
-            else
-              REPO="$SPEC"
-              SUBDIR=""
-            fi
-
-            CLONE_DIR="$TEMP_DIR/$name"
-            if ! git clone --depth 1 "$REPO" "$CLONE_DIR" 2>&1; then
-              echo "::error::Failed to clone $name"
-              FAILED=$((FAILED + 1))
-              echo "::endgroup::"
-              continue
-            fi
-
-            if [ -n "$SUBDIR" ]; then
-              GRAMMAR_DIR="$CLONE_DIR/$SUBDIR"
-            else
-              GRAMMAR_DIR="$CLONE_DIR"
-            fi
-
-            cd "$GRAMMAR_DIR"
-
-            if tree-sitter build --wasm 2>&1; then
-              WASM_FILE=$(find . -maxdepth 1 -name "*.wasm" -type f | head -1)
-              if [ -n "$WASM_FILE" ]; then
-                cp "$WASM_FILE" "$GITHUB_WORKSPACE/grammars-wasm/${name}.wasm"
-                echo "✓ Built ${name}.wasm"
-                SUCCEEDED=$((SUCCEEDED + 1))
-              else
-                echo "::error::No WASM file generated for $name"
-                FAILED=$((FAILED + 1))
-              fi
-            else
-              echo "::error::Build failed for $name"
-              FAILED=$((FAILED + 1))
-            fi
-
-            cd "$GITHUB_WORKSPACE"
-            echo "::endgroup::"
-          done
-
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Succeeded: $SUCCEEDED / ${#GRAMMARS[@]}" >> $GITHUB_STEP_SUMMARY
-          echo "- Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
-
-          ls -lh grammars-wasm/
+          # Copy pre-built native files (if any)
+          cp native/uast_core/grammars-native/*.{dll,so,dylib} grammars-native/ 2>/dev/null || true
 
       - name: Create WASM checksums
         run: |
@@ -279,7 +196,7 @@ jobs:
   # Create unified release
   # ==========================================================================
   release:
-    needs: [build-binaries, build-wasm]
+    needs: [build-binaries, package-grammars]
     runs-on: ubuntu-latest
     permissions:
       contents: write
