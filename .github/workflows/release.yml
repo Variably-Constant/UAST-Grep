@@ -192,6 +192,16 @@ jobs:
           path: grammars-wasm/checksums-wasm.txt
           if-no-files-found: warn
 
+      - name: Upload native grammar DLLs
+        uses: actions/upload-artifact@v4
+        with:
+          name: grammars-native
+          path: |
+            grammars-native/*.dll
+            grammars-native/*.so
+            grammars-native/*.dylib
+          if-no-files-found: warn
+
   # ==========================================================================
   # Create unified release
   # ==========================================================================
@@ -223,7 +233,7 @@ jobs:
         run: |
           mkdir -p release
 
-          # Copy binary archives (but not grammars-wasm.zip yet)
+          # Copy binary archives
           find artifacts -name "uast-grep-*.zip" -exec cp {} release/ \;
           find artifacts -name "uast-grep-*.tar.gz" -exec cp {} release/ \;
 
@@ -236,9 +246,12 @@ jobs:
           # Copy WASM checksums
           find artifacts -name "checksums-wasm.txt" -exec cp {} release/ \;
 
-          # Create master checksum file
+          # Copy native grammar DLLs (for WASM-incompatible grammars: cobol, doxygen, vim)
+          find artifacts -name "*.dll" ! -name "uast_core.dll" -exec cp {} release/ \; 2>/dev/null || true
+
+          # Create master checksum file (include DLLs if present)
           cd release
-          sha256sum *.zip *.tar.gz *.wasm 2>/dev/null > checksums.txt || true
+          sha256sum *.zip *.tar.gz *.wasm *.dll 2>/dev/null > checksums.txt || true
 
           echo "Release contents:"
           ls -lh
@@ -274,10 +287,15 @@ jobs:
             | macOS | x64 (Intel) | `uast-grep-macos-x64.tar.gz` |
             | macOS | ARM64 (Apple Silicon) | `uast-grep-macos-arm64.tar.gz` |
 
-            #### WASM Grammars (34 additional languages)
-            Download `grammars-wasm.zip` for SQL, Kotlin, Swift, Haskell, and 30 more languages.
+            #### WASM Grammars (31 additional languages)
+            Download `grammars-wasm.zip` for SQL, Kotlin, Swift, Haskell, and 27 more languages.
 
-            Extract to `~/.uast-grep/grammars/` or set `UAST_WASM_PATH` environment variable.
+            Extract to `~/.uast/grammars-wasm/` or set `UAST_WASM_PATH` environment variable.
+
+            #### Native Grammar DLLs (3 WASM-incompatible languages)
+            Download `cobol.dll`, `doxygen.dll`, `vim.dll` for languages that cannot compile to WASM.
+
+            Place in `~/.uast/grammars-native/` or next to the `uast-grep` executable.
 
             ### Built-in Languages (Tier 1+2)
             powershell, c#, json, yaml, xml, toml, csv, dockerfile, hcl, bicep, nix, bash,

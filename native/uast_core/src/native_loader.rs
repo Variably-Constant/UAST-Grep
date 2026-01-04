@@ -15,6 +15,7 @@
 //! 1. `grammars-native/` next to the executable
 //! 2. `$UAST_NATIVE_PATH` environment variable
 //! 3. User's `.uast/grammars-native/` directory
+//! 4. Download from GitHub releases (if enabled and not found locally)
 //!
 //! # Platform-Specific Extensions
 //!
@@ -90,7 +91,19 @@ pub struct NativeLoadStats {
     pub loads_succeeded: usize,
     pub loads_failed: usize,
     pub cache_hits: usize,
+    pub downloads_attempted: usize,
+    pub downloads_succeeded: usize,
+    pub downloads_failed: usize,
 }
+
+// ============================================================================
+// Download Configuration
+// ============================================================================
+
+/// GitHub release URL configuration for native grammar downloads.
+const GITHUB_OWNER: &str = "norgeous";
+const GITHUB_REPO: &str = "UAST-Grep";
+const RELEASE_VERSION: &str = "v1.0.0";
 
 // ============================================================================
 // Public API
@@ -132,8 +145,21 @@ pub fn load_native_grammar(name: &str) -> Option<Language> {
         stats.loads_attempted += 1;
     }
 
-    // Try to find and load the native library
-    let lib_path = find_native_library(name_to_use)?;
+    // Try to find the native library locally, or download if not found
+    let lib_path = match find_native_library(name_to_use) {
+        Some(path) => path,
+        None => {
+            // Only try to download for known native-preferred languages
+            if !prefers_native(name_to_use) {
+                return None;
+            }
+            // Try to download
+            match download_native_grammar(name_to_use) {
+                Some(path) => path,
+                None => return None,
+            }
+        }
+    };
 
     match load_native_library(name_to_use, &lib_path) {
         Ok(language) => {
@@ -416,6 +442,118 @@ fn dirs_next_home() -> Option<PathBuf> {
     {
         env::var("HOME").ok().map(PathBuf::from)
     }
+}
+
+// ============================================================================
+// Download Functions
+// ============================================================================
+
+/// Construct the download URL for a native grammar.
+fn get_native_download_url(grammar_name: &str) -> String {
+    format!(
+        "https://github.com/{}/{}/releases/download/{}/{}.{}",
+        GITHUB_OWNER, GITHUB_REPO, RELEASE_VERSION, grammar_name, NATIVE_LIB_EXT
+    )
+}
+
+/// Get the local cache directory for downloaded native grammars.
+fn get_native_cache_dir() -> Option<PathBuf> {
+    dirs_next_home().map(|home| home.join(".uast").join("grammars-native"))
+}
+
+/// Download a native grammar from GitHub releases.
+///
+/// Downloads to `~/.uast/grammars-native/{name}.{ext}`
+#[cfg(feature = "wasm-download")]
+fn download_native_grammar(name: &str) -> Option<PathBuf> {
+    // Check offline mode
+    if env::var("UAST_OFFLINE").map(|v| v == "1").unwrap_or(false) {
+        eprintln!("UAST: Offline mode - skipping native download for '{}'", name);
+        return None;
+    }
+
+    // Only download known native-preferred grammars
+    if !NATIVE_PREFERRED_LANGUAGES.contains(&name) {
+        return None;
+    }
+
+    let cache_dir = get_native_cache_dir()?;
+
+    // Ensure cache directory exists
+    if let Err(e) = std::fs::create_dir_all(&cache_dir) {
+        eprintln!("UAST: Failed to create native cache dir: {}", e);
+        return None;
+    }
+
+    let lib_filename = format!("{}.{}", name, NATIVE_LIB_EXT);
+    let local_path = cache_dir.join(&lib_filename);
+
+    // Already cached?
+    if local_path.exists() {
+        return Some(local_path);
+    }
+
+    let url = get_native_download_url(name);
+    eprintln!("UAST: Downloading native grammar '{}' from {}", name, url);
+
+    // Update stats
+    if let Some(mut stats) = NATIVE_STATS.try_write() {
+        stats.downloads_attempted += 1;
+    }
+
+    // Perform the download
+    let response = match ureq::get(&url).call() {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("UAST: Failed to download '{}': {}", name, e);
+            if let Some(mut stats) = NATIVE_STATS.try_write() {
+                stats.downloads_failed += 1;
+            }
+            return None;
+        }
+    };
+
+    if response.status() != 200 {
+        eprintln!("UAST: Download returned status {} for '{}'", response.status(), name);
+        if let Some(mut stats) = NATIVE_STATS.try_write() {
+            stats.downloads_failed += 1;
+        }
+        return None;
+    }
+
+    // Read the bytes
+    let mut bytes = Vec::new();
+    if let Err(e) = response.into_reader().read_to_end(&mut bytes) {
+        eprintln!("UAST: Failed to read download response for '{}': {}", name, e);
+        if let Some(mut stats) = NATIVE_STATS.try_write() {
+            stats.downloads_failed += 1;
+        }
+        return None;
+    }
+
+    // Write to cache
+    if let Err(e) = std::fs::write(&local_path, &bytes) {
+        eprintln!("UAST: Failed to write native grammar '{}': {}", name, e);
+        if let Some(mut stats) = NATIVE_STATS.try_write() {
+            stats.downloads_failed += 1;
+        }
+        return None;
+    }
+
+    eprintln!("UAST: Downloaded native grammar '{}' ({} bytes)", name, bytes.len());
+
+    if let Some(mut stats) = NATIVE_STATS.try_write() {
+        stats.downloads_succeeded += 1;
+    }
+
+    Some(local_path)
+}
+
+/// Stub for when download feature is disabled.
+#[cfg(not(feature = "wasm-download"))]
+fn download_native_grammar(name: &str) -> Option<PathBuf> {
+    eprintln!("UAST: Native download disabled - '{}' not available locally", name);
+    None
 }
 
 // ============================================================================
