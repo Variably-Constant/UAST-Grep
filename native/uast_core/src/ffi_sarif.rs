@@ -4,7 +4,7 @@
 //! from C#/.NET via P/Invoke.
 
 use crate::error;
-use crate::ffi::{cstr_to_str, cstr_to_str_len, str_to_cstring, UastResult};
+use crate::ffi::{cstr_to_str, cstr_to_str_len, str_to_cstring};
 use crate::rules::{RuleYaml, ScanResult};
 use crate::sarif::SarifWriter;
 use std::ffi::c_char;

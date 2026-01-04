@@ -55,7 +55,7 @@ pub fn execute(args: LanguagesArgs, quiet: bool) -> Result<(), Box<dyn std::erro
     let extensions = available_builtin_extensions();
 
     if args.json {
-        output_json(&builtin, &dynamic, &extensions)?;
+        output_json(&builtin, &dynamic)?;
     } else {
         output_text(&builtin, &dynamic, &extensions, args.extensions, quiet);
     }
@@ -66,7 +66,6 @@ pub fn execute(args: LanguagesArgs, quiet: bool) -> Result<(), Box<dyn std::erro
 fn output_json(
     builtin: &[&'static str],
     dynamic: &[String],
-    extensions: &[&'static str],
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut languages: Vec<LanguageInfo> = Vec::new();
 

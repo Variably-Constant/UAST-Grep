@@ -282,16 +282,8 @@ fn collect_files(
                 builder.max_depth(Some(depth));
             }
 
-            // Add file type filters
-            if !extensions.is_empty() {
-                for ext in extensions {
-                    // Remove leading dot if present
-                    let ext_clean = ext.trim_start_matches('.');
-                    builder.add_custom_ignore_filename("");
-                    // Note: ignore crate doesn't have built-in extension filtering,
-                    // so we filter manually below
-                }
-            }
+            // Note: ignore crate doesn't have built-in extension filtering,
+            // so we filter manually below using has_matching_extension()
 
             for entry in builder.build() {
                 if let Ok(entry) = entry {

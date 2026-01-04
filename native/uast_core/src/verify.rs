@@ -7,7 +7,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::builtin_languages::{available_builtin_languages, get_builtin_language};
+use crate::builtin_languages::get_builtin_language;
 use crate::dynamic_loader;
 use crate::tiers::{BUILTIN_LANGUAGES, WASM_LANGUAGES};
 use crate::wasm_loader;

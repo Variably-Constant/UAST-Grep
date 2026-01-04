@@ -125,7 +125,7 @@ impl CompiledRule {
 
         // Compile metavariable constraints
         let constraints = if let Some(ref constraint_map) = rule.constraints {
-            compile_constraints(constraint_map, &rule.language, &rule.id)?
+            compile_constraints(constraint_map, &rule.id)?
         } else {
             HashMap::new()
         };
@@ -256,7 +256,6 @@ fn compile_rule_pattern(
 /// Compile metavariable constraints.
 fn compile_constraints(
     constraints: &HashMap<String, ConstraintYaml>,
-    language: &str,
     rule_id: &str,
 ) -> Result<HashMap<String, Vec<Box<dyn Constraint>>>, ScanError> {
     let mut result: HashMap<String, Vec<Box<dyn Constraint>>> = HashMap::new();

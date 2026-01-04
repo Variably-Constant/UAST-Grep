@@ -11,16 +11,14 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::Instant;
 
 use super::output::{OutputFormat, ScanResultFormatter, print_summary};
 use crate::dynamic_loader::load_grammar_by_name;
 use crate::rules::{
-    apply_fix, parse_rules_from_directory, parse_rules_from_file, Fix, RuleYaml, ScanResult,
+    apply_fix, parse_rules_from_directory, parse_rules_from_file, RuleYaml, ScanResult,
     Scanner, Severity,
 };
-use crate::sarif::SarifWriter;
 use crate::uast::{convert_tree_to_uast, get_builtin_language};
 
 /// Arguments for the scan command

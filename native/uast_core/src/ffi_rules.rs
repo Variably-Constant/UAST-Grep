@@ -6,7 +6,7 @@
 use crate::error;
 use crate::ffi::{cstr_to_str, cstr_to_str_len, str_to_cstring, UastResult};
 use crate::rules::{
-    apply_fixes, parse_rules_from_string, Fix, RuleLoader, RuleYaml, ScanResult, Scanner,
+    apply_fixes, parse_rules_from_string, Fix, RuleLoader, RuleYaml, Scanner,
 };
 use crate::uast::schema::UastNode as SchemaUastNode;
 use lazy_static::lazy_static;

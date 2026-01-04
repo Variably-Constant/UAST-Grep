@@ -1026,7 +1026,7 @@ pub unsafe extern "C" fn uast_query_execute(
         let captures: Vec<UastCapture> = capture_data
             .iter()
             .map(|(name, node)| UastCapture {
-                name: name.as_ptr() as *const i8,
+                name: name.as_ptr() as *const std::ffi::c_char,
                 name_len: name.len() as u32,
                 node: node.clone(),
             })
@@ -1127,7 +1127,7 @@ pub unsafe extern "C" fn uast_query_execute_simple(
         let captures: Vec<UastCapture> = capture_data
             .iter()
             .map(|(name, node)| UastCapture {
-                name: name.as_ptr() as *const i8,
+                name: name.as_ptr() as *const std::ffi::c_char,
                 name_len: name.len() as u32,
                 node: node.clone(),
             })
