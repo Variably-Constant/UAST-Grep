@@ -41,6 +41,9 @@ src/**/obj/
 tests/**/bin/
 tests/**/obj/
 
+# Exception: Rust source bin directory (contains main.rs)
+!native/uast_core/src/bin/
+
 # Rust build
 target/
 native/uast_core/target/
