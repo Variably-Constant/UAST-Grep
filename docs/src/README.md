@@ -193,11 +193,11 @@ Ready to try UAST-Grep? Head to the [Installation](getting-started/installation.
 
 ```bash
 # Download for your platform
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz
 tar -xzf uast-grep-*.tar.gz
 ./uast-grep --version
 ```
 
 ## License
 
-MIT License - See [LICENSE](https://github.com/MarkusMcNugen/UAST-Grep/blob/main/LICENSE) for details.
+MIT License - See [LICENSE](https://github.com/Variably-Constant/UAST-Grep/blob/main/LICENSE) for details.

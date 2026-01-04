@@ -137,7 +137,7 @@ For offline environments:
 
 ```bash
 # Download all WASM grammars
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/grammars-wasm.zip
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/grammars-wasm.zip
 unzip grammars-wasm.zip -d ~/.uast/grammars/
 ```
 

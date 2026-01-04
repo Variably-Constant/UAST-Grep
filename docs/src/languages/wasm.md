@@ -156,7 +156,7 @@ rm ~/.uast/grammars/kotlin.wasm
 
 ```bash
 # Download the complete bundle
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/grammars-wasm.zip
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/grammars-wasm.zip
 
 # Extract to cache directory
 unzip grammars-wasm.zip -d ~/.uast/grammars/
@@ -277,7 +277,7 @@ uast-grep run -p macro_definition -l julia ./src
 
 ```bash
 # Check network connectivity
-curl -I https://github.com/MarkusMcNugen/UAST-Grep/releases/
+curl -I https://github.com/Variably-Constant/UAST-Grep/releases/
 
 # Check DNS
 nslookup github.com

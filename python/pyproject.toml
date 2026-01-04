@@ -32,10 +32,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/uast-grep"
-Documentation = "https://github.com/your-org/uast-grep#readme"
-Repository = "https://github.com/your-org/uast-grep"
-Issues = "https://github.com/your-org/uast-grep/issues"
+Homepage = "https://github.com/Variably-Constant/UAST-Grep"
+Documentation = "https://github.com/Variably-Constant/UAST-Grep#readme"
+Repository = "https://github.com/Variably-Constant/UAST-Grep"
+Issues = "https://github.com/Variably-Constant/UAST-Grep/issues"
 
 [project.optional-dependencies]
 dev = [

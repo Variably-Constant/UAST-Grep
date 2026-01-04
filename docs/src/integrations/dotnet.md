@@ -14,7 +14,7 @@ dotnet add package UAST.Native
 
 ```bash
 # Clone the repository
-git clone https://github.com/MarkusMcNugen/UAST-Grep.git
+git clone https://github.com/Variably-Constant/UAST-Grep.git
 cd UAST-Grep
 
 # Build the native library first

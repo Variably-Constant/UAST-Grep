@@ -25,7 +25,7 @@ Use the new Rust CLI binary:
 
 ## Migration
 
-Download the Rust binary from [GitHub Releases](https://github.com/MarkusMcNugen/UAST-Grep/releases) and update your scripts to use `uast-grep` instead of `UAST-Grep.exe`.
+Download the Rust binary from [GitHub Releases](https://github.com/Variably-Constant/UAST-Grep/releases) and update your scripts to use `uast-grep` instead of `UAST-Grep.exe`.
 
 See [Migration Guide](../../docs/MIGRATION.md) for details.
 

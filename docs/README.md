@@ -20,7 +20,6 @@ Performance benchmarks comparing query modes.
 ## Quick Links
 
 - [Main README](../README.md) - Project overview and quick start
-- [CLAUDE.md](../CLAUDE.md) - AI agent instructions (internal)
 - [Rules](../rules/README.md) - YAML rule format reference
 - [Source Code](../src/README.md) - C# project structure
 

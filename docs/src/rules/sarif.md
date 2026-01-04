@@ -26,7 +26,7 @@ UAST-Grep generates SARIF 2.1.0 compliant output:
         "driver": {
           "name": "uast-grep",
           "version": "0.1.0",
-          "informationUri": "https://github.com/MarkusMcNugen/UAST-Grep",
+          "informationUri": "https://github.com/Variably-Constant/UAST-Grep",
           "rules": [
             {
               "id": "sql-injection",
@@ -132,7 +132,7 @@ jobs:
 
       - name: Download UAST-Grep
         run: |
-          curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+          curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
           tar xzf uast-grep-linux-x64.tar.gz
           chmod +x uast-grep
 
@@ -172,7 +172,7 @@ curl -X POST \
 security-scan:
   stage: test
   script:
-    - curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+    - curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
     - tar xzf uast-grep-linux-x64.tar.gz
     - ./uast-grep scan -r rules/ -f sarif ./src > gl-sast-report.json
   artifacts:
@@ -188,7 +188,7 @@ security-scan:
   inputs:
     targetType: 'inline'
     script: |
-      curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+      curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
       tar xzf uast-grep-linux-x64.tar.gz
       ./uast-grep scan -r rules/ -f sarif ./src > $(Build.ArtifactStagingDirectory)/results.sarif
 
@@ -207,7 +207,7 @@ pipeline {
         stage('Security Scan') {
             steps {
                 sh '''
-                    curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+                    curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
                     tar xzf uast-grep-linux-x64.tar.gz
                     ./uast-grep scan -r rules/ -f sarif ./src > results.sarif
                 '''

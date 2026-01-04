@@ -41,7 +41,7 @@ use tree_sitter::Language;
 /// Format: https://github.com/{owner}/{repo}/releases/download/{version}/{grammar}.wasm
 ///
 /// To override, set UAST_WASM_URL environment variable.
-const GITHUB_OWNER: &str = "MarkusMcNugen";
+const GITHUB_OWNER: &str = "Variably-Constant";
 const GITHUB_REPO: &str = "UAST-Grep";
 const GRAMMAR_VERSION: &str = "v1.0.0";  // Update with each release
 

@@ -342,7 +342,7 @@ jobs:
 
       - name: Download UAST-Grep
         run: |
-          curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+          curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
           tar -xzf uast-grep-linux-x64.tar.gz
 
       - name: Performance Scan

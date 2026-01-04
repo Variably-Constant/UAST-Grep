@@ -237,11 +237,11 @@ src/UAST.Core/Rules/BuiltIn/
 
 ## Documentation
 
-For comprehensive documentation, see the [UAST-Grep Documentation](https://markusmcnugen.github.io/UAST-Grep/):
+For comprehensive documentation, see the [UAST-Grep Documentation](https://variably-constant.github.io/UAST-Grep/):
 
-- [Rule Syntax](https://markusmcnugen.github.io/UAST-Grep/rules/syntax.html) - Complete rule authoring guide
-- [Security Rules](https://markusmcnugen.github.io/UAST-Grep/rules/security.html) - Security rule details
-- [Performance Rules](https://markusmcnugen.github.io/UAST-Grep/rules/performance.html) - Performance rule details
-- [Quality Rules](https://markusmcnugen.github.io/UAST-Grep/rules/quality.html) - Quality rule details
-- [Rules Catalog](https://markusmcnugen.github.io/UAST-Grep/rules/rules-catalog.html) - Complete rule index
-- [CWE/OWASP Coverage](https://markusmcnugen.github.io/UAST-Grep/rules/cwe-owasp-coverage.html) - Security standards mapping
+- [Rule Syntax](https://variably-constant.github.io/UAST-Grep/rules/syntax.html) - Complete rule authoring guide
+- [Security Rules](https://variably-constant.github.io/UAST-Grep/rules/security.html) - Security rule details
+- [Performance Rules](https://variably-constant.github.io/UAST-Grep/rules/performance.html) - Performance rule details
+- [Quality Rules](https://variably-constant.github.io/UAST-Grep/rules/quality.html) - Quality rule details
+- [Rules Catalog](https://variably-constant.github.io/UAST-Grep/rules/rules-catalog.html) - Complete rule index
+- [CWE/OWASP Coverage](https://variably-constant.github.io/UAST-Grep/rules/cwe-owasp-coverage.html) - Security standards mapping

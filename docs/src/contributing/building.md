@@ -84,7 +84,7 @@ The Rust core is the foundation of UAST-Grep.
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/MarkusMcNugen/UAST-Grep.git
+git clone https://github.com/Variably-Constant/UAST-Grep.git
 cd UAST-Grep
 ```
 

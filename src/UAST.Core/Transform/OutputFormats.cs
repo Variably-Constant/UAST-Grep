@@ -143,7 +143,7 @@ public class SarifOutputFormatter : OutputFormatter
                         {
                             name = "UAST-Grep",
                             version = "1.0.0",
-                            informationUri = "https://github.com/yourorg/UAST-Grep",
+                            informationUri = "https://github.com/Variably-Constant/UAST-Grep",
                             rules = ruleIds.Select(id => new
                             {
                                 id = id,

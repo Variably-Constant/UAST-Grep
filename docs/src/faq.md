@@ -51,7 +51,7 @@ No. The binary is self-contained with all 37 built-in grammars. For WASM languag
 
 Yes! Pre-download WASM grammars:
 ```bash
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/grammars-wasm.zip
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/grammars-wasm.zip
 unzip grammars-wasm.zip -d ~/.uast/grammars/
 export UAST_OFFLINE=1
 ```
@@ -259,7 +259,7 @@ See [Adding Languages](contributing/adding-languages.md).
 
 ### How do I report bugs?
 
-Open an issue at [github.com/MarkusMcNugen/UAST-Grep/issues](https://github.com/MarkusMcNugen/UAST-Grep/issues) with:
+Open an issue at [github.com/Variably-Constant/UAST-Grep/issues](https://github.com/Variably-Constant/UAST-Grep/issues) with:
 - UAST-Grep version
 - Command that failed
 - Expected vs actual behavior

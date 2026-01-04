@@ -137,7 +137,7 @@ Write-Host "Creating GitHub release..." -ForegroundColor Yellow
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "Release created successfully!" -ForegroundColor Green
-    Write-Host "View at: https://github.com/MarkusMcNugen/UAST-Grep/releases/tag/$versionTag" -ForegroundColor Cyan
+    Write-Host "View at: https://github.com/Variably-Constant/UAST-Grep/releases/tag/$versionTag" -ForegroundColor Cyan
 } else {
     Write-Host ""
     Write-Host "Failed to create release!" -ForegroundColor Red

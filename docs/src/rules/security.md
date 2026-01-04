@@ -631,7 +631,7 @@ jobs:
 
       - name: Download UAST-Grep
         run: |
-          curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+          curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
           tar -xzf uast-grep-linux-x64.tar.gz
 
       - name: Security Scan
@@ -649,7 +649,7 @@ jobs:
 security-scan:
   stage: test
   script:
-    - curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+    - curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
     - tar -xzf uast-grep-linux-x64.tar.gz
     - ./uast-grep scan -r rules/security/ -f sarif ./src > gl-sast-report.json
   artifacts:

@@ -5,7 +5,6 @@ namespace UAST.Native;
 
 /// <summary>
 /// P/Invoke declarations for the Rust uast_core library.
-/// This replaces the previous TreeSitterNative.cs with a cleaner API.
 /// </summary>
 public static partial class UastNative
 {

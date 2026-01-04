@@ -14,8 +14,8 @@
     <Authors>UAST-Grep Contributors</Authors>
     <Description>Cross-language AST search and analysis library. Provides unified pattern matching across 70+ programming languages using a Rust-backed tree-sitter engine.</Description>
     <PackageTags>ast;parsing;tree-sitter;code-analysis;pattern-matching;linting</PackageTags>
-    <PackageProjectUrl>https://github.com/your-org/UAST-Grep</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/your-org/UAST-Grep</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Variably-Constant/UAST-Grep</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Variably-Constant/UAST-Grep</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 

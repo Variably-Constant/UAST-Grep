@@ -4,13 +4,13 @@ UAST-Grep can be installed multiple ways depending on your needs.
 
 ## Pre-built Binaries (Recommended)
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/MarkusMcNugen/UAST-Grep/releases):
+Download the latest release for your platform from [GitHub Releases](https://github.com/Variably-Constant/UAST-Grep/releases):
 
 ### Windows
 
 ```powershell
 # PowerShell
-Invoke-WebRequest -Uri "https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-windows-x64.zip" -OutFile "uast-grep.zip"
+Invoke-WebRequest -Uri "https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-windows-x64.zip" -OutFile "uast-grep.zip"
 Expand-Archive -Path "uast-grep.zip" -DestinationPath "."
 .\uast-grep.exe --version
 ```
@@ -18,7 +18,7 @@ Expand-Archive -Path "uast-grep.zip" -DestinationPath "."
 Or with curl:
 
 ```bash
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-windows-x64.zip
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-windows-x64.zip
 unzip uast-grep-windows-x64.zip
 ./uast-grep.exe --version
 ```
@@ -27,13 +27,13 @@ unzip uast-grep-windows-x64.zip
 
 ```bash
 # x64
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
 tar xzf uast-grep-linux-x64.tar.gz
 chmod +x uast-grep
 ./uast-grep --version
 
 # ARM64
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-arm64.tar.gz
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-arm64.tar.gz
 tar xzf uast-grep-linux-arm64.tar.gz
 chmod +x uast-grep
 ./uast-grep --version
@@ -43,13 +43,13 @@ chmod +x uast-grep
 
 ```bash
 # Apple Silicon (M1/M2/M3)
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-macos-arm64.tar.gz
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-macos-arm64.tar.gz
 tar xzf uast-grep-macos-arm64.tar.gz
 chmod +x uast-grep
 ./uast-grep --version
 
 # Intel
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-macos-x64.tar.gz
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-macos-x64.tar.gz
 tar xzf uast-grep-macos-x64.tar.gz
 chmod +x uast-grep
 ./uast-grep --version
@@ -64,7 +64,7 @@ Building from source requires the Rust toolchain:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone https://github.com/MarkusMcNugen/UAST-Grep.git
+git clone https://github.com/Variably-Constant/UAST-Grep.git
 cd UAST-Grep/native/uast_core
 cargo build --release
 
@@ -85,7 +85,7 @@ pip install uast-grep
 ### From Source
 
 ```bash
-git clone https://github.com/MarkusMcNugen/UAST-Grep.git
+git clone https://github.com/Variably-Constant/UAST-Grep.git
 cd UAST-Grep/python
 
 # Install maturin (build tool for PyO3)
@@ -115,7 +115,7 @@ dotnet add package UAST.Native
 ### From Source
 
 ```bash
-git clone https://github.com/MarkusMcNugen/UAST-Grep.git
+git clone https://github.com/Variably-Constant/UAST-Grep.git
 cd UAST-Grep
 
 # Build the native library first (requires Rust)
@@ -149,7 +149,7 @@ For languages not built into the binary (like Kotlin, Scala, or Swift), UAST-Gre
 For air-gapped environments, download the WASM grammar bundle:
 
 ```bash
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/grammars-wasm.zip
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/grammars-wasm.zip
 unzip grammars-wasm.zip -d ~/.uast/grammars/
 ```
 

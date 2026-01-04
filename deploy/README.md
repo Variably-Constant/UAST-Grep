@@ -283,7 +283,7 @@ The script updates version in ALL of these files:
 
 ```bash
 # Download and test binary
-curl -LO https://github.com/MarkusMcNugen/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
+curl -LO https://github.com/Variably-Constant/UAST-Grep/releases/latest/download/uast-grep-linux-x64.tar.gz
 tar xzf uast-grep-linux-x64.tar.gz
 ./uast-grep --version
 ./uast-grep languages | head -5
@@ -449,8 +449,8 @@ cross build --target x86_64-unknown-linux-gnu
 ## Contacts
 
 - **Maintainer**: Mark Newton
-- **Repository**: https://github.com/MarkusMcNugen/UAST-Grep
-- **Issues**: https://github.com/MarkusMcNugen/UAST-Grep/issues
+- **Repository**: https://github.com/Variably-Constant/UAST-Grep
+- **Issues**: https://github.com/Variably-Constant/UAST-Grep/issues
 
 ---
 
