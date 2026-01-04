@@ -6,13 +6,13 @@
 [![Rules](https://img.shields.io/badge/Rules-3%2C873-blue)](https://variably-constant.github.io/UAST-Grep/rules/rules-catalog.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **A high-performance cross-language AST search and SAST tool powered by tree-sitter**
+> **A cross-language AST search and SAST tool powered by tree-sitter**
 >
 > *Created by Mark Newton*
 
 ## Overview
 
-UAST-Grep provides **blazing fast** AST-based code search and security scanning across **71 programming languages**. The pure Rust core delivers sub-millisecond startup with bindings for CLI, Python, and .NET.
+UAST-Grep provides AST-based code search and security scanning across **71 programming languages**. The pure Rust core includes bindings for CLI, Python, and .NET.
 
 ### Key Features
 
@@ -32,15 +32,6 @@ UAST-Grep provides **blazing fast** AST-based code search and security scanning 
 | **Security** | 1,587 | 179 CWEs, OWASP Top 10, 31 languages |
 | **Performance** | 1,334 | O(n^2) detection, memory anti-patterns |
 | **Quality** | 952 | Code smells, complexity, naming |
-
-### Performance
-
-| Operation | Time | vs Traditional Tools |
-|-----------|------|---------------------|
-| Startup | 6ms | **90x faster** |
-| Parse file | 16ms | **61x faster** |
-| Pattern search | 34ms | **31x faster** |
-| Binary size | 29MB | No dependencies |
 
 ---
 
@@ -383,6 +374,15 @@ cargo test                              # Rust
 cd python && pytest                     # Python
 dotnet test tests/UAST.Core.Tests       # .NET
 ```
+
+---
+
+## Inspiration
+
+UAST-Grep draws inspiration from several sources:
+
+- **[ast-grep](https://github.com/ast-grep/ast-grep)** - The excellent tree-sitter-based code search tool by Herrington Darkholme. UAST-Grep builds on similar concepts with a focus on cross-language patterns via the Universal AST schema and embedded SAST rules.
+- **PowerShellEX** - A private PowerShell enhancement project where the need for cross-language semantic analysis and security scanning originated.
 
 ---
 
