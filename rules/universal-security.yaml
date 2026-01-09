@@ -32114,3 +32114,4440 @@ note: "Media queries with external URLs can fingerprint user devices.
   Consider privacy implications when using external resources in media queries.
 
   "
+
+# ==============================================================================
+# Swift Mobile Security Rules (Extended)
+# ==============================================================================
+# Added: 2026-01-09
+# Total New Rules: 47
+# Coverage: CWE-295, CWE-312, CWE-922, CWE-200, CWE-319, CWE-327, CWE-94, CWE-250
+# ==============================================================================
+
+---
+# ------------------------------------------------------------------------------
+# CWE-295: Certificate Validation Issues
+# ------------------------------------------------------------------------------
+id: swift-cwe-295-urlsession-delegate-no-pinning
+language: swift
+severity: warning
+message: "CWE-295: URLSessionDelegate without certificate pinning implementation"
+tags:
+- security
+- mobile
+- network
+- CWE-295
+- OWASP-M3
+rule:
+  kind: class_declaration
+  has:
+    pattern: URLSessionDelegate
+  notHas:
+    any:
+    - pattern: SecTrustEvaluateWithError
+    - pattern: SecTrustCopyCertificateChain
+    - pattern: SecCertificateCopyData
+note: "URLSessionDelegate should implement certificate pinning.
+
+  Add didReceiveChallenge with SecTrust verification to pin certificates.
+
+  "
+---
+id: swift-cwe-295-server-trust-allow-invalid
+language: swift
+severity: error
+message: "CWE-295: Server trust policy allows invalid certificates"
+tags:
+- security
+- mobile
+- network
+- CWE-295
+- OWASP-M3
+rule:
+  any:
+  - pattern: .disableEvaluation
+  - pattern: ServerTrustPolicy.disableEvaluation
+  - pattern: "allowInvalidCertificates: true"
+  - pattern: "validatesDomainName: false"
+  - pattern: .performDefaultHandling
+  - pattern: .useCredential
+note: "Disabling certificate validation exposes app to MITM attacks.
+
+  Use proper certificate pinning with SecTrust APIs.
+
+  "
+---
+id: swift-cwe-295-ats-disabled-plist
+language: swift
+severity: error
+message: "CWE-295: App Transport Security (ATS) disabled in Info.plist pattern"
+tags:
+- security
+- mobile
+- network
+- CWE-295
+- OWASP-M3
+rule:
+  any:
+  - pattern: NSAllowsArbitraryLoads
+  - pattern: NSExceptionAllowsInsecureHTTPLoads
+  - pattern: NSThirdPartyExceptionAllowsInsecureHTTPLoads
+note: "Disabling ATS allows cleartext HTTP and weak TLS configurations.
+
+  Enable ATS and configure exceptions only for specific required domains.
+
+  "
+---
+id: swift-cwe-295-challenge-handler-accept-all
+language: swift
+severity: error
+message: "CWE-295: Authentication challenge handler accepts all certificates"
+tags:
+- security
+- mobile
+- network
+- CWE-295
+- OWASP-M3
+rule:
+  kind: function_declaration
+  has:
+    pattern: didReceive challenge
+  has:
+    any:
+    - pattern: .useCredential
+    - pattern: URLCredential(trust
+note: "Challenge handler should verify certificates, not blindly accept.
+
+  Implement certificate pinning using SecTrust APIs.
+
+  "
+---
+id: swift-cwe-295-alamofire-trust-manager
+language: swift
+severity: error
+message: "CWE-295: Alamofire ServerTrustManager with disabled evaluation"
+tags:
+- security
+- mobile
+- network
+- CWE-295
+- OWASP-M3
+rule:
+  any:
+  - pattern: DisabledTrustEvaluator
+  - pattern: DefaultTrustEvaluator
+  - pattern: "evaluators: [:]"
+note: "Alamofire ServerTrustManager should use PinnedCertificatesTrustEvaluator.
+
+  Configure proper certificate pinning with public key or certificate pinning.
+
+  "
+
+---
+# ------------------------------------------------------------------------------
+# CWE-312/CWE-922: Insecure Data Storage
+# ------------------------------------------------------------------------------
+id: swift-cwe-922-userdefaults-sensitive
+language: swift
+severity: error
+message: "CWE-922: Sensitive data stored in UserDefaults"
+tags:
+- security
+- mobile
+- storage
+- CWE-922
+- CWE-312
+- OWASP-M2
+rule:
+  kind: call_expression
+  any:
+  - pattern: UserDefaults.standard.set($VALUE, forKey: $KEY)
+  - pattern: UserDefaults.standard.setValue($VALUE, forKey: $KEY)
+  - pattern: defaults.set($VALUE, forKey: $KEY)
+  has:
+    regex: "(?i)(password|token|secret|key|credential|auth|session|api[_-]?key|bearer|jwt|private)"
+note: "UserDefaults is not encrypted and can be extracted from device.
+
+  Use Keychain with kSecAttrAccessible for sensitive data.
+
+  "
+---
+id: swift-cwe-312-keychain-no-accessibility
+language: swift
+severity: warning
+message: "CWE-312: Keychain item without kSecAttrAccessible protection"
+tags:
+- security
+- mobile
+- storage
+- CWE-312
+- OWASP-M2
+rule:
+  kind: dictionary_literal
+  has:
+    pattern: kSecClass
+  notHas:
+    pattern: kSecAttrAccessible
+note: "Keychain items should specify accessibility to prevent backup extraction.
+
+  Add kSecAttrAccessibleWhenUnlockedThisDeviceOnly for sensitive data.
+
+  "
+---
+id: swift-cwe-312-keychain-weak-accessibility
+language: swift
+severity: warning
+message: "CWE-312: Keychain with weak accessibility (allows backup extraction)"
+tags:
+- security
+- mobile
+- storage
+- CWE-312
+- OWASP-M2
+rule:
+  any:
+  - pattern: kSecAttrAccessibleAlways
+  - pattern: kSecAttrAccessibleAfterFirstUnlock
+  - pattern: kSecAttrAccessibleAlwaysThisDeviceOnly
+note: "These accessibility levels allow data extraction from backups.
+
+  Use kSecAttrAccessibleWhenUnlockedThisDeviceOnly for sensitive data.
+
+  "
+---
+id: swift-cwe-312-filemanager-documents-unprotected
+language: swift
+severity: warning
+message: "CWE-312: File written to Documents without data protection"
+tags:
+- security
+- mobile
+- storage
+- CWE-312
+- OWASP-M2
+rule:
+  kind: call_expression
+  any:
+  - pattern: $DATA.write(to: $PATH)
+  - pattern: FileManager.default.createFile($$$)
+  - pattern: write(toFile: $PATH)
+  notHas:
+    any:
+    - pattern: .completeFileProtection
+    - pattern: .completeFileProtectionUnlessOpen
+    - pattern: FileProtectionType
+note: "Files in Documents directory persist across backups.
+
+  Add FileProtection attribute or use Data Protection API.
+
+  "
+---
+id: swift-cwe-312-coredata-unencrypted
+language: swift
+severity: warning
+message: "CWE-312: Core Data store without encryption"
+tags:
+- security
+- mobile
+- storage
+- CWE-312
+- OWASP-M2
+rule:
+  kind: call_expression
+  any:
+  - pattern: NSPersistentStoreDescription
+  - pattern: addPersistentStore($$$)
+  notHas:
+    pattern: NSPersistentStoreFileProtectionKey
+note: "Core Data SQLite store is not encrypted by default.
+
+  Add NSPersistentStoreFileProtectionKey or use encrypted Core Data wrapper.
+
+  "
+---
+id: swift-cwe-312-realm-unencrypted
+language: swift
+severity: warning
+message: "CWE-312: Realm database without encryption key"
+tags:
+- security
+- mobile
+- storage
+- CWE-312
+- OWASP-M2
+rule:
+  kind: call_expression
+  any:
+  - pattern: Realm()
+  - pattern: Realm.Configuration()
+  - pattern: "try! Realm()"
+  notHas:
+    pattern: encryptionKey
+note: "Realm databases are unencrypted by default.
+
+  Use Realm.Configuration with encryptionKey from Keychain.
+
+  "
+---
+id: swift-cwe-922-plist-sensitive-data
+language: swift
+severity: error
+message: "CWE-922: Sensitive data stored in plist file"
+tags:
+- security
+- mobile
+- storage
+- CWE-922
+- OWASP-M2
+rule:
+  kind: call_expression
+  any:
+  - pattern: PropertyListSerialization.data($$$)
+  - pattern: write(to: $PATH)
+  has:
+    regex: "\\.plist"
+note: "Plist files are easily readable and not encrypted.
+
+  Store sensitive data in Keychain instead.
+
+  "
+---
+id: swift-cwe-312-sqlite-unencrypted
+language: swift
+severity: warning
+message: "CWE-312: SQLite database without encryption"
+tags:
+- security
+- mobile
+- storage
+- CWE-312
+- OWASP-M2
+rule:
+  any:
+  - pattern: sqlite3_open
+  - pattern: SQLiteDatabase($$$)
+  - pattern: FMDB($$$)
+  notHas:
+    any:
+    - pattern: sqlcipher
+    - pattern: SQLCipher
+    - pattern: encryptionKey
+note: "SQLite databases are unencrypted by default.
+
+  Use SQLCipher for encrypted SQLite storage.
+
+  "
+---
+id: swift-cwe-312-nscoding-archive
+language: swift
+severity: warning
+message: "CWE-312: NSCoding archive without encryption"
+tags:
+- security
+- mobile
+- storage
+- CWE-312
+- OWASP-M2
+rule:
+  any:
+  - pattern: NSKeyedArchiver.archivedData($$$)
+  - pattern: NSKeyedArchiver.archiveRootObject($$$)
+note: "NSCoding archives are not encrypted.
+
+  Encrypt data before archiving or use Keychain for sensitive data.
+
+  "
+---
+id: swift-cwe-922-shared-container
+language: swift
+severity: warning
+message: "CWE-922: Sensitive data in shared container accessible by extensions"
+tags:
+- security
+- mobile
+- storage
+- CWE-922
+- OWASP-M2
+rule:
+  kind: call_expression
+  pattern: FileManager.default.containerURL(forSecurityApplicationGroupIdentifier:$GROUP)
+  has:
+    regex: "(?i)(password|token|secret|key|credential)"
+note: "Shared containers are accessible by all apps in the group.
+
+  Consider encryption for sensitive data in shared containers.
+
+  "
+
+---
+# ------------------------------------------------------------------------------
+# CWE-200: Information Disclosure
+# ------------------------------------------------------------------------------
+id: swift-cwe-200-print-sensitive
+language: swift
+severity: warning
+message: "CWE-200: Sensitive data logged via print()"
+tags:
+- security
+- mobile
+- logging
+- CWE-200
+- OWASP-M4
+rule:
+  kind: call_expression
+  has:
+    pattern: print
+  has:
+    regex: "(?i)(password|token|secret|key|credential|auth|session|api[_-]?key|bearer|jwt|private|ssn|credit)"
+note: "print() output may be captured in device logs.
+
+  Remove sensitive data logging or use OSLog with privacy modifiers.
+
+  "
+---
+id: swift-cwe-200-nslog-sensitive
+language: swift
+severity: warning
+message: "CWE-200: Sensitive data logged via NSLog"
+tags:
+- security
+- mobile
+- logging
+- CWE-200
+- OWASP-M4
+rule:
+  kind: call_expression
+  has:
+    pattern: NSLog
+  has:
+    regex: "(?i)(password|token|secret|key|credential|auth|session|api[_-]?key|bearer|jwt|private)"
+note: "NSLog output persists in system logs accessible via Console.
+
+  Use OSLog with .private for sensitive data.
+
+  "
+---
+id: swift-cwe-200-oslog-no-privacy
+language: swift
+severity: warning
+message: "CWE-200: os_log without privacy modifier for sensitive data"
+tags:
+- security
+- mobile
+- logging
+- CWE-200
+- OWASP-M4
+rule:
+  kind: call_expression
+  has:
+    any:
+    - pattern: os_log
+    - pattern: Logger
+  has:
+    regex: "(?i)(password|token|secret|key|credential)"
+  notHas:
+    any:
+    - pattern: .private
+    - pattern: "privacy: .private"
+note: "Sensitive data should use privacy: .private or .sensitive modifier.
+
+  Use: logger.info(\"Token: \\(token, privacy: .private)\")
+
+  "
+---
+id: swift-cwe-200-debug-verbose-logging
+language: swift
+severity: info
+message: "CWE-200: Verbose debug logging may leak information"
+tags:
+- security
+- mobile
+- logging
+- CWE-200
+- OWASP-M4
+rule:
+  any:
+  - pattern: "debugPrint($$$)"
+  - pattern: "dump($$$)"
+  - pattern: "print(\"\\($$$)\")"
+note: "Debug logging should be disabled or conditional in release builds.
+
+  Use #if DEBUG for development-only logging.
+
+  "
+---
+id: swift-cwe-200-crashlytics-custom-key
+language: swift
+severity: warning
+message: "CWE-200: Potential sensitive data in crash reporting"
+tags:
+- security
+- mobile
+- logging
+- CWE-200
+- OWASP-M4
+rule:
+  any:
+  - pattern: Crashlytics.crashlytics().setCustomKey($$$)
+  - pattern: Crashlytics.crashlytics().log($$$)
+  has:
+    regex: "(?i)(password|token|secret|key|credential|email|phone|ssn)"
+note: "Crash reports may expose sensitive user data.
+
+  Avoid logging PII or sensitive data to crash reporting services.
+
+  "
+
+---
+# ------------------------------------------------------------------------------
+# CWE-319: Cleartext Transmission
+# ------------------------------------------------------------------------------
+id: swift-cwe-319-http-url-urlsession
+language: swift
+severity: error
+message: "CWE-319: Cleartext HTTP URL in URLSession request"
+tags:
+- security
+- mobile
+- network
+- CWE-319
+- OWASP-M3
+rule:
+  kind: call_expression
+  any:
+  - pattern: URL(string: $URL)
+  - pattern: URLRequest(url: $URL)
+  - pattern: URLSession.$METHOD(with: $URL)
+  has:
+    regex: "\"http://"
+note: "HTTP transmits data in cleartext, vulnerable to interception.
+
+  Use HTTPS for all network communications.
+
+  "
+---
+id: swift-cwe-319-websocket-insecure
+language: swift
+severity: error
+message: "CWE-319: Insecure WebSocket connection (ws://)"
+tags:
+- security
+- mobile
+- network
+- CWE-319
+- OWASP-M3
+rule:
+  any:
+  - pattern: "URLSession.shared.webSocketTask(with: URL(string: \"ws://"
+  - pattern: "WebSocket(\"ws://"
+  - pattern: "NWConnection($$$\"ws://"
+note: "WebSocket connections should use wss:// for encryption.
+
+  Replace ws:// with wss:// for secure WebSocket.
+
+  "
+---
+id: swift-cwe-319-ats-exception-domains
+language: swift
+severity: warning
+message: "CWE-319: ATS exception domain allows cleartext HTTP"
+tags:
+- security
+- mobile
+- network
+- CWE-319
+- CWE-295
+- OWASP-M3
+rule:
+  any:
+  - pattern: NSExceptionDomains
+  - pattern: NSExceptionAllowsInsecureHTTPLoads
+note: "ATS exceptions weaken transport security.
+
+  Justify each exception and minimize scope. Prefer HTTPS upgrades.
+
+  "
+---
+id: swift-cwe-319-alamofire-http
+language: swift
+severity: error
+message: "CWE-319: Alamofire request to HTTP URL"
+tags:
+- security
+- mobile
+- network
+- CWE-319
+- OWASP-M3
+rule:
+  kind: call_expression
+  any:
+  - pattern: AF.request($URL)
+  - pattern: AF.download($URL)
+  - pattern: AF.upload($$$, to: $URL)
+  has:
+    regex: "\"http://"
+note: "Alamofire request using cleartext HTTP.
+
+  Use HTTPS URLs for all Alamofire requests.
+
+  "
+---
+id: swift-cwe-319-grpc-plaintext
+language: swift
+severity: error
+message: "CWE-319: gRPC channel without TLS"
+tags:
+- security
+- mobile
+- network
+- CWE-319
+- OWASP-M3
+rule:
+  any:
+  - pattern: "GRPCChannel($$$, useTLS: false)"
+  - pattern: ClientConnection.insecure
+  - pattern: ".insecure(group:"
+note: "gRPC channels should use TLS encryption.
+
+  Use ClientConnection.usingTLSBackedByNIOSSL or secure channel.
+
+  "
+
+---
+# ------------------------------------------------------------------------------
+# CWE-327: Weak Cryptography
+# ------------------------------------------------------------------------------
+id: swift-cwe-327-cc-md5
+language: swift
+severity: error
+message: "CWE-327: MD5 is cryptographically broken"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- OWASP-M5
+rule:
+  any:
+  - pattern: CC_MD5
+  - pattern: CC_MD5_Init
+  - pattern: CC_MD5_Update
+  - pattern: CC_MD5_Final
+  - pattern: Insecure.MD5
+note: "MD5 is vulnerable to collision attacks.
+
+  Use SHA-256 or SHA-3 for integrity, or Argon2/bcrypt for passwords.
+
+  "
+---
+id: swift-cwe-327-cc-sha1
+language: swift
+severity: warning
+message: "CWE-327: SHA-1 is deprecated for security purposes"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- OWASP-M5
+rule:
+  any:
+  - pattern: CC_SHA1
+  - pattern: CC_SHA1_Init
+  - pattern: CC_SHA1_Update
+  - pattern: CC_SHA1_Final
+  - pattern: Insecure.SHA1
+note: "SHA-1 has known collision vulnerabilities.
+
+  Use SHA-256 via CryptoKit or CommonCrypto.
+
+  "
+---
+id: swift-cwe-327-arc4random-security
+language: swift
+severity: warning
+message: "CWE-327: arc4random may not be suitable for cryptographic keys"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- CWE-338
+- OWASP-M5
+rule:
+  any:
+  - pattern: arc4random()
+  - pattern: arc4random_uniform
+  - pattern: random()
+  - pattern: "Int.random(in:"
+note: "Standard random functions may have insufficient entropy.
+
+  Use SecRandomCopyBytes for cryptographic key generation.
+
+  "
+---
+id: swift-cwe-327-cryptokit-weak-algorithm
+language: swift
+severity: error
+message: "CWE-327: Weak cryptographic algorithm in CryptoKit"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- OWASP-M5
+rule:
+  any:
+  - pattern: "SymmetricKey(size: .bits128)"
+  - pattern: ChaChaPoly
+  - pattern: Curve25519
+  notHas:
+    pattern: AES.GCM
+note: "Consider using AES-256-GCM for symmetric encryption.
+
+  128-bit keys are minimum; prefer 256-bit for long-term security.
+
+  "
+---
+id: swift-cwe-321-hardcoded-key
+language: swift
+severity: error
+message: "CWE-321: Hardcoded cryptographic key or secret"
+tags:
+- security
+- mobile
+- crypto
+- CWE-321
+- CWE-798
+- OWASP-M5
+rule:
+  kind: variable_declaration
+  any:
+  - pattern: "let $KEY = \"$VALUE\""
+  - pattern: "let $KEY: String = \"$VALUE\""
+  - pattern: "let $KEY = Data($$$)"
+  has:
+    regex: "(?i)(key|secret|password|token|apikey|api_key|encryption|aes|iv|salt)"
+note: "Hardcoded keys can be extracted from app binaries.
+
+  Store keys in Keychain or use secure key derivation.
+
+  "
+---
+id: swift-cwe-329-hardcoded-iv
+language: swift
+severity: error
+message: "CWE-329: Hardcoded or static initialization vector (IV)"
+tags:
+- security
+- mobile
+- crypto
+- CWE-329
+- OWASP-M5
+rule:
+  any:
+  - pattern: "iv: $STATIC"
+  - pattern: "nonce: $STATIC"
+  - pattern: "let iv = \"$VALUE\""
+  - pattern: "let nonce = \"$VALUE\""
+  has:
+    regex: "(?i)(iv|nonce|initialization)"
+note: "IVs and nonces must be random and unique per encryption.
+
+  Generate using SecRandomCopyBytes or CryptoKit nonce generator.
+
+  "
+---
+id: swift-cwe-327-ecb-mode
+language: swift
+severity: error
+message: "CWE-327: ECB mode encryption exposes patterns"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- OWASP-M5
+rule:
+  any:
+  - pattern: kCCOptionECBMode
+  - pattern: .ecbMode
+  - pattern: "options: kCCOptionECBMode"
+note: "ECB mode reveals patterns in encrypted data.
+
+  Use CBC with random IV, or preferably GCM mode.
+
+  "
+---
+id: swift-cwe-327-cbc-without-hmac
+language: swift
+severity: warning
+message: "CWE-327: CBC mode without authentication (HMAC)"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- OWASP-M5
+rule:
+  kind: call_expression
+  any:
+  - pattern: CCCrypt($$$)
+  - pattern: CCCryptorCreate($$$)
+  has:
+    pattern: kCCModeCBC
+  notHas:
+    any:
+    - pattern: HMAC
+    - pattern: CCHmac
+note: "CBC without authentication is vulnerable to padding oracle attacks.
+
+  Use authenticated encryption (AES-GCM) or add HMAC verification.
+
+  "
+---
+id: swift-cwe-327-des-3des
+language: swift
+severity: error
+message: "CWE-327: DES/3DES are deprecated encryption algorithms"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- OWASP-M5
+rule:
+  any:
+  - pattern: kCCAlgorithmDES
+  - pattern: kCCAlgorithm3DES
+  - pattern: CCAlgorithm.des
+  - pattern: CCAlgorithm.tripleDES
+note: "DES and 3DES are deprecated due to small block/key sizes.
+
+  Use AES-256 with GCM mode instead.
+
+  "
+---
+id: swift-cwe-327-rsa-no-padding
+language: swift
+severity: error
+message: "CWE-327: RSA without proper padding scheme"
+tags:
+- security
+- mobile
+- crypto
+- CWE-327
+- OWASP-M5
+rule:
+  any:
+  - pattern: SecKeyEncrypt($$$, .PKCS1, $$$)
+  - pattern: kSecPaddingNone
+  - pattern: .raw
+note: "RSA with PKCS1v1.5 or no padding is vulnerable.
+
+  Use OAEP padding: SecKeyEncrypt with .RSAOAEP.
+
+  "
+---
+id: swift-cwe-328-weak-pbkdf
+language: swift
+severity: warning
+message: "CWE-328: Weak key derivation function or low iteration count"
+tags:
+- security
+- mobile
+- crypto
+- CWE-328
+- OWASP-M5
+rule:
+  any:
+  - pattern: CCKeyDerivationPBKDF($$$)
+  has:
+    regex: "(rounds|iterations).*[1-9][0-9]{0,3}[^0-9]"
+note: "PBKDF2 requires high iteration count (minimum 100,000 in 2024).
+
+  Use Argon2id if available, or increase PBKDF2 iterations.
+
+  "
+
+---
+# ------------------------------------------------------------------------------
+# CWE-94: Code Injection
+# ------------------------------------------------------------------------------
+id: swift-cwe-94-evaluate-javascript
+language: swift
+severity: error
+message: "CWE-94: JavaScript evaluation with potential user input"
+tags:
+- security
+- mobile
+- injection
+- CWE-94
+- OWASP-M7
+rule:
+  kind: call_expression
+  any:
+  - pattern: webView.evaluateJavaScript($JS)
+  - pattern: "evaluateJavaScript($JS, completionHandler:"
+  - pattern: WKWebView.evaluateJavaScript($$$)
+note: "Evaluating JavaScript with untrusted data enables code injection.
+
+  Validate and sanitize all JavaScript before evaluation.
+
+  "
+---
+id: swift-cwe-94-wkwebview-arbitrary-url
+language: swift
+severity: warning
+message: "CWE-94: WKWebView loading arbitrary URL"
+tags:
+- security
+- mobile
+- injection
+- CWE-94
+- OWASP-M7
+rule:
+  kind: call_expression
+  any:
+  - pattern: webView.load(URLRequest(url: $URL))
+  - pattern: WKWebView.load($$$)
+  - pattern: "webView.loadHTMLString($HTML, baseURL:"
+note: "Loading arbitrary URLs or HTML can execute malicious content.
+
+  Whitelist allowed domains and validate URLs before loading.
+
+  "
+---
+id: swift-cwe-94-perform-selector
+language: swift
+severity: error
+message: "CWE-94: Dynamic selector execution with untrusted input"
+tags:
+- security
+- mobile
+- injection
+- CWE-94
+- OWASP-M7
+rule:
+  any:
+  - pattern: performSelector($SELECTOR)
+  - pattern: perform($SELECTOR)
+  - pattern: NSSelectorFromString($STRING)
+  - pattern: Selector($STRING)
+note: "Dynamic selector creation enables method injection.
+
+  Use static selectors or validate selector strings strictly.
+
+  "
+---
+id: swift-cwe-943-nspredicate-injection
+language: swift
+severity: error
+message: "CWE-943: NSPredicate format string injection"
+tags:
+- security
+- mobile
+- injection
+- CWE-943
+- OWASP-M7
+rule:
+  kind: call_expression
+  any:
+  - pattern: NSPredicate(format: $FORMAT)
+  - pattern: "NSPredicate(format: $FORMAT, $$$)"
+  has:
+    any:
+    - pattern: "\\($"
+    - pattern: "%@"
+note: "NSPredicate with string interpolation enables predicate injection.
+
+  Use NSPredicate(format:argumentArray:) with safe substitution.
+
+  "
+---
+id: swift-cwe-94-javascriptcore-evaluation
+language: swift
+severity: error
+message: "CWE-94: JavaScriptCore evaluation with untrusted input"
+tags:
+- security
+- mobile
+- injection
+- CWE-94
+- OWASP-M7
+rule:
+  any:
+  - pattern: JSContext().evaluateScript($SCRIPT)
+  - pattern: context.evaluateScript($SCRIPT)
+  - pattern: JSValue.call($$$)
+note: "JSContext.evaluateScript can execute arbitrary code.
+
+  Validate and sandbox JavaScript code before evaluation.
+
+  "
+
+---
+# ------------------------------------------------------------------------------
+# CWE-250: Privilege Issues / Platform Security
+# ------------------------------------------------------------------------------
+id: swift-cwe-250-jailbreak-detection-weak
+language: swift
+severity: info
+message: "CWE-250: Weak jailbreak detection (easily bypassed)"
+tags:
+- security
+- mobile
+- platform
+- CWE-250
+- OWASP-M8
+rule:
+  any:
+  - pattern: FileManager.default.fileExists(atPath: "/Applications/Cydia.app")
+  - pattern: "UIApplication.shared.canOpenURL(URL(string: \"cydia://"
+  - pattern: FileManager.default.fileExists(atPath: "/bin/bash")
+  - pattern: FileManager.default.fileExists(atPath: "/usr/sbin/sshd")
+note: "Simple file existence checks are easily bypassed.
+
+  Use multiple detection methods and obfuscate detection logic.
+
+  "
+---
+id: swift-cwe-250-background-mode-abuse
+language: swift
+severity: warning
+message: "CWE-250: Background mode may allow unauthorized activity"
+tags:
+- security
+- mobile
+- platform
+- CWE-250
+- OWASP-M1
+rule:
+  any:
+  - pattern: UIBackgroundModes
+  - pattern: beginBackgroundTask
+  - pattern: BGTaskScheduler
+note: "Background modes require justification for App Store.
+
+  Ensure background activity is necessary and properly scoped.
+
+  "
+---
+id: swift-cwe-200-clipboard-sensitive
+language: swift
+severity: warning
+message: "CWE-200: Sensitive data copied to clipboard"
+tags:
+- security
+- mobile
+- platform
+- CWE-200
+- OWASP-M4
+rule:
+  kind: call_expression
+  any:
+  - pattern: UIPasteboard.general.string = $VALUE
+  - pattern: UIPasteboard.general.setValue($$$)
+  - pattern: UIPasteboard.general.setData($$$)
+  has:
+    regex: "(?i)(password|token|secret|key|credential)"
+note: "Clipboard data is accessible to other apps.
+
+  Clear clipboard after use or avoid copying sensitive data.
+
+  "
+---
+id: swift-cwe-250-entitlement-excessive
+language: swift
+severity: info
+message: "CWE-250: Potentially excessive entitlement request"
+tags:
+- security
+- mobile
+- platform
+- CWE-250
+- OWASP-M1
+rule:
+  any:
+  - pattern: get-task-allow
+  - pattern: com.apple.developer.kernel.extended-virtual-addressing
+  - pattern: keychain-access-groups
+note: "Review entitlements to ensure they are necessary.
+
+  Remove debug entitlements from release builds.
+
+  "
+---
+id: swift-cwe-250-location-always
+language: swift
+severity: warning
+message: "CWE-250: Always-on location access without justification"
+tags:
+- security
+- mobile
+- privacy
+- CWE-250
+- OWASP-M1
+rule:
+  any:
+  - pattern: requestAlwaysAuthorization
+  - pattern: NSLocationAlwaysUsageDescription
+  - pattern: NSLocationAlwaysAndWhenInUseUsageDescription
+note: "Always-on location drains battery and raises privacy concerns.
+
+  Use whenInUse authorization unless always-on is truly required.
+
+  "
+---
+id: swift-cwe-921-camera-access
+language: swift
+severity: info
+message: "CWE-921: Camera access requested - ensure proper usage"
+tags:
+- security
+- mobile
+- privacy
+- CWE-921
+- OWASP-M1
+rule:
+  any:
+  - pattern: "AVCaptureDevice.requestAccess(for: .video"
+  - pattern: NSCameraUsageDescription
+note: "Camera access requires clear user justification.
+
+  Ensure usage description explains why camera is needed.
+
+  "
+---
+id: swift-cwe-921-contacts-access
+language: swift
+severity: info
+message: "CWE-921: Contacts access requested - ensure proper usage"
+tags:
+- security
+- mobile
+- privacy
+- CWE-921
+- OWASP-M1
+rule:
+  any:
+  - pattern: CNContactStore().requestAccess
+  - pattern: NSContactsUsageDescription
+note: "Contacts access is privacy-sensitive.
+
+  Request minimal contact fields needed for functionality.
+
+  "
+# ==============================================================================
+# HTML Security Rules
+# CWE-based detection patterns for HTML files
+# 50 rules covering XSS, Clickjacking, Encoding, Cookies, Untrusted Sources,
+# and Missing Security Headers
+# ==============================================================================
+
+---
+id: html-cwe-79-onclick-handler
+language: html
+severity: error
+message: 'CWE-79: XSS via onclick event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onclick$"
+note: 'Inline onclick handlers can execute arbitrary JavaScript and are XSS vectors.
+
+  Move event handling to separate JavaScript files with proper CSP.
+
+  '
+---
+id: html-cwe-79-onload-handler
+language: html
+severity: error
+message: 'CWE-79: XSS via onload event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onload$"
+note: 'Inline onload handlers execute JavaScript when elements load.
+
+  Use addEventListener() in external scripts instead.
+
+  '
+---
+id: html-cwe-79-onerror-handler
+language: html
+severity: error
+message: 'CWE-79: XSS via onerror event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onerror$"
+note: 'The onerror handler is frequently used in XSS attacks with img/script tags.
+
+  Handle errors in external scripts with proper error boundaries.
+
+  '
+---
+id: html-cwe-79-onmouseover-handler
+language: html
+severity: error
+message: 'CWE-79: XSS via onmouseover event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onmouseover$"
+note: 'Inline mouse event handlers can execute malicious JavaScript.
+
+  Use CSS :hover and JavaScript event listeners instead.
+
+  '
+---
+id: html-cwe-79-onfocus-handler
+language: html
+severity: error
+message: 'CWE-79: XSS via onfocus event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onfocus$"
+note: 'onfocus handlers execute when elements gain focus, enabling XSS.
+
+  Move focus handling to external JavaScript files.
+
+  '
+---
+id: html-cwe-79-onblur-handler
+language: html
+severity: warning
+message: 'CWE-79: XSS via onblur event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onblur$"
+note: 'onblur handlers can be triggered when users navigate away from elements.
+
+  Use external JavaScript event listeners.
+
+  '
+---
+id: html-cwe-79-onchange-handler
+language: html
+severity: warning
+message: 'CWE-79: XSS via onchange event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onchange$"
+note: 'Inline onchange handlers in form elements can execute arbitrary code.
+
+  Use external JavaScript with proper input validation.
+
+  '
+---
+id: html-cwe-79-oninput-handler
+language: html
+severity: warning
+message: 'CWE-79: XSS via oninput event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^oninput$"
+note: 'oninput handlers fire on every input change and can execute malicious code.
+
+  Bind input handlers via JavaScript event listeners.
+
+  '
+---
+id: html-cwe-79-onsubmit-handler
+language: html
+severity: error
+message: 'CWE-79: XSS via onsubmit event handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onsubmit$"
+note: 'Inline form submission handlers can intercept or modify form data.
+
+  Handle form submissions in external scripts with CSRF protection.
+
+  '
+---
+id: html-cwe-79-onkeydown-handler
+language: html
+severity: warning
+message: 'CWE-79: XSS via onkeydown/onkeyup/onkeypress handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^onkey(down|up|press)$"
+note: 'Keyboard event handlers can capture keystrokes (keylogging).
+
+  Use external scripts with proper event handling.
+
+  '
+---
+id: html-cwe-79-ondrag-handlers
+language: html
+severity: warning
+message: 'CWE-79: XSS via drag event handlers'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  has:
+    kind: attribute_name
+    regex: "^on(drag|dragstart|dragend|dragover|dragenter|dragleave|drop)$"
+note: 'Drag and drop event handlers can execute JavaScript on user interaction.
+
+  Implement drag functionality in external scripts.
+
+  '
+---
+id: html-cwe-79-javascript-href
+language: html
+severity: error
+message: 'CWE-79: XSS via javascript: URL in href'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^href$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)javascript:"
+note: 'javascript: URLs in href attributes execute JavaScript when clicked.
+
+  Use proper link URLs or button elements with event listeners.
+
+  '
+---
+id: html-cwe-79-javascript-src
+language: html
+severity: error
+message: 'CWE-79: XSS via javascript: URL in src'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^src$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)javascript:"
+note: 'javascript: URLs in src attributes can execute arbitrary JavaScript.
+
+  Use proper resource URLs with validated origins.
+
+  '
+---
+id: html-cwe-79-javascript-action
+language: html
+severity: error
+message: 'CWE-79: XSS via javascript: URL in form action'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^action$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)javascript:"
+note: 'javascript: URLs in form action execute code on form submission.
+
+  Use proper server-side endpoints for form handling.
+
+  '
+---
+id: html-cwe-79-data-uri-xss
+language: html
+severity: error
+message: 'CWE-79: XSS via data: URL with HTML/script content'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^(src|href)$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)data:text/(html|javascript)"
+note: 'data: URLs with HTML or JavaScript content can execute malicious code.
+
+  Avoid data: URLs for HTML/JS; use blob: with proper sanitization if needed.
+
+  '
+---
+id: html-cwe-79-svg-script
+language: html
+severity: error
+message: 'CWE-79: XSS via SVG with embedded script'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^svg$"
+  - has:
+      kind: element
+      has:
+        kind: tag_name
+        regex: "^script$"
+note: 'SVG elements can contain script tags that execute JavaScript.
+
+  Sanitize SVG content with DOMPurify before embedding; remove script elements.
+
+  '
+---
+id: html-cwe-79-svg-onload
+language: html
+severity: error
+message: 'CWE-79: XSS via SVG with onload handler'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^svg$"
+  - has:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^onload$"
+note: 'SVG elements with onload handlers execute JavaScript when rendered.
+
+  Remove event handlers from SVG content before embedding.
+
+  '
+---
+id: html-cwe-79-base-tag-injection
+language: html
+severity: error
+message: 'CWE-79: Potential Base Tag Injection'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: element
+  has:
+    kind: tag_name
+    regex: "^base$"
+note: 'The base tag can redirect relative URLs to attacker-controlled domains.
+
+  Ensure base tag is set server-side before any user content is rendered.
+
+  '
+---
+id: html-cwe-1021-iframe-no-sandbox
+language: html
+severity: error
+message: 'CWE-1021: Clickjacking - iframe without sandbox attribute'
+tags:
+- security
+- clickjacking
+- CWE-1021
+- OWASP-A05
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^iframe$"
+  - notHas:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^sandbox$"
+note: 'iframes without sandbox can run scripts and access parent document.
+
+  Add sandbox attribute: sandbox="allow-scripts allow-same-origin" (minimum needed).
+
+  '
+---
+id: html-cwe-1021-iframe-allow-top-navigation
+language: html
+severity: error
+message: 'CWE-1021: Clickjacking - iframe with allow-top-navigation'
+tags:
+- security
+- clickjacking
+- CWE-1021
+- OWASP-A05
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^sandbox$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "allow-top-navigation"
+note: 'allow-top-navigation in sandbox permits the iframe to navigate the parent page.
+
+  Remove allow-top-navigation unless absolutely necessary for functionality.
+
+  '
+---
+id: html-cwe-1021-frameable-page
+language: html
+severity: warning
+message: 'CWE-1021: Clickjacking - page may be frameable'
+tags:
+- security
+- clickjacking
+- CWE-1021
+- OWASP-A05
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^head$"
+  - notHas:
+      kind: element
+      all:
+      - has:
+          kind: tag_name
+          regex: "^meta$"
+      - has:
+          kind: attribute
+          has:
+            kind: quoted_attribute_value
+            regex: "(?i)X-Frame-Options"
+note: 'Pages without X-Frame-Options meta tag can be embedded in iframes.
+
+  Add: <meta http-equiv="X-Frame-Options" content="DENY"> or use CSP frame-ancestors.
+
+  '
+---
+id: html-cwe-1021-frame-element
+language: html
+severity: error
+message: 'CWE-1021: Deprecated frame element usage'
+tags:
+- security
+- clickjacking
+- CWE-1021
+- deprecated
+rule:
+  kind: element
+  has:
+    kind: tag_name
+    regex: "^(frame|frameset)$"
+note: 'frame and frameset elements are deprecated and have security issues.
+
+  Use iframe with sandbox attribute instead.
+
+  '
+---
+id: html-cwe-1021-object-embed-frame
+language: html
+severity: warning
+message: 'CWE-1021: Object/Embed elements can enable framing attacks'
+tags:
+- security
+- clickjacking
+- CWE-1021
+- OWASP-A05
+rule:
+  kind: element
+  has:
+    kind: tag_name
+    regex: "^(object|embed)$"
+note: 'object and embed elements can load external content with security risks.
+
+  Use iframe with sandbox if embedding is required; validate all sources.
+
+  '
+---
+id: html-cwe-116-raw-output-template
+language: html
+severity: error
+message: 'CWE-116: Potential raw HTML output in template syntax'
+tags:
+- security
+- injection
+- CWE-116
+- OWASP-A03
+rule:
+  kind: text
+  any:
+  - regex: "\\{\\{\\{.*\\}\\}\\}"
+  - regex: "\\{%\\s*autoescape\\s+(false|off)"
+  - regex: "\\|\\s*safe\\s*\\}\\}"
+  - regex: "\\|\\s*raw\\s*\\}\\}"
+note: 'Triple braces, |safe, |raw, or disabled autoescape output unescaped HTML.
+
+  Use double braces with auto-escaping; sanitize user content before marking safe.
+
+  '
+---
+id: html-cwe-116-missing-charset
+language: html
+severity: warning
+message: 'CWE-116: Missing charset declaration may enable encoding attacks'
+tags:
+- security
+- encoding
+- CWE-116
+- OWASP-A03
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^head$"
+  - notHas:
+      kind: element
+      all:
+      - has:
+          kind: tag_name
+          regex: "^meta$"
+      - has:
+          kind: attribute
+          has:
+            kind: attribute_name
+            regex: "^charset$"
+note: 'Missing charset allows browsers to guess encoding, enabling UTF-7 XSS.
+
+  Add <meta charset="UTF-8"> as the first element in head.
+
+  '
+---
+id: html-cwe-116-utf7-charset
+language: html
+severity: error
+message: 'CWE-116: UTF-7 charset enables XSS attacks'
+tags:
+- security
+- encoding
+- CWE-116
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^(charset|content)$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)utf-7"
+note: 'UTF-7 encoding bypasses HTML entity encoding and enables XSS.
+
+  Use UTF-8 encoding exclusively.
+
+  '
+---
+id: html-cwe-116-innerHTML-script-pattern
+language: html
+severity: error
+message: 'CWE-116: innerHTML assignment pattern in inline script'
+tags:
+- security
+- xss
+- CWE-116
+- CWE-79
+- OWASP-A03
+rule:
+  kind: script_element
+  has:
+    kind: raw_text
+    regex: "\\.innerHTML\\s*="
+note: 'innerHTML assignments in inline scripts can inject unsanitized HTML.
+
+  Use textContent for text or sanitize with DOMPurify before innerHTML.
+
+  '
+---
+id: html-cwe-116-document-write
+language: html
+severity: error
+message: 'CWE-116: document.write usage in inline script'
+tags:
+- security
+- xss
+- CWE-116
+- CWE-79
+- OWASP-A03
+rule:
+  kind: script_element
+  has:
+    kind: raw_text
+    regex: "document\\.write(ln)?\\s*\\("
+note: 'document.write can inject unsanitized content into the DOM.
+
+  Use DOM manipulation methods with proper sanitization instead.
+
+  '
+---
+id: html-cwe-614-cookie-no-secure
+language: html
+severity: warning
+message: 'CWE-614: Cookie set without Secure flag in meta refresh'
+tags:
+- security
+- session
+- CWE-614
+- OWASP-A07
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^meta$"
+  - has:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^http-equiv$"
+  - has:
+      kind: attribute
+      has:
+        kind: quoted_attribute_value
+        regex: "(?i)set-cookie"
+note: 'Cookies set via meta tag may lack security flags.
+
+  Set cookies server-side with Secure, HttpOnly, and SameSite flags.
+
+  '
+---
+id: html-cwe-614-form-no-autocomplete
+language: html
+severity: info
+message: 'CWE-614: Sensitive form without autocomplete=off'
+tags:
+- security
+- session
+- CWE-614
+- OWASP-A07
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^form$"
+  - has:
+      kind: element
+      all:
+      - has:
+          kind: tag_name
+          regex: "^input$"
+      - has:
+          kind: attribute
+          has:
+            kind: quoted_attribute_value
+            regex: "(?i)(password|credit|card|ssn|secret)"
+  - notHas:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^autocomplete$"
+note: 'Sensitive forms should disable autocomplete to prevent credential caching.
+
+  Add autocomplete="off" to sensitive forms and inputs.
+
+  '
+---
+id: html-cwe-614-password-visible
+language: html
+severity: warning
+message: 'CWE-614: Password field with type=text instead of password'
+tags:
+- security
+- session
+- CWE-614
+- OWASP-A07
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^input$"
+  - has:
+      kind: attribute
+      all:
+      - has:
+          kind: attribute_name
+          regex: "^type$"
+      - has:
+          kind: quoted_attribute_value
+          regex: "^text$"
+  - has:
+      kind: attribute
+      has:
+        kind: quoted_attribute_value
+        regex: "(?i)(password|passwd|pwd|secret)"
+note: 'Password fields should use type="password" to mask input.
+
+  Change type="text" to type="password" for sensitive inputs.
+
+  '
+---
+id: html-cwe-614-form-http-action
+language: html
+severity: error
+message: 'CWE-614: Form submits over insecure HTTP'
+tags:
+- security
+- network
+- CWE-614
+- CWE-319
+- OWASP-A02
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^action$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "^http://"
+note: 'Form data transmitted over HTTP can be intercepted.
+
+  Use HTTPS for all form submissions: action="https://..."
+
+  '
+---
+id: html-cwe-829-script-no-integrity
+language: html
+severity: error
+message: 'CWE-829: External script without integrity attribute'
+tags:
+- security
+- supply-chain
+- CWE-829
+- OWASP-A08
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^script$"
+  - has:
+      kind: attribute
+      all:
+      - has:
+          kind: attribute_name
+          regex: "^src$"
+      - has:
+          kind: quoted_attribute_value
+          regex: "^https?://"
+  - notHas:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^integrity$"
+note: 'External scripts without SRI can be tampered with if the CDN is compromised.
+
+  Add integrity="sha384-..." and crossorigin="anonymous" to external scripts.
+
+  '
+---
+id: html-cwe-829-link-no-integrity
+language: html
+severity: warning
+message: 'CWE-829: External stylesheet without integrity attribute'
+tags:
+- security
+- supply-chain
+- CWE-829
+- OWASP-A08
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^link$"
+  - has:
+      kind: attribute
+      has:
+        kind: quoted_attribute_value
+        regex: "^stylesheet$"
+  - has:
+      kind: attribute
+      all:
+      - has:
+          kind: attribute_name
+          regex: "^href$"
+      - has:
+          kind: quoted_attribute_value
+          regex: "^https?://"
+  - notHas:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^integrity$"
+note: 'External stylesheets without SRI can inject malicious CSS.
+
+  Add integrity hash and crossorigin attribute to external stylesheets.
+
+  '
+---
+id: html-cwe-829-http-script
+language: html
+severity: error
+message: 'CWE-829: Mixed content - script loaded over HTTP'
+tags:
+- security
+- network
+- CWE-829
+- CWE-319
+- OWASP-A02
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^src$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "^http://"
+  inside:
+    kind: element
+    has:
+      kind: tag_name
+      regex: "^script$"
+note: 'Scripts loaded over HTTP can be tampered with by network attackers.
+
+  Use HTTPS for all script sources.
+
+  '
+---
+id: html-cwe-829-http-stylesheet
+language: html
+severity: error
+message: 'CWE-829: Mixed content - stylesheet loaded over HTTP'
+tags:
+- security
+- network
+- CWE-829
+- CWE-319
+- OWASP-A02
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^href$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "^http://"
+  inside:
+    kind: element
+    all:
+    - has:
+        kind: tag_name
+        regex: "^link$"
+    - has:
+        kind: attribute
+        has:
+          kind: quoted_attribute_value
+          regex: "stylesheet"
+note: 'Stylesheets loaded over HTTP can be modified by network attackers.
+
+  Use HTTPS for all stylesheet sources.
+
+  '
+---
+id: html-cwe-829-http-image
+language: html
+severity: warning
+message: 'CWE-829: Mixed content - image loaded over HTTP'
+tags:
+- security
+- network
+- CWE-829
+- CWE-319
+- OWASP-A02
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^src$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "^http://"
+  inside:
+    kind: element
+    has:
+      kind: tag_name
+      regex: "^img$"
+note: 'Images loaded over HTTP can leak user behavior and be modified.
+
+  Use HTTPS for all image sources.
+
+  '
+---
+id: html-cwe-829-http-iframe
+language: html
+severity: error
+message: 'CWE-829: Mixed content - iframe loaded over HTTP'
+tags:
+- security
+- network
+- CWE-829
+- CWE-319
+- OWASP-A02
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^src$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "^http://"
+  inside:
+    kind: element
+    has:
+      kind: tag_name
+      regex: "^iframe$"
+note: 'iframes loaded over HTTP can be hijacked by network attackers.
+
+  Use HTTPS for all iframe sources.
+
+  '
+---
+id: html-cwe-829-google-fonts-http
+language: html
+severity: warning
+message: 'CWE-829: Google Fonts loaded without preconnect'
+tags:
+- security
+- performance
+- supply-chain
+- CWE-829
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^href$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "fonts\\.googleapis\\.com"
+  notInside:
+    kind: element
+    has:
+      kind: attribute
+      has:
+        kind: quoted_attribute_value
+        regex: "preconnect"
+note: 'External font services introduce third-party dependencies.
+
+  Consider self-hosting fonts or add preconnect for performance.
+
+  '
+---
+id: html-cwe-829-unknown-cdn
+language: html
+severity: warning
+message: 'CWE-829: Script from unvetted CDN source'
+tags:
+- security
+- supply-chain
+- CWE-829
+- OWASP-A08
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^src$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "^https?://(?!cdn\\.(jsdelivr\\.net|cloudflare\\.com|unpkg\\.com|google\\.com|googleapis\\.com|gstatic\\.com|bootstrapcdn\\.com|jquery\\.com|cdnjs\\.cloudflare\\.com))"
+  inside:
+    kind: element
+    has:
+      kind: tag_name
+      regex: "^script$"
+note: 'Scripts from unknown CDNs may be compromised or unmaintained.
+
+  Use well-known CDNs with SRI, or self-host critical dependencies.
+
+  '
+---
+id: html-cwe-829-eval-in-script
+language: html
+severity: error
+message: 'CWE-829: eval() usage in inline script'
+tags:
+- security
+- injection
+- CWE-829
+- CWE-94
+- OWASP-A03
+rule:
+  kind: script_element
+  has:
+    kind: raw_text
+    regex: "\\beval\\s*\\("
+note: 'eval() in inline scripts executes arbitrary code.
+
+  Use JSON.parse() for data or refactor to avoid dynamic code execution.
+
+  '
+---
+id: html-cwe-829-function-constructor
+language: html
+severity: error
+message: 'CWE-829: Function constructor in inline script'
+tags:
+- security
+- injection
+- CWE-829
+- CWE-94
+- OWASP-A03
+rule:
+  kind: script_element
+  has:
+    kind: raw_text
+    regex: "new\\s+Function\\s*\\("
+note: 'The Function constructor is equivalent to eval() and executes arbitrary code.
+
+  Refactor to use static functions or safe alternatives.
+
+  '
+---
+id: html-cwe-1004-missing-csp
+language: html
+severity: warning
+message: 'CWE-1004: Missing Content-Security-Policy meta tag'
+tags:
+- security
+- headers
+- CWE-1004
+- OWASP-A05
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^head$"
+  - notHas:
+      kind: element
+      all:
+      - has:
+          kind: tag_name
+          regex: "^meta$"
+      - has:
+          kind: attribute
+          has:
+            kind: quoted_attribute_value
+            regex: "(?i)Content-Security-Policy"
+note: 'CSP meta tag provides defense-in-depth against XSS and injection attacks.
+
+  Add: <meta http-equiv="Content-Security-Policy" content="default-src ''self''">
+
+  '
+---
+id: html-cwe-1004-unsafe-inline-csp
+language: html
+severity: error
+message: 'CWE-1004: CSP with unsafe-inline defeats XSS protection'
+tags:
+- security
+- headers
+- CWE-1004
+- OWASP-A05
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^content$"
+  - has:
+      kind: quoted_attribute_value
+      all:
+      - regex: "(?i)Content-Security-Policy"
+      - regex: "unsafe-inline"
+note: 'unsafe-inline in CSP allows inline scripts, negating XSS protection.
+
+  Use nonces or hashes instead of unsafe-inline: script-src ''nonce-xyz123''
+
+  '
+---
+id: html-cwe-1004-unsafe-eval-csp
+language: html
+severity: error
+message: 'CWE-1004: CSP with unsafe-eval enables code injection'
+tags:
+- security
+- headers
+- CWE-1004
+- OWASP-A05
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^content$"
+  - has:
+      kind: quoted_attribute_value
+      all:
+      - regex: "(?i)Content-Security-Policy"
+      - regex: "unsafe-eval"
+note: 'unsafe-eval allows eval() and similar, enabling code injection.
+
+  Remove unsafe-eval; refactor code to avoid dynamic evaluation.
+
+  '
+---
+id: html-cwe-1004-missing-referrer-policy
+language: html
+severity: info
+message: 'CWE-1004: Missing Referrer-Policy meta tag'
+tags:
+- security
+- headers
+- privacy
+- CWE-1004
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^head$"
+  - notHas:
+      kind: element
+      all:
+      - has:
+          kind: tag_name
+          regex: "^meta$"
+      - has:
+          kind: attribute
+          has:
+            kind: quoted_attribute_value
+            regex: "(?i)Referrer-Policy"
+note: 'Referrer-Policy controls URL information leaked to external sites.
+
+  Add: <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  '
+---
+id: html-cwe-1004-permissive-cors
+language: html
+severity: error
+message: 'CWE-1004: Permissive CORS allows any origin'
+tags:
+- security
+- headers
+- CWE-1004
+- CWE-942
+- OWASP-A05
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^content$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)Access-Control-Allow-Origin.*\\*"
+note: 'Wildcard CORS allows any website to access responses.
+
+  Restrict to specific trusted origins.
+
+  '
+---
+id: html-cwe-200-sensitive-comment
+language: html
+severity: warning
+message: 'CWE-200: Sensitive information in HTML comment'
+tags:
+- security
+- information-disclosure
+- CWE-200
+- OWASP-A01
+rule:
+  kind: comment
+  regex: "(?i)(password|secret|api.?key|token|credential|private|internal|TODO.*fix|FIXME|HACK|XXX)"
+note: 'HTML comments are visible to users and may leak sensitive information.
+
+  Remove comments with sensitive data before deployment.
+
+  '
+---
+id: html-cwe-200-debug-comment
+language: html
+severity: info
+message: 'CWE-200: Debug or development comment in HTML'
+tags:
+- security
+- information-disclosure
+- CWE-200
+- OWASP-A01
+rule:
+  kind: comment
+  regex: "(?i)(debug|test|dev|staging|localhost|127\\.0\\.0\\.1)"
+note: 'Debug comments may reveal internal infrastructure details.
+
+  Remove development-related comments before production deployment.
+
+  '
+---
+id: html-cwe-352-form-no-csrf
+language: html
+severity: warning
+message: 'CWE-352: Form without CSRF token input'
+tags:
+- security
+- csrf
+- CWE-352
+- OWASP-A05
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^form$"
+  - has:
+      kind: attribute
+      all:
+      - has:
+          kind: attribute_name
+          regex: "^method$"
+      - has:
+          kind: quoted_attribute_value
+          regex: "(?i)post"
+  - notHas:
+      kind: element
+      all:
+      - has:
+          kind: tag_name
+          regex: "^input$"
+      - has:
+          kind: attribute
+          has:
+            kind: quoted_attribute_value
+            regex: "(?i)(csrf|token|_token|authenticity)"
+note: 'POST forms without CSRF tokens are vulnerable to cross-site request forgery.
+
+  Add a hidden input with a server-generated CSRF token.
+
+  '
+---
+id: html-cwe-601-open-redirect
+language: html
+severity: warning
+message: 'CWE-601: Potential open redirect in link'
+tags:
+- security
+- redirect
+- CWE-601
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^href$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(\\?|&)(redirect|url|next|return|goto|target|link|dest)="
+note: 'URL parameters suggesting redirects can be exploited for phishing.
+
+  Validate redirect URLs against a whitelist of allowed destinations.
+
+  '
+---
+id: html-cwe-79-formaction
+language: html
+severity: error
+message: 'CWE-79: XSS via formaction attribute'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^formaction$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)javascript:"
+note: 'formaction with javascript: can override form submission with malicious code.
+
+  Use proper URLs for formaction; avoid javascript: protocol.
+
+  '
+---
+id: html-cwe-79-srcdoc
+language: html
+severity: error
+message: 'CWE-79: XSS via srcdoc attribute on iframe'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^srcdoc$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)(<script|javascript:|on\\w+=)"
+  inside:
+    kind: element
+    has:
+      kind: tag_name
+      regex: "^iframe$"
+note: 'srcdoc with scripts or event handlers enables XSS in the iframe context.
+
+  Sanitize srcdoc content; use sandbox attribute to restrict capabilities.
+
+  '
+---
+id: html-cwe-829-crossorigin-missing
+language: html
+severity: warning
+message: 'CWE-829: External resource with integrity but missing crossorigin'
+tags:
+- security
+- supply-chain
+- CWE-829
+- OWASP-A08
+rule:
+  kind: element
+  all:
+  - has:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^integrity$"
+  - notHas:
+      kind: attribute
+      has:
+        kind: attribute_name
+        regex: "^crossorigin$"
+note: 'SRI integrity checks require crossorigin attribute to function properly.
+
+  Add crossorigin="anonymous" when using integrity attribute.
+
+  '
+---
+id: html-cwe-79-nonce-reuse
+language: html
+severity: error
+message: 'CWE-79: Hardcoded CSP nonce may be reused'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A05
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^nonce$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "^[a-zA-Z0-9+/=]{8,}$"
+note: 'Static nonce values in HTML defeat CSP nonce protection.
+
+  Generate unique nonces server-side for each request.
+
+  '
+---
+id: html-cwe-79-style-expression
+language: html
+severity: error
+message: 'CWE-79: CSS expression in style attribute (IE legacy)'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^style$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)expression\\s*\\("
+note: 'CSS expressions (IE only) can execute JavaScript and enable XSS.
+
+  Remove expression() from styles; use JavaScript event handlers safely.
+
+  '
+---
+id: html-cwe-79-behavior-url
+language: html
+severity: error
+message: 'CWE-79: CSS behavior URL in style (IE legacy)'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^style$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)behavior\\s*:\\s*url\\s*\\("
+note: 'CSS behavior URLs (IE only) can load malicious HTC files.
+
+  Remove behavior property from styles.
+
+  '
+---
+id: html-cwe-79-binding-xbl
+language: html
+severity: error
+message: 'CWE-79: XBL binding in style (Firefox legacy)'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: attribute
+  all:
+  - has:
+      kind: attribute_name
+      regex: "^style$"
+  - has:
+      kind: quoted_attribute_value
+      regex: "(?i)-moz-binding\\s*:\\s*url\\s*\\("
+note: 'XBL bindings (legacy Firefox) can execute JavaScript.
+
+  Remove -moz-binding from styles.
+
+  '
+---
+id: html-cwe-79-meta-refresh-url
+language: html
+severity: warning
+message: 'CWE-79: Meta refresh with javascript: URL'
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^meta$"
+  - has:
+      kind: attribute
+      has:
+        kind: quoted_attribute_value
+        regex: "(?i)refresh"
+  - has:
+      kind: attribute
+      has:
+        kind: quoted_attribute_value
+        regex: "(?i)javascript:"
+note: 'Meta refresh with javascript: URL can execute malicious code.
+
+  Use proper URLs for meta refresh redirects.
+
+  '
+---
+id: html-cwe-79-link-prefetch-xss
+language: html
+severity: info
+message: 'CWE-79: Link prefetch to external domain'
+tags:
+- security
+- xss
+- privacy
+- CWE-79
+rule:
+  kind: element
+  all:
+  - has:
+      kind: tag_name
+      regex: "^link$"
+  - has:
+      kind: attribute
+      has:
+        kind: quoted_attribute_value
+        regex: "(?i)(prefetch|preload|prerender)"
+  - has:
+      kind: attribute
+      all:
+      - has:
+          kind: attribute_name
+          regex: "^href$"
+      - has:
+          kind: quoted_attribute_value
+          regex: "^https?://(?!localhost)"
+note: 'Prefetching external resources can leak user behavior.
+
+  Only prefetch trusted, same-origin resources.
+
+  '
+---
+id: html-cwe-79-marquee-blink
+language: html
+severity: info
+message: 'CWE-79: Deprecated marquee/blink elements'
+tags:
+- security
+- deprecated
+- accessibility
+rule:
+  kind: element
+  has:
+    kind: tag_name
+    regex: "^(marquee|blink)$"
+note: 'marquee and blink are deprecated and can cause accessibility issues.
+
+  Use CSS animations instead.
+
+  '
+---
+id: html-cwe-79-applet-element
+language: html
+severity: error
+message: 'CWE-79: Deprecated applet element (Java security risk)'
+tags:
+- security
+- deprecated
+- CWE-79
+- OWASP-A06
+rule:
+  kind: element
+  has:
+    kind: tag_name
+    regex: "^applet$"
+note: 'applet elements load Java applets with significant security risks.
+
+  Remove applet elements; Java plugin support is discontinued.
+
+  '
+
+# ==============================================================================
+# Objective-C Mobile Security Rules
+# ==============================================================================
+# Comprehensive CWE-based security patterns for iOS/macOS Objective-C development
+# Covers: Certificate validation, insecure storage, information disclosure,
+#         cleartext transmission, deserialization, code injection, weak crypto,
+#         privilege issues, and iOS-specific vulnerabilities
+# ==============================================================================
+
+---
+# ==============================================================================
+# CWE-295: Certificate Validation Issues
+# ==============================================================================
+
+id: objc-cwe-295-allow-any-https-certificate
+language: objc
+severity: error
+message: 'CWE-295: Certificate Validation Disabled - allowsAnyHTTPSCertificateForHost'
+tags:
+- security
+- network
+- CWE-295
+- OWASP-A07
+- ios
+- macos
+rule:
+  pattern: allowsAnyHTTPSCertificateForHost
+note: 'Private API that disables certificate validation for a host.
+
+  This enables man-in-the-middle attacks by accepting any certificate.
+
+  REMEDIATION: Remove this call entirely and use proper certificate pinning with
+  NSURLSession and URLSessionDelegate.
+
+  REFERENCES:
+  - CWE-295: https://cwe.mitre.org/data/definitions/295.html
+  - Apple TLS Best Practices: https://developer.apple.com/documentation/security/preventing_insecure_network_connections
+
+  '
+---
+id: objc-cwe-295-set-validates-secure-certificate-no
+language: objc
+severity: error
+message: 'CWE-295: Certificate Validation Disabled - setValidatesSecureCertificate:NO'
+tags:
+- security
+- network
+- CWE-295
+- OWASP-A07
+- ios
+- macos
+rule:
+  any:
+  - pattern: setValidatesSecureCertificate:NO
+  - pattern: setValidatesSecureCertificate:false
+  - pattern: '[setValidatesSecureCertificate:NO]'
+note: 'Disabling certificate validation allows MITM attacks.
+
+  REMEDIATION: Remove this call and ensure certificate validation is enabled.
+  Use proper certificate pinning via NSURLSessionDelegate for sensitive connections.
+
+  REFERENCES:
+  - CWE-295: https://cwe.mitre.org/data/definitions/295.html
+
+  '
+---
+id: objc-cwe-295-urlsession-no-certificate-check
+language: objc
+severity: error
+message: 'CWE-295: NSURLSession without proper certificate validation'
+tags:
+- security
+- network
+- CWE-295
+- OWASP-A07
+- ios
+- macos
+rule:
+  any:
+  - pattern: didReceiveChallenge:completionHandler:
+  - pattern: NSURLSessionAuthChallengeUseCredential
+  - pattern: URLAuthenticationChallenge
+  has:
+    any:
+    - pattern: NSURLCredentialForTrust
+    - pattern: serverTrust
+    - pattern: proposedCredential
+note: 'Authentication challenge handlers that blindly accept server trust
+  enable MITM attacks. Must validate certificate chain properly.
+
+  REMEDIATION: Implement proper certificate pinning by comparing against known
+  certificates or public keys rather than blindly accepting.
+
+  REFERENCES:
+  - CWE-295: https://cwe.mitre.org/data/definitions/295.html
+  - OWASP Certificate Pinning: https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning
+
+  '
+---
+id: objc-cwe-295-security-trust-evaluate-result-ignored
+language: objc
+severity: error
+message: 'CWE-295: SecTrustEvaluate result ignored or mishandled'
+tags:
+- security
+- network
+- CWE-295
+- OWASP-A07
+- ios
+- macos
+rule:
+  kind: call_expression
+  any:
+  - pattern: SecTrustEvaluate($TRUST, $RESULT)
+  - pattern: SecTrustEvaluateWithError($TRUST, $ERROR)
+  notHas:
+    any:
+    - pattern: kSecTrustResultProceed
+    - pattern: kSecTrustResultUnspecified
+    - pattern: errSecSuccess
+note: 'SecTrustEvaluate must have its result checked against kSecTrustResultProceed
+  or kSecTrustResultUnspecified. Ignoring the result bypasses certificate validation.
+
+  REMEDIATION: Always check the SecTrustResultType and only proceed if the result
+  is kSecTrustResultProceed or kSecTrustResultUnspecified.
+
+  REFERENCES:
+  - CWE-295: https://cwe.mitre.org/data/definitions/295.html
+
+  '
+---
+id: objc-cwe-295-allow-arbitrary-loads
+language: objc
+severity: error
+message: 'CWE-295: App Transport Security Disabled - NSAllowsArbitraryLoads'
+tags:
+- security
+- network
+- CWE-295
+- CWE-319
+- OWASP-A07
+- ios
+- macos
+- info-plist
+rule:
+  any:
+  - pattern: NSAllowsArbitraryLoads
+  - pattern: '<true/>'
+    inside:
+      pattern: NSAppTransportSecurity
+note: 'NSAllowsArbitraryLoads:YES in Info.plist disables App Transport Security,
+  allowing insecure HTTP connections and bypassing certificate validation.
+
+  REMEDIATION: Remove NSAllowsArbitraryLoads or set to NO. Use NSExceptionDomains
+  only for specific legacy domains that require HTTP.
+
+  REFERENCES:
+  - CWE-295: https://cwe.mitre.org/data/definitions/295.html
+  - Apple ATS: https://developer.apple.com/documentation/bundleresources/information_property_list/nsapptransportsecurity
+
+  '
+---
+id: objc-cwe-295-ssl-pinning-bypass
+language: objc
+severity: error
+message: 'CWE-295: SSL Pinning Implementation Issue'
+tags:
+- security
+- network
+- CWE-295
+- OWASP-A07
+- ios
+rule:
+  any:
+  - pattern: continueWithoutCredentialForAuthenticationChallenge
+  - pattern: cancelAuthenticationChallenge
+    notInside:
+      pattern: didReceiveChallenge
+note: 'continueWithoutCredentialForAuthenticationChallenge bypasses SSL pinning
+  by proceeding without proper credential validation.
+
+  REMEDIATION: Use proper certificate or public key pinning with validation
+  before calling performDefaultHandlingForAuthenticationChallenge or providing credentials.
+
+  REFERENCES:
+  - CWE-295: https://cwe.mitre.org/data/definitions/295.html
+
+  '
+
+---
+# ==============================================================================
+# CWE-312/CWE-922: Insecure Storage
+# ==============================================================================
+
+id: objc-cwe-312-nsuserdefaults-sensitive-data
+language: objc
+severity: error
+message: 'CWE-312: Sensitive Data in NSUserDefaults'
+tags:
+- security
+- storage
+- CWE-312
+- CWE-922
+- OWASP-A02
+- ios
+- macos
+rule:
+  kind: message_expression
+  any:
+  - pattern: '[[NSUserDefaults $$$] setObject:$VALUE forKey:$KEY]'
+  - pattern: '[[NSUserDefaults $$$] setValue:$VALUE forKey:$KEY]'
+  - pattern: '[[$DEFAULTS standardUserDefaults] setObject:$VALUE forKey:$KEY]'
+  has:
+    regex: '(?i)(password|token|secret|apikey|api_key|credential|auth|session|private|key|pin|ssn|credit)'
+note: 'NSUserDefaults stores data in unencrypted plist files accessible on jailbroken
+  devices. Never store passwords, tokens, or sensitive data in NSUserDefaults.
+
+  REMEDIATION: Use Keychain Services with kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+  for sensitive data storage.
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+  - Apple Keychain: https://developer.apple.com/documentation/security/keychain_services
+
+  '
+---
+id: objc-cwe-312-nsuserdefaults-credentials
+language: objc
+severity: error
+message: 'CWE-312: Credentials stored in NSUserDefaults'
+tags:
+- security
+- storage
+- CWE-312
+- CWE-922
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: '[@"password" stringValue]'
+    inside:
+      pattern: NSUserDefaults
+  - pattern: standardUserDefaults
+    has:
+      regex: '(?i)password|secret|token|apiKey|credential'
+note: 'Storing credentials in NSUserDefaults exposes them to attackers with physical
+  device access or backup extraction.
+
+  REMEDIATION: Store credentials in Keychain with appropriate access control flags.
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+
+  '
+---
+id: objc-cwe-312-plist-storage
+language: objc
+severity: warning
+message: 'CWE-312: Sensitive Data Written to Plist File'
+tags:
+- security
+- storage
+- CWE-312
+- CWE-922
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: writeToFile:$PATH atomically:$ATOMIC
+  - pattern: writeToURL:$URL atomically:$ATOMIC
+  has:
+    regex: '(?i)\.plist|password|secret|token|credential|apikey'
+note: 'Plist files are stored in plaintext and can be extracted from device backups
+  or accessed on jailbroken devices.
+
+  REMEDIATION: Use Keychain Services for sensitive data or encrypt the plist contents
+  using CommonCrypto before writing.
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+
+  '
+---
+id: objc-cwe-922-keychain-accessible-always
+language: objc
+severity: error
+message: 'CWE-922: Keychain Accessible When Device Locked'
+tags:
+- security
+- storage
+- CWE-922
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: kSecAttrAccessibleAlways
+  - pattern: kSecAttrAccessibleAlwaysThisDeviceOnly
+  - pattern: kSecAttrAccessibleAfterFirstUnlock
+note: 'kSecAttrAccessibleAlways allows Keychain item access even when device is locked,
+  exposing data if device is stolen. kSecAttrAccessibleAfterFirstUnlock is also risky.
+
+  REMEDIATION: Use kSecAttrAccessibleWhenUnlockedThisDeviceOnly for maximum security
+  or kSecAttrAccessibleWhenUnlocked if iCloud sync is needed.
+
+  REFERENCES:
+  - CWE-922: https://cwe.mitre.org/data/definitions/922.html
+  - Apple Keychain Accessibility: https://developer.apple.com/documentation/security/keychain_services/keychain_items/restricting_keychain_item_accessibility
+
+  '
+---
+id: objc-cwe-312-hardcoded-encryption-key
+language: objc
+severity: error
+message: 'CWE-312: Hardcoded Encryption Key'
+tags:
+- security
+- cryptography
+- CWE-312
+- CWE-321
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: '@"$KEY"'
+    inside:
+      any:
+      - pattern: CCCrypt
+      - pattern: kCCEncrypt
+      - pattern: kCCDecrypt
+      - pattern: AES
+  - pattern: 'const char *$NAME = "$VALUE"'
+    has:
+      regex: '(?i)key|secret|encrypt'
+note: 'Hardcoded encryption keys can be extracted from the binary using string analysis
+  or reverse engineering tools like class-dump or Hopper.
+
+  REMEDIATION: Generate keys securely using SecRandomCopyBytes or derive from user
+  credentials using PBKDF2 (CCKeyDerivationPBKDF).
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+  - CWE-321: https://cwe.mitre.org/data/definitions/321.html
+
+  '
+---
+id: objc-cwe-312-sqlite-unencrypted
+language: objc
+severity: warning
+message: 'CWE-312: SQLite Database Without Encryption'
+tags:
+- security
+- storage
+- CWE-312
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: sqlite3_open($PATH, $DB)
+  - pattern: sqlite3_open_v2($PATH, $DB, $FLAGS, $VFS)
+  notHas:
+    any:
+    - pattern: sqlite3_key
+    - pattern: SQLCipher
+    - pattern: FMDB
+note: 'SQLite databases are stored in plaintext and can be extracted from device
+  backups or accessed on jailbroken devices.
+
+  REMEDIATION: Use SQLCipher for encrypted SQLite databases or encrypt sensitive
+  columns individually before storage.
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+
+  '
+---
+id: objc-cwe-312-core-data-unencrypted
+language: objc
+severity: warning
+message: 'CWE-312: Core Data Without Encryption'
+tags:
+- security
+- storage
+- CWE-312
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: NSPersistentStoreCoordinator
+  - pattern: addPersistentStoreWithType:NSSQLiteStoreType
+  notHas:
+    any:
+    - pattern: NSPersistentStoreFileProtectionKey
+    - pattern: NSFileProtectionComplete
+note: 'Core Data stores are SQLite databases without encryption by default.
+
+  REMEDIATION: Use NSPersistentStoreFileProtectionKey with NSFileProtectionComplete
+  or implement app-level encryption with transformable attributes.
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+
+  '
+---
+id: objc-cwe-312-pasteboard-sensitive
+language: objc
+severity: warning
+message: 'CWE-312: Sensitive Data Copied to Pasteboard'
+tags:
+- security
+- storage
+- CWE-312
+- OWASP-A02
+- ios
+rule:
+  any:
+  - pattern: '[[UIPasteboard generalPasteboard] setString:$VALUE]'
+  - pattern: '[[UIPasteboard generalPasteboard] setValue:$VALUE forPasteboardType:$TYPE]'
+  has:
+    regex: '(?i)password|secret|token|credential|key|pin'
+note: 'General pasteboard is shared across all apps. Sensitive data copied to
+  pasteboard can be read by malicious apps.
+
+  REMEDIATION: Use app-specific pasteboard (pasteboardWithName:create:) with expiration
+  or avoid copying sensitive data to pasteboard entirely.
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+
+  '
+---
+id: objc-cwe-312-file-protection-none
+language: objc
+severity: error
+message: 'CWE-312: File Written Without Data Protection'
+tags:
+- security
+- storage
+- CWE-312
+- OWASP-A02
+- ios
+rule:
+  any:
+  - pattern: NSDataWritingFileProtectionNone
+  - pattern: NSFileProtectionNone
+note: 'NSFileProtectionNone allows file access even when device is locked and
+  during device reboots before first unlock.
+
+  REMEDIATION: Use NSFileProtectionComplete for maximum security or
+  NSFileProtectionCompleteUnlessOpen for background access requirements.
+
+  REFERENCES:
+  - CWE-312: https://cwe.mitre.org/data/definitions/312.html
+
+  '
+
+---
+# ==============================================================================
+# CWE-200: Information Disclosure
+# ==============================================================================
+
+id: objc-cwe-200-nslog-sensitive
+language: objc
+severity: warning
+message: 'CWE-200: Sensitive Data in NSLog'
+tags:
+- security
+- logging
+- CWE-200
+- CWE-532
+- OWASP-A09
+- ios
+- macos
+rule:
+  kind: call_expression
+  pattern: NSLog($FORMAT, $$$ARGS)
+  has:
+    regex: '(?i)password|secret|token|apikey|api_key|credential|auth|session|ssn|credit'
+note: 'NSLog output is written to system logs accessible via Console.app,
+  device logs, and crash reports. Sensitive data in logs can be exposed.
+
+  REMEDIATION: Remove sensitive data from log statements or use conditional
+  compilation (#ifdef DEBUG) to disable in release builds.
+
+  REFERENCES:
+  - CWE-200: https://cwe.mitre.org/data/definitions/200.html
+  - CWE-532: https://cwe.mitre.org/data/definitions/532.html
+
+  '
+---
+id: objc-cwe-200-nslog-release
+language: objc
+severity: warning
+message: 'CWE-200: NSLog in Release Build'
+tags:
+- security
+- logging
+- CWE-200
+- CWE-532
+- OWASP-A09
+- ios
+- macos
+rule:
+  pattern: NSLog(
+  notInside:
+    any:
+    - pattern: '#ifdef DEBUG'
+    - pattern: '#if DEBUG'
+    - pattern: '#ifndef NDEBUG'
+note: 'NSLog statements in release builds expose internal information and
+  affect performance. Log statements should be removed or conditionally compiled.
+
+  REMEDIATION: Wrap NSLog in DEBUG preprocessor macros or use os_log with
+  appropriate log levels.
+
+  REFERENCES:
+  - CWE-200: https://cwe.mitre.org/data/definitions/200.html
+
+  '
+---
+id: objc-cwe-200-exception-details
+language: objc
+severity: warning
+message: 'CWE-200: Exception Details Exposed to User'
+tags:
+- security
+- logging
+- CWE-200
+- CWE-209
+- OWASP-A09
+- ios
+- macos
+rule:
+  any:
+  - pattern: '[exception reason]'
+  - pattern: '[exception callStackSymbols]'
+  - pattern: exception.userInfo
+  inside:
+    any:
+    - pattern: UIAlertController
+    - pattern: UIAlertView
+    - pattern: showError
+note: 'Displaying exception details to users reveals internal implementation
+  details and stack traces that aid attackers.
+
+  REMEDIATION: Log exception details for debugging but show generic error
+  messages to users.
+
+  REFERENCES:
+  - CWE-200: https://cwe.mitre.org/data/definitions/200.html
+  - CWE-209: https://cwe.mitre.org/data/definitions/209.html
+
+  '
+---
+id: objc-cwe-200-debug-code-production
+language: objc
+severity: warning
+message: 'CWE-200: Debug Code in Production'
+tags:
+- security
+- logging
+- CWE-200
+- OWASP-A09
+- ios
+- macos
+rule:
+  any:
+  - pattern: NSAssert(
+  - pattern: assert(
+  notInside:
+    any:
+    - pattern: '#ifdef DEBUG'
+    - pattern: '#if DEBUG'
+note: 'Assertions in release builds can crash the app and reveal debug information.
+  NS_BLOCK_ASSERTIONS should be defined for release builds.
+
+  REMEDIATION: Enable NS_BLOCK_ASSERTIONS in release configuration or use conditional
+  compilation for debug-only assertions.
+
+  REFERENCES:
+  - CWE-200: https://cwe.mitre.org/data/definitions/200.html
+
+  '
+---
+id: objc-cwe-200-os-log-sensitive
+language: objc
+severity: warning
+message: 'CWE-200: Sensitive Data in os_log'
+tags:
+- security
+- logging
+- CWE-200
+- CWE-532
+- OWASP-A09
+- ios
+- macos
+rule:
+  kind: call_expression
+  any:
+  - pattern: os_log($LOG, $FORMAT, $$$ARGS)
+  - pattern: os_log_debug($LOG, $FORMAT, $$$ARGS)
+  - pattern: os_log_info($LOG, $FORMAT, $$$ARGS)
+  has:
+    regex: '(?i)password|secret|token|apikey|credential|auth|ssn|credit'
+note: 'os_log output is captured by the unified logging system and can be accessed
+  via Console.app or log collect.
+
+  REMEDIATION: Use %{private} format specifier for sensitive data or remove
+  sensitive information from logs entirely.
+
+  REFERENCES:
+  - CWE-200: https://cwe.mitre.org/data/definitions/200.html
+
+  '
+
+---
+# ==============================================================================
+# CWE-319: Cleartext Transmission
+# ==============================================================================
+
+id: objc-cwe-319-http-url
+language: objc
+severity: warning
+message: 'CWE-319: Cleartext HTTP URL'
+tags:
+- security
+- network
+- CWE-319
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: '@"http://$URL"'
+  - pattern: 'NSURL URLWithString:@"http://'
+  - pattern: '[NSURL URLWithString:@"http://$$$"]'
+  notHas:
+    regex: 'localhost|127\.0\.0\.1|\.local'
+note: 'HTTP URLs transmit data in cleartext, exposing it to network sniffers
+  and MITM attacks.
+
+  REMEDIATION: Use HTTPS for all network communications. Update server to support
+  TLS and change URLs to https://.
+
+  REFERENCES:
+  - CWE-319: https://cwe.mitre.org/data/definitions/319.html
+
+  '
+---
+id: objc-cwe-319-nsurl-connection-http
+language: objc
+severity: warning
+message: 'CWE-319: NSURLConnection with HTTP'
+tags:
+- security
+- network
+- CWE-319
+- OWASP-A02
+- ios
+- macos
+- deprecated
+rule:
+  any:
+  - pattern: NSURLConnection
+  - pattern: '[NSURLConnection $$$]'
+note: 'NSURLConnection is deprecated and may not enforce ATS restrictions properly.
+
+  REMEDIATION: Migrate to NSURLSession which provides better security defaults
+  and ATS enforcement.
+
+  REFERENCES:
+  - CWE-319: https://cwe.mitre.org/data/definitions/319.html
+
+  '
+---
+id: objc-cwe-319-exception-domains
+language: objc
+severity: warning
+message: 'CWE-319: ATS Exception Domain Configuration'
+tags:
+- security
+- network
+- CWE-319
+- CWE-295
+- OWASP-A02
+- ios
+- macos
+- info-plist
+rule:
+  any:
+  - pattern: NSExceptionAllowsInsecureHTTPLoads
+  - pattern: NSTemporaryExceptionAllowsInsecureHTTPLoads
+  - pattern: NSExceptionMinimumTLSVersion
+note: 'ATS exception domains that allow insecure HTTP or weak TLS versions
+  reduce security for those domains.
+
+  REMEDIATION: Minimize exception domains and ensure servers are updated to support
+  TLS 1.2+ with valid certificates.
+
+  REFERENCES:
+  - CWE-319: https://cwe.mitre.org/data/definitions/319.html
+
+  '
+---
+id: objc-cwe-319-cfnetwork-http
+language: objc
+severity: warning
+message: 'CWE-319: CFNetwork HTTP Request'
+tags:
+- security
+- network
+- CWE-319
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: CFHTTPMessageCreateRequest
+  - pattern: CFReadStreamCreateForHTTPRequest
+  has:
+    pattern: 'http://'
+note: 'CFNetwork APIs with HTTP URLs bypass ATS and transmit data in cleartext.
+
+  REMEDIATION: Use HTTPS URLs or migrate to NSURLSession with HTTPS.
+
+  REFERENCES:
+  - CWE-319: https://cwe.mitre.org/data/definitions/319.html
+
+  '
+---
+id: objc-cwe-319-websocket-ws
+language: objc
+severity: warning
+message: 'CWE-319: Unencrypted WebSocket Connection'
+tags:
+- security
+- network
+- CWE-319
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'ws://'
+  - pattern: '@"ws://$URL"'
+  notHas:
+    regex: 'localhost|127\.0\.0\.1'
+note: 'WebSocket connections using ws:// protocol are unencrypted.
+
+  REMEDIATION: Use wss:// (WebSocket Secure) for encrypted WebSocket connections.
+
+  REFERENCES:
+  - CWE-319: https://cwe.mitre.org/data/definitions/319.html
+
+  '
+
+---
+# ==============================================================================
+# CWE-502: Deserialization
+# ==============================================================================
+
+id: objc-cwe-502-nskeyedunarchiver-unarchive
+language: objc
+severity: error
+message: 'CWE-502: Insecure NSKeyedUnarchiver Deserialization'
+tags:
+- security
+- deserialization
+- CWE-502
+- OWASP-A08
+- ios
+- macos
+rule:
+  any:
+  - pattern: '[NSKeyedUnarchiver unarchiveObjectWithData:$DATA]'
+  - pattern: '[NSKeyedUnarchiver unarchiveObjectWithFile:$PATH]'
+  - pattern: 'unarchiverForReadingFromData:$DATA error:$ERROR'
+note: 'Deprecated NSKeyedUnarchiver methods decode arbitrary classes without
+  validation, enabling arbitrary code execution via crafted archives.
+
+  REMEDIATION: Use unarchiverForReadingFromData:error: with setRequiresSecureCoding:YES
+  and explicitly specify allowed classes via decodeObjectOfClass:forKey:.
+
+  REFERENCES:
+  - CWE-502: https://cwe.mitre.org/data/definitions/502.html
+  - Apple Secure Coding: https://developer.apple.com/documentation/foundation/nssecurecoding
+
+  '
+---
+id: objc-cwe-502-secure-coding-disabled
+language: objc
+severity: error
+message: 'CWE-502: Secure Coding Disabled'
+tags:
+- security
+- deserialization
+- CWE-502
+- OWASP-A08
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'setRequiresSecureCoding:NO'
+  - pattern: '[setRequiresSecureCoding:NO]'
+  - pattern: requiresSecureCoding = NO
+note: 'Disabling requiresSecureCoding allows deserialization of arbitrary classes,
+  enabling object injection attacks.
+
+  REMEDIATION: Always use setRequiresSecureCoding:YES and specify allowed classes.
+
+  REFERENCES:
+  - CWE-502: https://cwe.mitre.org/data/definitions/502.html
+
+  '
+---
+id: objc-cwe-502-decode-object-without-class
+language: objc
+severity: error
+message: 'CWE-502: Deserialization Without Class Restriction'
+tags:
+- security
+- deserialization
+- CWE-502
+- OWASP-A08
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'decodeObjectForKey:$KEY'
+  - pattern: 'decodeObject'
+  notHas:
+    any:
+    - pattern: decodeObjectOfClass
+    - pattern: decodeObjectOfClasses
+note: 'decodeObjectForKey: without class restriction allows deserialization of
+  arbitrary types from untrusted archives.
+
+  REMEDIATION: Use decodeObjectOfClass:forKey: or decodeObjectOfClasses:forKey:
+  to restrict allowed classes.
+
+  REFERENCES:
+  - CWE-502: https://cwe.mitre.org/data/definitions/502.html
+
+  '
+---
+id: objc-cwe-502-plist-from-url
+language: objc
+severity: error
+message: 'CWE-502: Property List Loaded from External URL'
+tags:
+- security
+- deserialization
+- CWE-502
+- OWASP-A08
+- ios
+- macos
+rule:
+  any:
+  - pattern: '[NSDictionary dictionaryWithContentsOfURL:$URL]'
+  - pattern: '[NSArray arrayWithContentsOfURL:$URL]'
+  - pattern: 'initWithContentsOfURL:$URL'
+  notInside:
+    pattern: 'fileURLWithPath:'
+note: 'Loading plists from external URLs allows remote code to control data structures
+  and potentially exploit parsing vulnerabilities.
+
+  REMEDIATION: Validate plist contents after loading and use secure transport (HTTPS).
+  Prefer JSON with proper parsing and validation.
+
+  REFERENCES:
+  - CWE-502: https://cwe.mitre.org/data/definitions/502.html
+
+  '
+---
+id: objc-cwe-502-nsjsonreadingoption-fragments
+language: objc
+severity: warning
+message: 'CWE-502: JSON Parsing with Fragment Option'
+tags:
+- security
+- deserialization
+- CWE-502
+- OWASP-A08
+- ios
+- macos
+rule:
+  pattern: NSJSONReadingAllowFragments
+note: 'NSJSONReadingAllowFragments allows parsing of non-standard JSON fragments
+  which may bypass expected validation.
+
+  REMEDIATION: Remove NSJSONReadingAllowFragments if not needed and validate
+  that root object is expected type (NSDictionary or NSArray).
+
+  REFERENCES:
+  - CWE-502: https://cwe.mitre.org/data/definitions/502.html
+
+  '
+
+---
+# ==============================================================================
+# CWE-94: Code Injection
+# ==============================================================================
+
+id: objc-cwe-94-perform-selector-user-input
+language: objc
+severity: error
+message: 'CWE-94: Code Injection via performSelector with User Input'
+tags:
+- security
+- injection
+- CWE-94
+- OWASP-A03
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'performSelector:NSSelectorFromString($INPUT)'
+  - pattern: 'NSSelectorFromString($INPUT)'
+  - pattern: 'performSelector:$SEL withObject:$OBJ'
+  has:
+    any:
+    - pattern: '$INPUT'
+    - pattern: userInput
+    - pattern: request
+note: 'NSSelectorFromString with user-controlled input allows attackers to invoke
+  arbitrary methods on objects, leading to code execution.
+
+  REMEDIATION: Validate selector names against an allowlist of permitted methods.
+  Never use user input directly in NSSelectorFromString.
+
+  REFERENCES:
+  - CWE-94: https://cwe.mitre.org/data/definitions/94.html
+
+  '
+---
+id: objc-cwe-94-nsinvocation-user-input
+language: objc
+severity: error
+message: 'CWE-94: Code Injection via NSInvocation'
+tags:
+- security
+- injection
+- CWE-94
+- OWASP-A03
+- ios
+- macos
+rule:
+  any:
+  - pattern: '[NSInvocation invocationWithMethodSignature:$SIG]'
+  - pattern: '[invocation setSelector:NSSelectorFromString($INPUT)]'
+note: 'NSInvocation with user-controlled selectors allows dynamic method invocation,
+  which can be exploited for code execution.
+
+  REMEDIATION: Validate method signatures and selectors against an allowlist
+  before creating NSInvocation objects.
+
+  REFERENCES:
+  - CWE-94: https://cwe.mitre.org/data/definitions/94.html
+
+  '
+---
+id: objc-cwe-94-uiwebview-javascript
+language: objc
+severity: error
+message: 'CWE-94: JavaScript Injection in UIWebView'
+tags:
+- security
+- injection
+- CWE-94
+- CWE-79
+- OWASP-A03
+- ios
+- deprecated
+rule:
+  any:
+  - pattern: 'stringByEvaluatingJavaScriptFromString:$SCRIPT'
+  - pattern: UIWebView
+note: 'UIWebView is deprecated and has known security vulnerabilities. JavaScript
+  injection via stringByEvaluatingJavaScriptFromString is dangerous with user input.
+
+  REMEDIATION: Migrate to WKWebView and use evaluateJavaScript:completionHandler:
+  with properly escaped/sanitized input.
+
+  REFERENCES:
+  - CWE-94: https://cwe.mitre.org/data/definitions/94.html
+
+  '
+---
+id: objc-cwe-94-wkwebview-javascript-injection
+language: objc
+severity: warning
+message: 'CWE-94: JavaScript Injection in WKWebView'
+tags:
+- security
+- injection
+- CWE-94
+- CWE-79
+- OWASP-A03
+- ios
+- macos
+rule:
+  kind: message_expression
+  pattern: 'evaluateJavaScript:$SCRIPT completionHandler:$HANDLER'
+  notHas:
+    regex: '@"[^"]*"$'
+note: 'evaluateJavaScript with dynamic/user-controlled content can lead to XSS
+  or code injection in the WebView context.
+
+  REMEDIATION: Sanitize and escape user input before constructing JavaScript.
+  Use postMessage for safe communication between native and web code.
+
+  REFERENCES:
+  - CWE-94: https://cwe.mitre.org/data/definitions/94.html
+
+  '
+---
+id: objc-cwe-94-javascript-enabled
+language: objc
+severity: info
+message: 'CWE-94: JavaScript Enabled in WKWebView'
+tags:
+- security
+- injection
+- CWE-94
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'javaScriptEnabled = YES'
+  - pattern: '[setJavaScriptEnabled:YES]'
+note: 'JavaScript is enabled by default in WKWebView. Be aware of XSS and
+  JavaScript injection risks when loading untrusted content.
+
+  REMEDIATION: If loading untrusted content, consider disabling JavaScript or
+  implementing Content Security Policy via WKWebViewConfiguration.
+
+  REFERENCES:
+  - CWE-94: https://cwe.mitre.org/data/definitions/94.html
+
+  '
+---
+id: objc-cwe-94-objc-runtime-manipulation
+language: objc
+severity: error
+message: 'CWE-94: Objective-C Runtime Manipulation'
+tags:
+- security
+- injection
+- CWE-94
+- OWASP-A03
+- ios
+- macos
+rule:
+  any:
+  - pattern: class_addMethod
+  - pattern: class_replaceMethod
+  - pattern: method_exchangeImplementations
+  - pattern: method_setImplementation
+note: 'Objective-C runtime functions allow dynamic method modification. If
+  influenced by untrusted input, this enables arbitrary code injection.
+
+  REMEDIATION: Never use runtime manipulation with user-controlled data. If
+  method swizzling is required, do it at app launch with hardcoded values.
+
+  REFERENCES:
+  - CWE-94: https://cwe.mitre.org/data/definitions/94.html
+
+  '
+
+---
+# ==============================================================================
+# CWE-327: Weak Cryptography
+# ==============================================================================
+
+id: objc-cwe-327-md5-hash
+language: objc
+severity: error
+message: 'CWE-327: Weak Hash Algorithm - MD5'
+tags:
+- security
+- cryptography
+- CWE-327
+- CWE-328
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: CC_MD5
+  - pattern: CC_MD5_Init
+  - pattern: CC_MD5_Update
+  - pattern: CC_MD5_Final
+  - pattern: kCCDigestMD5
+note: 'MD5 is cryptographically broken and should not be used for security purposes.
+  Collision attacks are practical against MD5.
+
+  REMEDIATION: Use SHA-256 (CC_SHA256) or SHA-512 for integrity checks.
+  Use PBKDF2 or Argon2 for password hashing.
+
+  REFERENCES:
+  - CWE-327: https://cwe.mitre.org/data/definitions/327.html
+
+  '
+---
+id: objc-cwe-327-sha1-hash
+language: objc
+severity: warning
+message: 'CWE-327: Weak Hash Algorithm - SHA1'
+tags:
+- security
+- cryptography
+- CWE-327
+- CWE-328
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: CC_SHA1
+  - pattern: CC_SHA1_Init
+  - pattern: CC_SHA1_Update
+  - pattern: CC_SHA1_Final
+  - pattern: kCCDigestSHA1
+note: 'SHA1 is deprecated for security purposes due to practical collision attacks.
+
+  REMEDIATION: Use SHA-256 (CC_SHA256) or SHA-512 for new implementations.
+
+  REFERENCES:
+  - CWE-327: https://cwe.mitre.org/data/definitions/327.html
+
+  '
+---
+id: objc-cwe-327-des-encryption
+language: objc
+severity: error
+message: 'CWE-327: Weak Encryption Algorithm - DES/3DES'
+tags:
+- security
+- cryptography
+- CWE-327
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: kCCAlgorithmDES
+  - pattern: kCCAlgorithm3DES
+  - pattern: kCCBlockSizeDES
+note: 'DES has a 56-bit key easily brute-forced. 3DES is deprecated due to
+  Sweet32 attacks and slow performance.
+
+  REMEDIATION: Use AES-256 (kCCAlgorithmAES) with GCM mode for authenticated
+  encryption.
+
+  REFERENCES:
+  - CWE-327: https://cwe.mitre.org/data/definitions/327.html
+
+  '
+---
+id: objc-cwe-327-ecb-mode
+language: objc
+severity: error
+message: 'CWE-327: Weak Encryption Mode - ECB'
+tags:
+- security
+- cryptography
+- CWE-327
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: kCCOptionECBMode
+  - pattern: kCCModeECB
+note: 'ECB mode encrypts identical plaintext blocks to identical ciphertext,
+  revealing patterns in the encrypted data.
+
+  REMEDIATION: Use CBC mode with random IV or preferably GCM mode for
+  authenticated encryption.
+
+  REFERENCES:
+  - CWE-327: https://cwe.mitre.org/data/definitions/327.html
+
+  '
+---
+id: objc-cwe-329-static-iv
+language: objc
+severity: error
+message: 'CWE-329: Hardcoded Initialization Vector'
+tags:
+- security
+- cryptography
+- CWE-329
+- CWE-327
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'uint8_t iv[] = {$$$}'
+  - pattern: 'const char *iv = "$VALUE"'
+  - pattern: '@"$IV"'
+    inside:
+      pattern: CCCrypt
+note: 'Hardcoded IVs allow attackers to detect repeated plaintexts and may enable
+  various attacks depending on the cipher mode.
+
+  REMEDIATION: Generate random IVs using SecRandomCopyBytes for each encryption
+  operation. Store IV with ciphertext.
+
+  REFERENCES:
+  - CWE-329: https://cwe.mitre.org/data/definitions/329.html
+
+  '
+---
+id: objc-cwe-327-weak-random
+language: objc
+severity: error
+message: 'CWE-327: Weak Random Number Generator'
+tags:
+- security
+- cryptography
+- CWE-327
+- CWE-338
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: rand()
+  - pattern: random()
+  - pattern: arc4random()
+  - pattern: arc4random_uniform
+note: 'rand(), random(), and arc4random are not cryptographically secure for
+  key generation, token generation, or security-sensitive operations.
+
+  REMEDIATION: Use SecRandomCopyBytes for cryptographic randomness.
+
+  REFERENCES:
+  - CWE-338: https://cwe.mitre.org/data/definitions/338.html
+
+  '
+
+---
+# ==============================================================================
+# CWE-250: Privilege Issues and iOS Security
+# ==============================================================================
+
+id: objc-cwe-250-jailbreak-detection-file
+language: objc
+severity: info
+message: 'CWE-250: Jailbreak Detection via File Presence'
+tags:
+- security
+- jailbreak
+- CWE-250
+- ios
+rule:
+  any:
+  - pattern: '@"/Applications/Cydia.app"'
+  - pattern: '@"/Library/MobileSubstrate"'
+  - pattern: '@"/bin/bash"'
+  - pattern: '@"/usr/sbin/sshd"'
+  - pattern: '@"/etc/apt"'
+  - pattern: '@"/private/var/lib/apt/"'
+note: 'File-based jailbreak detection can be bypassed using file system hooks.
+
+  REMEDIATION: Use multiple detection techniques (file, URL schemes, sandbox checks)
+  and implement integrity verification. Do not rely solely on jailbreak detection.
+
+  REFERENCES:
+  - CWE-250: https://cwe.mitre.org/data/definitions/250.html
+
+  '
+---
+id: objc-cwe-250-url-scheme-abuse
+language: objc
+severity: warning
+message: 'CWE-250: Sensitive Operation via URL Scheme'
+tags:
+- security
+- authorization
+- CWE-250
+- CWE-862
+- OWASP-A01
+- ios
+rule:
+  kind: method_definition
+  pattern: 'openURL:$URL options:$OPTIONS completionHandler:$HANDLER'
+  notHas:
+    any:
+    - pattern: validateSource
+    - pattern: checkAuthorization
+note: 'URL schemes can be invoked by other apps. Sensitive operations triggered
+  via URL schemes require source validation.
+
+  REMEDIATION: Validate the calling app identity and require user confirmation
+  for sensitive operations triggered via URL schemes.
+
+  REFERENCES:
+  - CWE-250: https://cwe.mitre.org/data/definitions/250.html
+
+  '
+---
+id: objc-cwe-250-background-location
+language: objc
+severity: warning
+message: 'CWE-250: Background Location Access'
+tags:
+- security
+- privacy
+- CWE-250
+- ios
+rule:
+  any:
+  - pattern: requestAlwaysAuthorization
+  - pattern: allowsBackgroundLocationUpdates = YES
+  - pattern: '[setAllowsBackgroundLocationUpdates:YES]'
+note: 'Background location tracking requires strong justification and user consent.
+  Excessive location tracking may violate App Store guidelines.
+
+  REMEDIATION: Use requestWhenInUseAuthorization unless background location is
+  essential. Clearly explain location usage to users.
+
+  REFERENCES:
+  - CWE-250: https://cwe.mitre.org/data/definitions/250.html
+
+  '
+---
+id: objc-cwe-250-address-book-access
+language: objc
+severity: info
+message: 'CWE-250: Address Book Access'
+tags:
+- security
+- privacy
+- CWE-250
+- ios
+rule:
+  any:
+  - pattern: ABAddressBookRef
+  - pattern: ABAddressBookCreate
+  - pattern: CNContactStore
+note: 'Address book access provides sensitive contact information.
+  iOS will prompt for user permission.
+
+  REMEDIATION: Minimize contact data accessed. Use CNContactFetchRequest to limit
+  fields retrieved. Explain purpose in usage description.
+
+  REFERENCES:
+  - CWE-250: https://cwe.mitre.org/data/definitions/250.html
+
+  '
+---
+id: objc-cwe-250-camera-microphone
+language: objc
+severity: info
+message: 'CWE-250: Camera/Microphone Access'
+tags:
+- security
+- privacy
+- CWE-250
+- ios
+rule:
+  any:
+  - pattern: AVCaptureDevice
+  - pattern: requestAccessForMediaType
+  - pattern: AVMediaTypeVideo
+  - pattern: AVMediaTypeAudio
+note: 'Camera and microphone access can record user activity.
+
+  REMEDIATION: Only request access when needed. Stop capture sessions when not
+  in active use. Provide clear usage description.
+
+  REFERENCES:
+  - CWE-250: https://cwe.mitre.org/data/definitions/250.html
+
+  '
+---
+id: objc-cwe-693-application-state-exposed
+language: objc
+severity: warning
+message: 'CWE-693: Application State Exposed in Screenshot'
+tags:
+- security
+- privacy
+- CWE-693
+- CWE-200
+- ios
+rule:
+  any:
+  - pattern: applicationWillResignActive
+  - pattern: applicationDidEnterBackground
+  notHas:
+    any:
+    - pattern: secureWindow
+    - pattern: hideContent
+    - pattern: obscure
+note: 'iOS captures a screenshot when app enters background. Sensitive data
+  visible in the UI will be captured.
+
+  REMEDIATION: Obscure sensitive content in applicationWillResignActive or
+  use a blur view when entering background.
+
+  REFERENCES:
+  - CWE-693: https://cwe.mitre.org/data/definitions/693.html
+
+  '
+
+---
+# ==============================================================================
+# Additional iOS/macOS Security Patterns
+# ==============================================================================
+
+id: objc-cwe-918-ssrf-url-open
+language: objc
+severity: warning
+message: 'CWE-918: Server-Side Request Forgery via URL'
+tags:
+- security
+- injection
+- CWE-918
+- OWASP-A10
+- ios
+- macos
+rule:
+  any:
+  - pattern: '[NSURL URLWithString:$INPUT]'
+  - pattern: '[[NSURLRequest alloc] initWithURL:$URL]'
+  has:
+    any:
+    - pattern: userInput
+    - pattern: request.
+note: 'User-controlled URLs can be used to access internal resources or exfiltrate data.
+
+  REMEDIATION: Validate URL schemes (allow only http/https) and host names against
+  an allowlist. Block private IP ranges and localhost.
+
+  REFERENCES:
+  - CWE-918: https://cwe.mitre.org/data/definitions/918.html
+
+  '
+---
+id: objc-cwe-352-csrf-no-token
+language: objc
+severity: warning
+message: 'CWE-352: Missing CSRF Token in State-Changing Request'
+tags:
+- security
+- csrf
+- CWE-352
+- OWASP-A01
+- ios
+- macos
+rule:
+  kind: message_expression
+  any:
+  - pattern: 'setHTTPMethod:@"POST"'
+  - pattern: 'setHTTPMethod:@"PUT"'
+  - pattern: 'setHTTPMethod:@"DELETE"'
+  notHas:
+    any:
+    - pattern: X-CSRF-Token
+    - pattern: csrf
+    - pattern: token
+note: 'State-changing HTTP requests without CSRF tokens may be vulnerable to
+  cross-site request forgery.
+
+  REMEDIATION: Include CSRF tokens in headers or request body for state-changing
+  operations. Verify tokens on server side.
+
+  REFERENCES:
+  - CWE-352: https://cwe.mitre.org/data/definitions/352.html
+
+  '
+---
+id: objc-cwe-494-code-integrity-download
+language: objc
+severity: error
+message: 'CWE-494: Downloaded Code Without Integrity Check'
+tags:
+- security
+- integrity
+- CWE-494
+- OWASP-A08
+- ios
+- macos
+rule:
+  any:
+  - pattern: downloadTaskWithURL
+  - pattern: NSURLSessionDownloadTask
+  has:
+    regex: '\.(js|json|plist|zip|framework)$'
+  notHas:
+    any:
+    - pattern: verify
+    - pattern: checksum
+    - pattern: signature
+    - pattern: hash
+note: 'Downloading code or configuration without integrity verification allows
+  attackers to inject malicious content.
+
+  REMEDIATION: Verify downloaded content using cryptographic signatures or hashes
+  before use. Pin public keys for signature verification.
+
+  REFERENCES:
+  - CWE-494: https://cwe.mitre.org/data/definitions/494.html
+
+  '
+---
+id: objc-cwe-916-weak-password-requirements
+language: objc
+severity: warning
+message: 'CWE-916: Weak Password Requirements in Keychain'
+tags:
+- security
+- authentication
+- CWE-916
+- CWE-521
+- OWASP-A07
+- ios
+- macos
+rule:
+  any:
+  - pattern: SecAccessControlCreateWithFlags
+  notHas:
+    any:
+    - pattern: kSecAccessControlDevicePasscode
+    - pattern: kSecAccessControlBiometryAny
+    - pattern: kSecAccessControlUserPresence
+note: 'Keychain items without access control flags can be read without user authentication.
+
+  REMEDIATION: Use kSecAccessControlBiometryAny or kSecAccessControlDevicePasscode
+  to require user authentication for accessing sensitive Keychain items.
+
+  REFERENCES:
+  - CWE-916: https://cwe.mitre.org/data/definitions/916.html
+
+  '
+---
+id: objc-cwe-311-missing-encryption
+language: objc
+severity: warning
+message: 'CWE-311: Missing Encryption of Sensitive Data in Transit'
+tags:
+- security
+- network
+- CWE-311
+- OWASP-A02
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'NSURLProtectionSpaceHTTP'
+  - pattern: 'kCFStreamPropertyHTTPProxy'
+note: 'HTTP protection space and proxy configurations may transmit credentials
+  in cleartext.
+
+  REMEDIATION: Use HTTPS exclusively. Configure proxy settings to use HTTPS.
+
+  REFERENCES:
+  - CWE-311: https://cwe.mitre.org/data/definitions/311.html
+
+  '
+---
+id: objc-cwe-287-local-authentication-bypass
+language: objc
+severity: warning
+message: 'CWE-287: Local Authentication Without Fallback Protection'
+tags:
+- security
+- authentication
+- CWE-287
+- OWASP-A07
+- ios
+rule:
+  kind: message_expression
+  pattern: 'evaluatePolicy:$POLICY localizedReason:$REASON reply:$HANDLER'
+  notHas:
+    any:
+    - pattern: LAPolicyDeviceOwnerAuthentication
+    - pattern: domainState
+note: 'LAContext biometric authentication can be bypassed if not properly validated.
+
+  REMEDIATION: Use LAPolicyDeviceOwnerAuthentication for passcode fallback.
+  Check domainState to detect biometry changes. Consider server-side validation.
+
+  REFERENCES:
+  - CWE-287: https://cwe.mitre.org/data/definitions/287.html
+
+  '
+---
+id: objc-cwe-798-hardcoded-credentials
+language: objc
+severity: error
+message: 'CWE-798: Hardcoded Credentials'
+tags:
+- security
+- authentication
+- CWE-798
+- OWASP-A07
+- ios
+- macos
+rule:
+  any:
+  - pattern: '@"password"'
+  - pattern: '@"apiKey"'
+  - pattern: '@"api_key"'
+  - pattern: '@"secret"'
+  - pattern: '#define API_KEY @"$VALUE"'
+  - pattern: 'static NSString *const $NAME = @"$VALUE"'
+    has:
+      regex: '(?i)(password|secret|apikey|api_key|token|auth)'
+note: 'Hardcoded credentials can be extracted from the binary using tools like
+  class-dump, Hopper, or strings command.
+
+  REMEDIATION: Store credentials in Keychain. Use server-based authentication.
+  For API keys, implement server-side proxy or use App Attest.
+
+  REFERENCES:
+  - CWE-798: https://cwe.mitre.org/data/definitions/798.html
+
+  '
+---
+id: objc-cwe-749-exposed-dangerous-method
+language: objc
+severity: warning
+message: 'CWE-749: Dangerous Method Exposed via Deep Link'
+tags:
+- security
+- authorization
+- CWE-749
+- CWE-862
+- OWASP-A01
+- ios
+rule:
+  any:
+  - pattern: 'handleOpenURL:$URL'
+  - pattern: 'openURL:$URL sourceApplication:$SOURCE annotation:$ANNOTATION'
+  - pattern: 'application:$APP openURL:$URL options:$OPTIONS'
+  has:
+    any:
+    - pattern: delete
+    - pattern: reset
+    - pattern: execute
+    - pattern: admin
+note: 'Sensitive operations exposed via URL schemes can be invoked by malicious apps.
+
+  REMEDIATION: Require user confirmation for sensitive operations.
+  Validate source application and implement proper authorization.
+
+  REFERENCES:
+  - CWE-749: https://cwe.mitre.org/data/definitions/749.html
+
+  '
+---
+id: objc-cwe-602-client-side-security
+language: objc
+severity: warning
+message: 'CWE-602: Client-Side Enforcement of Server-Side Security'
+tags:
+- security
+- authorization
+- CWE-602
+- OWASP-A04
+- ios
+- macos
+rule:
+  any:
+  - pattern: 'isAdmin = YES'
+  - pattern: 'isPremium = YES'
+  - pattern: '[setUserRole:$ROLE]'
+  notInside:
+    any:
+    - pattern: serverResponse
+    - pattern: parseResponse
+note: 'Setting authorization flags client-side without server verification
+  allows bypassing access controls.
+
+  REMEDIATION: All authorization decisions must be made server-side.
+  Client-side checks are for UI only; verify permissions on every request.
+
+  REFERENCES:
+  - CWE-602: https://cwe.mitre.org/data/definitions/602.html
+
+  '
+---
+id: objc-cwe-20-url-scheme-validation
+language: objc
+severity: warning
+message: 'CWE-20: Missing URL Scheme Input Validation'
+tags:
+- security
+- validation
+- CWE-20
+- OWASP-A03
+- ios
+rule:
+  any:
+  - pattern: 'openURL:$URL'
+  - pattern: '[UIApplication sharedApplication] openURL:$URL'
+  notHas:
+    any:
+    - pattern: scheme
+    - pattern: host
+    - pattern: validate
+note: 'Opening URLs without scheme validation can lead to file:// protocol abuse
+  or navigation to malicious sites.
+
+  REMEDIATION: Validate URL scheme against allowlist (http, https).
+  Check host against known domains for sensitive operations.
+
+  REFERENCES:
+  - CWE-20: https://cwe.mitre.org/data/definitions/20.html
+
+  '
