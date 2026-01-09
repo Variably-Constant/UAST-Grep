@@ -56,135 +56,6 @@ note: 'SQL injection via string formatting. Never use f-strings, format(), or % 
 
   '
 ---
-id: python-cwe-78-command-injection-os
-language: python
-severity: error
-message: 'CWE-78: OS Command Injection via os.system or os.popen'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: os.system
-    - pattern: os.popen
-    - pattern: os.spawn
-    - pattern: os.spawnl
-    - pattern: os.spawnle
-    - pattern: os.spawnlp
-    - pattern: os.spawnlpe
-    - pattern: os.spawnv
-    - pattern: os.spawnve
-    - pattern: os.spawnvp
-    - pattern: os.spawnvpe
-note: 'os.system and os.popen execute commands in a shell, enabling injection.
-
-  Use subprocess.run with shell=False and a list of arguments instead.
-
-  '
----
-id: python-cwe-78-subprocess-shell-true
-language: python
-severity: error
-message: 'CWE-78: Command Injection via subprocess with shell=True'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-rule:
-  kind: call
-  all:
-  - has:
-      any:
-      - pattern: subprocess.call
-      - pattern: subprocess.run
-      - pattern: subprocess.Popen
-      - pattern: subprocess.check_call
-      - pattern: subprocess.check_output
-  - has:
-      pattern: shell=True
-note: 'subprocess with shell=True passes commands through the shell.
-
-  Use shell=False with arguments as a list: subprocess.run(["cmd", "arg1", "arg2"])
-
-  '
----
-id: python-cwe-94-code-injection-eval
-language: python
-severity: error
-message: 'CWE-94: Code Injection via eval(), exec(), or compile()'
-tags:
-- security
-- injection
-- CWE-94
-- OWASP-A03
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: eval
-    - pattern: exec
-    - pattern: compile
-note: 'eval(), exec(), and compile() execute arbitrary Python code.
-
-  Use ast.literal_eval() for safe literal evaluation, or avoid dynamic code entirely.
-
-  '
----
-id: python-cwe-502-pickle-deserialization
-language: python
-severity: error
-message: 'CWE-502: Deserialization of Untrusted Data via pickle'
-tags:
-- security
-- deserialization
-- CWE-502
-- OWASP-A08
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: pickle.load
-    - pattern: pickle.loads
-    - pattern: cPickle.load
-    - pattern: cPickle.loads
-    - pattern: _pickle.load
-    - pattern: _pickle.loads
-note: 'Pickle deserialization can execute arbitrary code via __reduce__.
-
-  Use JSON, or implement a custom restricted unpickler with find_class filtering.
-
-  '
----
-id: python-cwe-502-yaml-unsafe
-language: python
-severity: error
-message: 'CWE-502: Unsafe YAML deserialization'
-tags:
-- security
-- deserialization
-- CWE-502
-- OWASP-A08
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: yaml.load
-    - pattern: yaml.unsafe_load
-    - pattern: yaml.full_load
-  not:
-    has:
-      pattern: Loader=yaml.SafeLoader
-note: 'yaml.load() without SafeLoader can execute arbitrary Python code.
-
-  Always use yaml.safe_load() or yaml.load(data, Loader=yaml.SafeLoader).
-
-  '
----
 id: python-cwe-79-xss-flask-render-template-string
 language: python
 severity: error
@@ -206,29 +77,6 @@ note: 'render_template_string with user input leads to SSTI and arbitrary code e
 
   '
 ---
-id: python-cwe-79-xss-django-mark-safe
-language: python
-severity: warning
-message: 'CWE-79: XSS via Django mark_safe() or SafeString'
-tags:
-- security
-- xss
-- CWE-79
-- OWASP-A03
-- django
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: mark_safe
-    - pattern: SafeString
-    - pattern: SafeText
-note: 'mark_safe() bypasses Django''s HTML auto-escaping.
-
-  Only use with content you have sanitized; never with user input.
-
-  '
----
 id: python-cwe-295-ssl-verify-false
 language: python
 severity: error
@@ -242,107 +90,12 @@ rule:
   any:
   - pattern: verify=False
   - pattern: verify = False
+  notInside:
+    kind: function_definition
+    regex: "test_|_test|mock|Mock|stub|Stub|fixture|example"
 note: 'Disabling SSL certificate verification allows man-in-the-middle attacks.
 
   Remove verify=False in production code.
-
-  '
----
-id: python-cwe-327-weak-hash-hashlib
-language: python
-severity: error
-message: 'CWE-327/CWE-328: Use of Broken Cryptographic Hash (MD5/SHA1)'
-tags:
-- security
-- crypto
-- CWE-327
-- CWE-328
-- OWASP-A02
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: hashlib.md5
-    - pattern: hashlib.sha1
-    - pattern: md5(
-    - pattern: sha1(
-note: 'MD5 and SHA1 have known collision attacks. Do not use for security.
-
-  Use hashlib.sha256() or hashlib.sha3_256() for cryptographic hashing.
-
-  '
----
-id: python-cwe-338-weak-random
-language: python
-severity: warning
-message: 'CWE-338: Use of Cryptographically Weak PRNG'
-tags:
-- security
-- crypto
-- CWE-338
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: random.random
-    - pattern: random.randint
-    - pattern: random.choice
-    - pattern: random.randrange
-    - pattern: random.sample
-    - pattern: random.shuffle
-note: 'The random module is not cryptographically secure.
-
-  Use secrets module: secrets.token_bytes(), secrets.choice(), secrets.randbelow().
-
-  '
----
-id: python-cwe-798-hardcoded-password
-language: python
-severity: error
-message: 'CWE-798: Hardcoded Password or Secret'
-tags:
-- security
-- credentials
-- CWE-798
-- OWASP-A07
-rule:
-  kind: assignment
-  pattern: $VAR = $VALUE
-  where:
-    VAR:
-      regex: (?i)(password|passwd|pwd|secret|api_key|apikey|token|auth|private_key|secret_key|access_key|credentials)
-    VALUE:
-      kind: string
-note: 'Hardcoded credentials in source code are a security risk.
-
-  Use environment variables, secret managers, or configuration files excluded from
-  VCS.
-
-  '
----
-id: python-cwe-22-path-traversal
-language: python
-severity: error
-message: 'CWE-22: Path Traversal - unsanitized path construction'
-tags:
-- security
-- path-traversal
-- CWE-22
-- OWASP-A01
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: open($PATH)
-    - pattern: os.path.join
-    - pattern: pathlib.Path
-  where:
-    PATH:
-      not:
-        pattern: os.path.basename
-note: 'User input in file paths can lead to path traversal attacks.
-
-  Validate and sanitize paths; use os.path.basename() to strip directory components.
 
   '
 ---
@@ -407,51 +160,6 @@ note: 'Setting innerHTML with untrusted data enables XSS attacks.
 
   '
 ---
-id: javascript-cwe-79-document-write
-language: javascript
-severity: error
-message: 'CWE-79: XSS via document.write()'
-tags:
-- security
-- xss
-- CWE-79
-- OWASP-A03
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: document.write
-    - pattern: document.writeln
-note: 'document.write() can introduce XSS vulnerabilities.
-
-  Use DOM manipulation methods (createElement, appendChild) instead.
-
-  '
----
-id: javascript-cwe-78-child-process-exec
-language: javascript
-severity: error
-message: 'CWE-78: Command Injection via child_process exec/execSync'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-- nodejs
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: exec(
-    - pattern: execSync(
-    - pattern: require('child_process').exec
-    - pattern: require("child_process").exec
-note: 'exec/execSync pass commands through a shell, enabling injection.
-
-  Use execFile/spawn with shell:false and arguments as an array.
-
-  '
----
 id: javascript-cwe-1321-prototype-pollution
 language: javascript
 severity: error
@@ -485,56 +193,11 @@ rule:
   kind: assignment_expression
   has:
     pattern: document.cookie
-  not:
-    has:
-      pattern: Secure
+  notHas:
+    pattern: Secure
 note: 'Cookies without the Secure flag can be transmitted over unencrypted connections.
 
   Set cookies with: document.cookie = "name=value; Secure; HttpOnly; SameSite=Strict"
-
-  '
----
-id: javascript-cwe-922-localstorage-sensitive
-language: javascript
-severity: warning
-message: 'CWE-922: Insecure Storage of Sensitive Information in localStorage'
-tags:
-- security
-- storage
-- CWE-922
-- OWASP-A02
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: localStorage.setItem
-    - pattern: sessionStorage.setItem
-note: 'localStorage/sessionStorage are accessible via JavaScript and vulnerable to
-  XSS.
-
-  Use httpOnly cookies for tokens; encrypt sensitive data if storage is required.
-
-  '
----
-id: javascript-cwe-601-open-redirect
-language: javascript
-severity: warning
-message: 'CWE-601: Open Redirect via location assignment'
-tags:
-- security
-- redirect
-- CWE-601
-- OWASP-A01
-rule:
-  kind: assignment_expression
-  has:
-    any:
-    - pattern: window.location
-    - pattern: location.href
-    - pattern: location.replace
-note: 'Assigning user input to location enables open redirect attacks.
-
-  Validate redirect URLs against an allowlist of trusted domains.
 
   '
 ---
@@ -579,33 +242,6 @@ note: 'JSON.parse can create objects with __proto__ or constructor properties.
 
   '
 ---
-id: java-cwe-89-sql-injection-statement
-language: java
-severity: error
-message: 'CWE-89: SQL Injection via Statement.execute with string concatenation'
-tags:
-- security
-- injection
-- CWE-89
-- OWASP-A03
-rule:
-  kind: method_invocation
-  has:
-    any:
-    - pattern: Statement.executeQuery
-    - pattern: Statement.executeUpdate
-    - pattern: Statement.execute
-    - pattern: createStatement().execute
-note: 'Using Statement with string concatenation enables SQL injection.
-
-  Use PreparedStatement with parameterized queries:
-
-  PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
-
-  ps.setInt(1, userId);
-
-  '
----
 id: java-cwe-89-sql-injection-jpa
 language: java
 severity: error
@@ -628,50 +264,6 @@ note: 'String concatenation in JPA/Hibernate queries leads to SQL injection.
 
   '
 ---
-id: java-cwe-78-runtime-exec
-language: java
-severity: error
-message: 'CWE-78: OS Command Injection via Runtime.exec()'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-rule:
-  kind: method_invocation
-  has:
-    any:
-    - pattern: Runtime.exec
-    - pattern: Runtime.getRuntime().exec
-    - pattern: ProcessBuilder
-note: 'Runtime.exec() and ProcessBuilder can execute arbitrary commands.
-
-  Validate and sanitize all inputs; use allowlists for permitted commands.
-
-  '
----
-id: java-cwe-502-object-deserialization
-language: java
-severity: error
-message: 'CWE-502: Deserialization of Untrusted Data via ObjectInputStream'
-tags:
-- security
-- deserialization
-- CWE-502
-- OWASP-A08
-rule:
-  kind: method_invocation
-  has:
-    any:
-    - pattern: ObjectInputStream
-    - pattern: readObject
-    - pattern: readUnshared
-note: 'Java deserialization of untrusted data can execute arbitrary code.
-
-  Use allowlists with ObjectInputFilter, or switch to JSON/Protocol Buffers.
-
-  '
----
 id: java-cwe-502-xmldecoder
 language: java
 severity: error
@@ -691,98 +283,6 @@ note: 'XMLDecoder can instantiate arbitrary objects and execute code.
 
   '
 ---
-id: java-cwe-611-xxe-documentbuilder
-language: java
-severity: error
-message: 'CWE-611: XXE via DocumentBuilderFactory without secure configuration'
-tags:
-- security
-- xxe
-- CWE-611
-- OWASP-A05
-rule:
-  kind: method_invocation
-  has:
-    any:
-    - pattern: DocumentBuilderFactory.newInstance
-    - pattern: SAXParserFactory.newInstance
-    - pattern: XMLInputFactory.newInstance
-    - pattern: TransformerFactory.newInstance
-    - pattern: SchemaFactory.newInstance
-note: "Java XML parsers are vulnerable to XXE by default.\nDisable external entities:\n\
-  \  factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);\n  factory.setFeature(\"\
-  http://apache.org/xml/features/disallow-doctype-decl\", true);\n"
----
-id: java-cwe-917-spel-injection
-language: java
-severity: error
-message: 'CWE-917: Spring Expression Language (SpEL) Injection'
-tags:
-- security
-- injection
-- CWE-917
-- OWASP-A03
-- spring
-rule:
-  kind: method_invocation
-  has:
-    any:
-    - pattern: SpelExpressionParser
-    - pattern: Expression.getValue
-    - pattern: parseExpression
-note: 'SpEL expressions with user input can execute arbitrary code.
-
-  Use SimpleEvaluationContext which restricts expression capabilities.
-
-  '
----
-id: java-cwe-74-jndi-injection
-language: java
-severity: error
-message: 'CWE-74: JNDI Injection (Log4Shell-type vulnerability)'
-tags:
-- security
-- injection
-- CWE-74
-- OWASP-A03
-rule:
-  kind: method_invocation
-  has:
-    any:
-    - pattern: InitialContext.lookup
-    - pattern: Context.lookup
-    - pattern: NamingContext.lookup
-note: 'JNDI lookups with user-controlled input can load remote code (Log4Shell).
-
-  Validate JNDI names against an allowlist; disable remote lookups.
-
-  '
----
-id: java-cwe-327-weak-cipher
-language: java
-severity: error
-message: 'CWE-327: Use of Broken Cryptographic Algorithm (DES/3DES/RC4)'
-tags:
-- security
-- crypto
-- CWE-327
-- OWASP-A02
-rule:
-  kind: method_invocation
-  has:
-    any:
-    - pattern: '"DES"'
-    - pattern: '"DESede"'
-    - pattern: '"RC4"'
-    - pattern: '"RC2"'
-    - pattern: '"Blowfish"'
-    - pattern: '"/ECB/"'
-note: 'DES, 3DES, RC4, RC2, and Blowfish are weak or broken. ECB mode leaks patterns.
-
-  Use Cipher.getInstance("AES/GCM/NoPadding") with 256-bit keys.
-
-  '
----
 id: java-cwe-295-ssl-trust-all
 language: java
 severity: error
@@ -798,6 +298,9 @@ rule:
   - pattern: X509TrustManager
   - pattern: checkServerTrusted
   - pattern: ALLOW_ALL_HOSTNAME_VERIFIER
+  notInside:
+    kind: method_declaration
+    regex: "test|Test|mock|Mock|stub|Stub"
 note: 'Custom TrustManagers that accept all certificates enable MITM attacks.
 
   Use default TrustManager with proper CA certificates.
@@ -821,27 +324,6 @@ rule:
 note: 'FromSqlRaw/ExecuteSqlRaw with string concatenation enables SQL injection.
 
   Use FromSqlInterpolated() or parameterized queries with SqlParameter.
-
-  '
----
-id: csharp-cwe-78-process-start
-language: csharp
-severity: warning
-message: 'CWE-78: OS Command Injection via Process.Start()'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-rule:
-  kind: invocation_expression
-  has:
-    any:
-    - pattern: Process.Start
-    - pattern: ProcessStartInfo
-note: 'Process.Start with user input can execute arbitrary commands.
-
-  Validate all arguments; set UseShellExecute = false and escape inputs.
 
   '
 ---
@@ -887,28 +369,6 @@ note: 'These serializers can deserialize arbitrary types and execute code.
 
   '
 ---
-id: csharp-cwe-611-xxe-xmldocument
-language: csharp
-severity: error
-message: 'CWE-611: XXE via XmlDocument without secure settings'
-tags:
-- security
-- xxe
-- CWE-611
-- OWASP-A05
-rule:
-  kind: invocation_expression
-  has:
-    any:
-    - pattern: XmlDocument.Load
-    - pattern: XmlDocument.LoadXml
-    - pattern: XmlTextReader
-note: 'XmlDocument and XmlTextReader are vulnerable to XXE by default.
-
-  Set XmlResolver = null, or use XmlReader.Create with secure XmlReaderSettings.
-
-  '
----
 id: csharp-cwe-119-unsafe-keyword
 language: csharp
 severity: warning
@@ -929,97 +389,6 @@ note: 'The unsafe keyword allows direct pointer manipulation without bounds chec
 
   '
 ---
-id: csharp-cwe-798-hardcoded-connectionstring
-language: csharp
-severity: error
-message: 'CWE-798: Hardcoded Connection String with Credentials'
-tags:
-- security
-- credentials
-- CWE-798
-- OWASP-A07
-rule:
-  kind: assignment_expression
-  pattern: $VAR = $VALUE
-  where:
-    VAR:
-      regex: (?i)(connectionstring|connstring|connection)
-    VALUE:
-      kind: string_literal
-      regex: (?i)(password|pwd|user id|uid)=
-note: 'Hardcoded connection strings expose database credentials.
-
-  Use configuration files, Azure Key Vault, or Windows Credential Manager.
-
-  '
----
-id: go-cwe-89-sql-injection
-language: go
-severity: error
-message: 'CWE-89: SQL Injection via string formatting in Query/Exec'
-tags:
-- security
-- injection
-- CWE-89
-- OWASP-A03
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: fmt.Sprintf
-    - kind: binary_expression
-      pattern: $LEFT + $RIGHT
-note: 'String concatenation/formatting in SQL queries enables injection.
-
-  Use parameterized queries: db.Query("SELECT * FROM users WHERE id = $1", userID)
-
-  '
----
-id: go-cwe-78-command-injection
-language: go
-severity: warning
-message: 'CWE-78: Command Injection via exec.Command'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: exec.Command
-    - pattern: exec.CommandContext
-note: 'exec.Command with user input can execute arbitrary commands.
-
-  Validate inputs; avoid shell interpretation by not using /bin/sh -c.
-
-  '
----
-id: go-cwe-94-template-injection
-language: go
-severity: warning
-message: 'CWE-94: Template Injection via html/template bypass'
-tags:
-- security
-- injection
-- CWE-94
-- OWASP-A03
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: template.HTML
-    - pattern: template.JS
-    - pattern: template.CSS
-    - pattern: template.URL
-    - pattern: template.Srcset
-note: 'These template types bypass html/template''s auto-escaping.
-
-  Only use with content you have sanitized; never with user input.
-
-  '
----
 id: go-cwe-295-insecure-skip-verify
 language: go
 severity: error
@@ -1033,31 +402,12 @@ rule:
   any:
   - pattern: 'InsecureSkipVerify: true'
   - pattern: InsecureSkipVerify:true
+  notInside:
+    kind: function_declaration
+    regex: "test|Test|mock|Mock|stub|Stub|Example"
 note: 'InsecureSkipVerify=true disables TLS certificate validation (MITM risk).
 
   Use proper certificate validation in production.
-
-  '
----
-id: go-cwe-338-weak-random
-language: go
-severity: warning
-message: 'CWE-338: math/rand is not cryptographically secure'
-tags:
-- security
-- crypto
-- CWE-338
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: rand.Intn
-    - pattern: rand.Int
-    - pattern: rand.Float64
-    - pattern: rand.Read
-note: 'math/rand is predictable and unsuitable for security purposes.
-
-  Use crypto/rand.Read() or crypto/rand.Int() for cryptographic randomness.
 
   '
 ---
@@ -1152,6 +502,9 @@ rule:
   any:
   - pattern: danger_accept_invalid_certs
   - pattern: danger_accept_invalid_hostnames
+  notInside:
+    kind: function_item
+    regex: "test|Test|mock|Mock|stub|Stub"
 note: 'Disabling TLS certificate validation enables man-in-the-middle attacks.
 
   Never use danger_accept_* in production code.
@@ -1177,29 +530,6 @@ note: 'String interpolation in SQL queries enables injection.
 
   '
 ---
-id: php-cwe-94-eval
-language: php
-severity: error
-message: 'CWE-94: Code Injection via eval() or create_function()'
-tags:
-- security
-- injection
-- CWE-94
-- OWASP-A03
-rule:
-  kind: function_call_expression
-  has:
-    any:
-    - pattern: eval
-    - pattern: create_function
-    - pattern: assert
-    - pattern: preg_replace
-note: 'eval(), create_function(), and assert() can execute arbitrary PHP code.
-
-  preg_replace with /e modifier also evaluates code. Never use with user input.
-
-  '
----
 id: php-cwe-502-unserialize
 language: php
 severity: error
@@ -1217,32 +547,6 @@ note: 'unserialize() of untrusted data can instantiate arbitrary objects and exe
   code.
 
   Use json_decode() instead, or specify allowed_classes option.
-
-  '
----
-id: php-cwe-78-command-injection
-language: php
-severity: error
-message: 'CWE-78: OS Command Injection via shell functions'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-rule:
-  kind: function_call_expression
-  has:
-    any:
-    - pattern: shell_exec
-    - pattern: exec
-    - pattern: system
-    - pattern: passthru
-    - pattern: popen
-    - pattern: proc_open
-    - pattern: pcntl_exec
-note: 'Shell execution functions with user input enable command injection.
-
-  Use escapeshellarg() and escapeshellcmd(); prefer built-in PHP functions.
 
   '
 ---
@@ -1303,123 +607,6 @@ note: 'extract() imports array keys as variables, enabling variable overwrite at
 
   '
 ---
-id: ruby-cwe-502-marshal-load
-language: ruby
-severity: error
-message: 'CWE-502: Insecure Deserialization via Marshal.load'
-tags:
-- security
-- deserialization
-- CWE-502
-- OWASP-A08
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: Marshal.load
-    - pattern: Marshal.restore
-note: 'Marshal.load can execute arbitrary Ruby code via gadget chains.
-
-  Use JSON.parse or YAML.safe_load for untrusted data.
-
-  '
----
-id: ruby-cwe-502-yaml-load
-language: ruby
-severity: error
-message: 'CWE-502: Insecure YAML Deserialization'
-tags:
-- security
-- deserialization
-- CWE-502
-- OWASP-A08
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: YAML.load
-    - pattern: Psych.load
-  not:
-    has:
-      any:
-      - pattern: safe
-      - pattern: permitted_classes
-note: 'YAML.load can instantiate arbitrary objects and execute code.
-
-  Use YAML.safe_load(data, permitted_classes: [...]) for untrusted input.
-
-  '
----
-id: ruby-cwe-94-eval
-language: ruby
-severity: error
-message: 'CWE-94: Code Injection via Ruby eval methods'
-tags:
-- security
-- injection
-- CWE-94
-- OWASP-A03
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: eval
-    - pattern: instance_eval
-    - pattern: class_eval
-    - pattern: module_eval
-    - pattern: binding.eval
-note: 'Ruby eval methods execute arbitrary code. Never use with user input.
-
-  Use safer alternatives like JSON parsing or whitelisted method dispatch.
-
-  '
----
-id: ruby-cwe-78-system-backtick
-language: ruby
-severity: warning
-message: 'CWE-78: Command Injection via system/backticks/exec'
-tags:
-- security
-- injection
-- CWE-78
-- OWASP-A03
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: system
-    - pattern: exec
-    - pattern: spawn
-    - pattern: '`'
-    - pattern: '%x'
-note: 'system, exec, and backticks with user input enable command injection.
-
-  Use array form: system("cmd", "arg1", "arg2") to avoid shell interpretation.
-
-  '
----
-id: ruby-cwe-79-html-safe
-language: ruby
-severity: warning
-message: 'CWE-79: XSS via html_safe or raw in Rails'
-tags:
-- security
-- xss
-- CWE-79
-- OWASP-A03
-- rails
-rule:
-  kind: call
-  has:
-    any:
-    - pattern: html_safe
-    - pattern: raw
-note: 'html_safe and raw bypass Rails'' auto-escaping, enabling XSS.
-
-  Only use with content you have sanitized; never with user input.
-
-  '
----
 id: ruby-cwe-1336-erb-injection
 language: ruby
 severity: error
@@ -1436,27 +623,6 @@ rule:
 note: 'Creating ERB templates from user input leads to arbitrary code execution.
 
   Use pre-defined template files only.
-
-  '
----
-id: powershell-cwe-94-invoke-expression
-language: powershell
-severity: error
-message: 'CWE-94: Code Injection via Invoke-Expression'
-tags:
-- security
-- injection
-- CWE-94
-- OWASP-A03
-rule:
-  kind: command
-  has:
-    any:
-    - pattern: Invoke-Expression
-    - pattern: iex
-note: 'Invoke-Expression (iex) executes strings as PowerShell code.
-
-  Never use with user input or downloaded content. Use proper cmdlets instead.
 
   '
 ---
@@ -1555,73 +721,6 @@ note: 'gets() has no bounds checking and is removed in C11.
 
   '
 ---
-id: c-cwe-120-buffer-overflow-strcpy
-language: c
-severity: error
-message: 'CWE-120: Buffer Overflow via strcpy/strcat'
-tags:
-- security
-- memory
-- CWE-120
-- CWE-119
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: strcpy
-    - pattern: strcat
-    - pattern: wcscpy
-    - pattern: wcscat
-note: 'strcpy/strcat don''t check buffer bounds.
-
-  Use strncpy/strncat with explicit size, or strlcpy/strlcat where available.
-
-  '
----
-id: c-cwe-134-format-string
-language: c
-severity: error
-message: 'CWE-134: Format String Vulnerability'
-tags:
-- security
-- format-string
-- CWE-134
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: printf
-    - pattern: fprintf
-    - pattern: sprintf
-    - pattern: snprintf
-    - pattern: syslog
-note: 'Passing user input as format string can read/write arbitrary memory.
-
-  Always use: printf("%s", user_input) not printf(user_input).
-
-  '
----
-id: c-cwe-120-sprintf
-language: c
-severity: error
-message: 'CWE-120: Buffer Overflow via sprintf/vsprintf'
-tags:
-- security
-- memory
-- CWE-120
-- CWE-119
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: sprintf
-    - pattern: vsprintf
-note: 'sprintf/vsprintf don''t check buffer size.
-
-  Use snprintf(buffer, sizeof(buffer), format, ...) instead.
-
-  '
----
 id: c-cwe-416-use-after-free
 language: c
 severity: error
@@ -1657,28 +756,6 @@ rule:
 note: 'Raw new/delete can lead to memory leaks and double-free.
 
   Use std::unique_ptr, std::shared_ptr, or std::make_unique.
-
-  '
----
-id: cpp-cwe-787-memcpy-unsafe
-language: cpp
-severity: warning
-message: 'CWE-787: Out-of-bounds Write via memcpy/memmove'
-tags:
-- security
-- memory
-- CWE-787
-- CWE-119
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: memcpy
-    - pattern: memmove
-    - pattern: memset
-note: 'memcpy/memmove/memset without proper size validation can cause overflow.
-
-  Validate that size doesn''t exceed destination buffer capacity.
 
   '
 ---
@@ -1830,9 +907,8 @@ rule:
   any:
   - pattern: :erlang.binary_to_term
   - pattern: binary_to_term
-  not:
-    has:
-      pattern: :safe
+  notHas:
+    pattern: :safe
 note: 'binary_to_term can create atoms (exhausting atom table) and execute code.
 
   Always use :erlang.binary_to_term(data, [:safe]) for untrusted data.
@@ -2124,66 +1200,6 @@ note: 'Julia''s run() and backtick commands execute shell commands.
 
   '
 ---
-id: universal-cwe-798-hardcoded-password
-language: '*'
-severity: error
-message: 'CWE-798: Hardcoded Password or Credential'
-tags:
-- security
-- credentials
-- CWE-798
-- OWASP-A07
-rule:
-  kind: assignment
-  pattern: $VAR = $VALUE
-  where:
-    VAR:
-      regex: (?i)^(password|passwd|pwd|secret|api_?key|auth_?token|bearer|private_?key|secret_?key|access_?key|client_?secret|encryption_?key|signing_?key|aws_?secret|database_?password|db_?password|admin_?password|root_?password|master_?password|credentials?)$
-    VALUE:
-      kind: string_literal
-      regex: .{4,}
-note: 'Hardcoded credentials in source code are a critical security risk.
-
-  Use environment variables, secret managers (AWS Secrets Manager, HashiCorp Vault),
-
-  or encrypted configuration files excluded from version control.
-
-  '
----
-id: universal-cwe-798-secret-patterns
-language: '*'
-severity: error
-message: 'CWE-798: Detected Secret or API Key Pattern'
-tags:
-- security
-- credentials
-- CWE-798
-- OWASP-A07
-rule:
-  kind: string_literal
-  where:
-    match:
-      any:
-      - regex: AKIA[0-9A-Z]{16}
-      - regex: '[A-Za-z0-9/+=]{40}'
-      - regex: eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*
-      - regex: '-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'
-      - regex: sk-[a-zA-Z0-9]{32,}
-      - regex: (pk|sk|rk)_(live|test)_[a-zA-Z0-9]{24,}
-      - regex: ghp_[a-zA-Z0-9]{36}
-      - regex: gho_[a-zA-Z0-9]{36}
-      - regex: xox[baprs]-[0-9]{10,13}-[0-9]{10,13}(-[a-zA-Z0-9]{24})?
-      - regex: AIza[0-9A-Za-z\-_]{35}
-      - regex: SK[a-f0-9]{32}
-      - regex: SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}
-      - regex: '[a-f0-9]{32}-us[0-9]{1,2}'
-      - regex: '[MN][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27}'
-note: 'High-entropy string matching known secret patterns detected.
-
-  Remove secrets from source code; use secret management solutions.
-
-  '
----
 id: universal-cwe-327-weak-hash-md5
 language: '*'
 severity: error
@@ -2274,48 +1290,6 @@ note: 'ECB (Electronic Codebook) mode encrypts identical blocks identically,
 
   '
 ---
-id: universal-cwe-22-path-traversal
-language: '*'
-severity: error
-message: 'CWE-22: Path Traversal Sequence in String'
-tags:
-- security
-- path-traversal
-- CWE-22
-- OWASP-A01
-rule:
-  kind: string_literal
-  where:
-    match:
-      regex: \.\.[\\/]|[\\/]\.\.
-note: 'String contains path traversal sequences (../ or ..\).
-
-  Never use user input containing ".." in file paths.
-
-  Use path canonicalization and validate against allowed directories.
-
-  '
----
-id: universal-cwe-319-insecure-http
-language: '*'
-severity: warning
-message: 'CWE-319: Cleartext Transmission (HTTP instead of HTTPS)'
-tags:
-- security
-- network
-- CWE-319
-- OWASP-A02
-rule:
-  kind: string_literal
-  where:
-    match:
-      regex: http://(?!localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)
-note: 'HTTP transmits data in plaintext, vulnerable to interception.
-
-  Use HTTPS for all production URLs. Exception: localhost/private IPs for development.
-
-  '
----
 id: universal-cwe-215-debug-enabled
 language: '*'
 severity: warning
@@ -2335,31 +1309,12 @@ rule:
   - pattern: .setDebug(true)
   - pattern: 'debugMode: true'
   - pattern: debugMode = true
+  notInside:
+    kind: IfStatement
+    pattern: "environ|getenv|os\\.environ|Environment\\.GetEnvironmentVariable"
 note: 'Debug mode in production exposes sensitive information (stack traces, config).
 
   Ensure DEBUG=False/false before deployment.
-
-  '
----
-id: universal-cwe-89-sql-keywords-concat
-language: '*'
-severity: error
-message: 'CWE-89: SQL Keyword in String Concatenation'
-tags:
-- security
-- injection
-- CWE-89
-- OWASP-A03
-rule:
-  kind: binary_expression
-  has:
-    kind: string_literal
-    where:
-      match:
-        regex: (?i)(SELECT|INSERT|UPDATE|DELETE|DROP|TRUNCATE|EXEC|EXECUTE|UNION|ALTER|CREATE|GRANT|REVOKE)\s
-note: 'SQL keywords in string concatenation suggest SQL injection risk.
-
-  Use parameterized queries or prepared statements.
 
   '
 ---
@@ -2448,146 +1403,6 @@ note: 'Unbounded loops without proper exit conditions can cause DoS.
 
   '
 ---
-id: universal-cwe-390-empty-catch
-language: '*'
-severity: warning
-message: 'CWE-390: Empty Exception Handler'
-tags:
-- security
-- error-handling
-- CWE-390
-- CWE-754
-rule:
-  kind: catch_clause
-  not:
-    has:
-      any:
-      - kind: expression_statement
-      - kind: return_statement
-      - kind: throw_statement
-      - kind: call_expression
-note: 'Empty catch blocks silently swallow exceptions, hiding errors and security
-  issues.
-
-  At minimum, log the exception. Consider re-throwing or handling appropriately.
-
-  '
----
-id: universal-cwe-117-log-injection
-language: '*'
-severity: warning
-message: 'CWE-117: Potential Log Injection'
-tags:
-- security
-- logging
-- CWE-117
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: logging.info
-    - pattern: logging.debug
-    - pattern: logging.warning
-    - pattern: logging.error
-    - pattern: logger.info
-    - pattern: logger.debug
-    - pattern: logger.warn
-    - pattern: logger.error
-    - pattern: console.log
-    - pattern: console.error
-    - pattern: log.info
-    - pattern: log.debug
-    - pattern: log.error
-    - pattern: Log.Info
-    - pattern: Log.Debug
-    - pattern: Log.Error
-note: 'User input in logs can be exploited for log injection (forged entries, log
-  analysis evasion).
-
-  Sanitize newlines (\n, \r) and control characters from user input before logging.
-
-  '
----
-id: universal-cwe-209-stack-trace-exposure
-language: '*'
-severity: warning
-message: 'CWE-209: Error Information Exposure to Users'
-tags:
-- security
-- info-disclosure
-- CWE-209
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: printStackTrace
-    - pattern: traceback.print_exc
-    - pattern: traceback.format_exc
-    - pattern: .StackTrace
-    - pattern: getStackTrace
-    - pattern: e.getMessage
-note: 'Exposing stack traces to users reveals implementation details.
-
-  Log errors server-side with full details; show generic messages to users.
-
-  '
----
-id: universal-cwe-367-toctou
-language: '*'
-severity: warning
-message: 'CWE-367: Time-of-Check to Time-of-Use (TOCTOU) Race Condition'
-tags:
-- security
-- race-condition
-- CWE-367
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: os.path.exists
-    - pattern: os.path.isfile
-    - pattern: os.path.isdir
-    - pattern: os.access
-    - pattern: File.exists
-    - pattern: File.Exists
-    - pattern: File.exist?
-    - pattern: file_exists
-    - pattern: access(
-    - pattern: stat(
-note: 'Checking a condition and acting on it non-atomically creates race conditions.
-
-  Perform the operation directly and handle errors, or use atomic operations.
-
-  '
----
-id: universal-cwe-601-open-redirect
-language: '*'
-severity: warning
-message: 'CWE-601: Open Redirect Vulnerability'
-tags:
-- security
-- redirect
-- CWE-601
-- OWASP-A01
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: redirect
-    - pattern: HttpResponseRedirect
-    - pattern: RedirectResponse
-    - pattern: response.sendRedirect
-    - pattern: redirect_to
-    - pattern: Response.Redirect
-    - pattern: res.redirect
-note: 'User-controlled redirect URLs enable phishing attacks.
-
-  Validate redirect URLs against an allowlist of trusted domains,
-
-  or use relative URLs only.
-
-  '
----
 id: universal-cwe-1333-regex-redos
 language: '*'
 severity: warning
@@ -2673,49 +1488,6 @@ rule:
 note: 'FTP, Telnet, and plain LDAP transmit data unencrypted.
 
   Use SFTP/FTPS, SSH, and LDAPS respectively.
-
-  '
----
-id: universal-cwe-532-sensitive-log
-language: '*'
-severity: warning
-message: 'CWE-532: Sensitive Information in Log Files'
-tags:
-- security
-- logging
-- CWE-532
-- OWASP-A09
-rule:
-  kind: call_expression
-  has:
-    any:
-    - pattern: password
-    - pattern: token
-    - pattern: secret
-    - pattern: credential
-    - pattern: api_key
-note: 'Logging sensitive information (passwords, tokens) exposes secrets.
-
-  Mask or redact sensitive values before logging.
-
-  '
----
-id: universal-cwe-200-sensitive-exposure
-language: '*'
-severity: info
-message: 'CWE-200: Potential Sensitive Information in Code Comments'
-tags:
-- security
-- info-disclosure
-- CWE-200
-rule:
-  kind: comment
-  where:
-    match:
-      regex: (?i)(password|secret|api.?key|token|credential|private.?key)\s*[:=]?\s*['"][^'"]{4,}
-note: 'Comments containing secrets can be exposed in source code repositories.
-
-  Remove secrets from comments; use secret management solutions.
 
   '
 ---
@@ -3422,13 +2194,10 @@ tags:
 - CWE-22
 - OWASP-A01-2021-Broken-Access-Control
 rule:
-  kind: pattern
-  pattern: '[file operations] ../ or ..\\[file operations]'
+  kind: string
+  regex: "\\.\\.[\\\\/]"
 note: 'Directory traversal sequences (../ or ..\) in file paths can escape intended
-  directories
-
-  and allow attackers to read/write arbitrary files.
-
+  directories and allow attackers to read/write arbitrary files.
 
   Fix: Normalize paths and validate against base directory. Remove or reject ../ sequences.
 
@@ -3722,13 +2491,13 @@ tags:
 - cryptography
 - CWE-329
 rule:
-  kind: pattern
-  pattern: hardcoded IV or nonce in encryption
+  kind: assignment
+  pattern: $VAR = $VALUE
+  has:
+    kind: identifier
+    regex: "iv|IV|nonce|NONCE|initialization_vector"
 note: 'Reusing IVs (Initialization Vectors) or nonces breaks encryption security.
-  Each
-
-  encryption operation must use a unique, random IV.
-
+  Each encryption operation must use a unique, random IV.
 
   Fix: Generate random IV for each encryption operation using secrets.token_bytes().
 
@@ -3761,13 +2530,13 @@ tags:
 - password-hashing
 - CWE-759
 rule:
-  kind: pattern
-  pattern: password hashing without salt
+  kind: call
+  any:
+  - pattern: hashlib.sha256($PASSWORD).hexdigest()
+  - pattern: hashlib.sha512($PASSWORD).hexdigest()
+  - pattern: hashlib.sha1($PASSWORD).hexdigest()
 note: 'Unsalted hashes are vulnerable to rainbow table attacks where precomputed hashes
-  of
-
-  common passwords enable quick password cracking.
-
+  of common passwords enable quick password cracking.
 
   Fix: Use password hashing libraries (bcrypt, argon2, PBKDF2) that handle salt automatically.
 
@@ -3784,13 +2553,16 @@ tags:
 - CWE-798
 - OWASP-A07-2021-Authentication-Failures
 rule:
-  kind: pattern
-  pattern: api_key = "..."
+  kind: assignment
+  pattern: $VAR = $VALUE
+  has:
+    kind: identifier
+    regex: "api_key|apikey|API_KEY|APIKEY"
+  notInside:
+    kind: function_definition
+    regex: "test_|_test|fixture|example|mock|fake"
 note: 'API keys in source code are easily extracted from repositories by attackers
-  and can
-
-  be used to access external services.
-
+  and can be used to access external services.
 
   Fix: Use environment variables or cloud secrets managers like AWS Secrets Manager.
 
@@ -3807,13 +2579,16 @@ tags:
 - CWE-798
 - OWASP-A07-2021-Authentication-Failures
 rule:
-  kind: pattern
-  pattern: token = "..."
+  kind: assignment
+  pattern: $VAR = $VALUE
+  has:
+    kind: identifier
+    regex: "token|TOKEN|auth_token|access_token|bearer_token"
+  notInside:
+    kind: function_definition
+    regex: "test_|_test|fixture|example|mock|fake"
 note: 'Authentication tokens (OAuth, JWT, bearer tokens) hardcoded in source are a
-  critical
-
-  security risk and enable account takeover.
-
+  critical security risk and enable account takeover.
 
   Fix: Retrieve tokens from secure storage at runtime.
 
@@ -3830,13 +2605,20 @@ tags:
 - cloud-security
 - CWE-798
 rule:
-  kind: pattern
-  pattern: aws_access_key_id = "AKIA..."
+  kind: assignment
+  pattern: $VAR = $VALUE
+  all:
+  - has:
+      kind: identifier
+      regex: "aws_access_key|aws_secret|AWS_ACCESS|AWS_SECRET"
+  - has:
+      kind: string
+      regex: "AKIA[A-Z0-9]{16}"
+  notInside:
+    kind: function_definition
+    regex: "test_|_test|fixture|example|mock|fake"
 note: 'AWS credentials have recognizable formats (AKIA*) and are frequently detected
-  in
-
-  repository leaks and used by attackers.
-
+  in repository leaks and used by attackers.
 
   Fix: Use IAM roles, environment variables, or AWS Secrets Manager instead.
 
@@ -3852,13 +2634,13 @@ tags:
 - credentials
 - CWE-798
 rule:
-  kind: pattern
-  pattern: connection string with password
+  kind: string
+  regex: "(mysql|postgres|postgresql|mongodb|redis)://[^:]+:[^@]+@"
+  notInside:
+    kind: function_definition
+    regex: "test_|_test|fixture|example|mock|fake"
 note: 'Database connection strings with embedded passwords are a common source of
-  credential
-
-  exposure and enable unauthorized database access.
-
+  credential exposure and enable unauthorized database access.
 
   Fix: Use connection string parameters from environment or secrets manager.
 
@@ -3874,12 +2656,10 @@ tags:
 - cryptography
 - CWE-321
 rule:
-  kind: pattern
-  pattern: '-----BEGIN RSA PRIVATE KEY-----'
+  kind: string
+  regex: "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"
 note: 'Private keys in source code can be extracted and used for impersonation, decryption
-
   of previous communications, and code signing attacks.
-
 
   Fix: Store private keys in secure files with restricted permissions (0600) or HSM/TPM.
 
@@ -3896,13 +2676,12 @@ tags:
 - CWE-215
 - django
 rule:
-  kind: pattern
+  kind: assignment
   pattern: DEBUG = True
+  notInside:
+    kind: if_statement
 note: 'Debug mode exposes sensitive information including source code paths, database
-  queries,
-
-  environment variables, and detailed error traces.
-
+  queries, environment variables, and detailed error traces.
 
   Fix: Use DEBUG = False in production; use environment variables to control debug
   mode.
@@ -3922,12 +2701,15 @@ tags:
 - CWE-798
 - django
 rule:
-  kind: pattern
-  pattern: SECRET_KEY = "..."
+  kind: assignment
+  pattern: SECRET_KEY = $VALUE
+  has:
+    kind: string
+  notInside:
+    kind: function_definition
+    regex: "test_|_test|fixture|example|mock|fake"
 note: 'Django SECRET_KEY is used for session security, CSRF tokens, and other cryptographic
-
   operations. Hardcoding it in source control compromises all sessions.
-
 
   Fix: Load SECRET_KEY from environment variable in settings.py.
 
@@ -3944,13 +2726,12 @@ tags:
 - CWE-215
 - flask
 rule:
-  kind: pattern
-  pattern: app.run(debug=True)
+  kind: call
+  pattern: $APP.run(debug=True)
+  notInside:
+    kind: if_statement
 note: 'Flask debug mode includes an interactive debugger accessible via browser that
-  allows
-
-  arbitrary code execution.
-
+  allows arbitrary code execution.
 
   Fix: Never enable debug mode in production.
 
@@ -4175,13 +2956,13 @@ tags:
 - denial-of-service
 - CWE-776
 rule:
-  kind: pattern
-  pattern: XML parsing without entity expansion limits
+  kind: call
+  any:
+  - pattern: etree.parse($INPUT)
+  - pattern: xml.etree.ElementTree.parse($INPUT)
+  - pattern: minidom.parseString($INPUT)
 note: 'Recursive entity expansion can cause Denial of Service by consuming memory
-  and CPU.
-
-  Example: Billion Laughs attack uses nested entity definitions.
-
+  and CPU. Example: Billion Laughs attack uses nested entity definitions.
 
   Fix: Use defusedxml or configure parser to limit entity expansion.
 
@@ -4417,11 +3198,13 @@ tags:
 - race-condition
 - CWE-377
 rule:
-  kind: pattern
-  pattern: open("/tmp/...")
+  kind: call
+  pattern: open($PATH, $$$)
+  has:
+    kind: string
+    regex: "^['\"]?/tmp/"
 note: 'Hardcoded temp paths are predictable and vulnerable to symlink attacks and
   race conditions.
-
 
   Fix: Use tempfile module for temporary files with secure creation.
 
@@ -4460,10 +3243,14 @@ tags:
 - information-disclosure
 - CWE-209
 rule:
-  kind: pattern
-  pattern: return str(e)
+  kind: return_statement
+  has:
+    kind: call
+    pattern: str($E)
+  inside:
+    kind: except_clause
 note: "Stack traces reveal internal structure (paths, library versions, database schemas)\
-  \ and\naid attackers in finding vulnerabilities.\n\nBad Example:\n  except Exception\
+  \ and aid attackers in finding vulnerabilities.\n\nBad Example:\n  except Exception\
   \ as e:\n      return {\"error\": str(e)}  # Exposes stack trace!\n\nFix: Log detailed\
   \ errors server-side; return generic error message to users.\n"
 ---
@@ -4551,10 +3338,13 @@ tags:
 - mutable-defaults
 - CWE-1188
 rule:
-  kind: pattern
-  pattern: def func(arg=[])
+  kind: Parameter
+  has:
+    any:
+    - kind: ListExpression
+    - kind: DictionaryExpression
 note: "Mutable default arguments (lists, dicts) persist across function calls. This\
-  \ can cause\nstate leakage between invocations, potentially exposing sensitive data.\n\
+  \ can cause state leakage between invocations, potentially exposing sensitive data.\n\
   \nFix: Use None as default and create new mutable objects in function body:\n  def\
   \ func(arg=None):\n      if arg is None:\n          arg = []\n"
 ---
@@ -4591,12 +3381,13 @@ tags:
 - cryptography
 - CWE-326
 rule:
-  kind: pattern
-  pattern: ssl.PROTOCOL_SSLv2
+  kind: attribute
+  any:
+  - pattern: ssl.PROTOCOL_SSLv2
+  - pattern: ssl.PROTOCOL_SSLv3
+  - pattern: ssl.PROTOCOL_TLSv1
 note: 'Old SSL/TLS versions have known vulnerabilities (POODLE, Heartbleed, etc).
-
   SSLv2: broken, SSLv3: POODLE, TLSv1.0: deprecated
-
 
   Fix: Use ssl.PROTOCOL_TLS or ssl.create_default_context() which use TLSv1.2+.
 
@@ -4632,10 +3423,13 @@ tags:
 - authentication
 - CWE-327
 rule:
-  kind: pattern
-  pattern: JWT algorithm 'none'
+  kind: call
+  pattern: jwt.encode($$$)
+  has:
+    kind: string
+    regex: "^['\"]none['\"]$"
 note: "The 'none' algorithm in JWT disables all cryptographic protection. If a server\
-  \ accepts\n'none', attackers can forge tokens without knowing the secret.\n\nFix:\
+  \ accepts 'none', attackers can forge tokens without knowing the secret.\n\nFix:\
   \ Explicitly specify allowed algorithms; reject 'none' algorithm.\n  jwt.decode(token,\
   \ secret, algorithms=['HS256', 'RS256'])\n"
 ---
@@ -4984,7 +3778,7 @@ tags:
 - OWASP-A03:2021-Injection
 rule:
   kind: CallExpression
-  pattern: $(element).html($userInput)
+  pattern: ".html("
 note: 'jQuery''s .html() method sets innerHTML of elements. Unsanitized user input
   creates XSS vulnerabilities.
 
@@ -5977,8 +4771,8 @@ tags:
 - CWE-798
 - OWASP-A02:2021-CM
 rule:
-  kind: Literal
-  pattern: jwt.sign(payload, "hardcodedSecret")
+  kind: CallExpression
+  pattern: jwt.sign($PAYLOAD, $SECRET)
 note: 'Hardcoded secrets are easily discovered through code review, version control
   history, or decompilation.
 
@@ -6154,8 +4948,8 @@ tags:
 - CWE-942
 - OWASP-A01:2021-BOLA
 rule:
-  kind: Literal
-  pattern: 'Access-Control-Allow-Origin: *'
+  kind: StringLiteral
+  regex: 'Access-Control-Allow-Origin.*\*'
 note: 'Allowing all origins enables any website to make requests to your API, potentially
   exposing data to malicious sites.
 
@@ -6216,8 +5010,8 @@ tags:
 - CWE-942
 - OWASP-A01:2021-BOLA
 rule:
-  kind: Literal
-  pattern: 'Access-Control-Allow-Credentials: true'
+  kind: StringLiteral
+  regex: 'Access-Control-Allow-Credentials.*true'
 note: 'Allowing credentials with weak origin validation enables attackers to perform
   authenticated requests on behalf of users.
 
@@ -6246,8 +5040,8 @@ tags:
 - CWE-942
 - OWASP-A01:2021-BOLA
 rule:
-  kind: Literal
-  pattern: 'Access-Control-Allow-Origin: null'
+  kind: StringLiteral
+  regex: 'Access-Control-Allow-Origin.*null'
 note: 'The null origin can be triggered by sandboxed iframes and local files, potentially
   allowing unauthorized access.
 
@@ -6275,8 +5069,8 @@ tags:
 - CWE-1021
 - OWASP-A08:2021-SCI
 rule:
-  kind: Literal
-  pattern: crossenv
+  kind: StringLiteral
+  regex: "crossenv"
 note: 'Attackers publish malicious packages with names similar to popular ones, hoping
   developers will mistype the package name.
 
@@ -6306,8 +5100,8 @@ tags:
 - CWE-1021
 - OWASP-A08:2021-SCI
 rule:
-  kind: Literal
-  pattern: package-name
+  kind: StringLiteral
+  regex: 'package-name'
 note: 'Dependency confusion attacks exploit unscoped package names by publishing malicious
   public packages with the same name.
 
@@ -6337,8 +5131,8 @@ tags:
 - CWE-1021
 - OWASP-A08:2021-SCI
 rule:
-  kind: Literal
-  pattern: '"postinstall": "node malicious.js"'
+  kind: StringLiteral
+  regex: 'postinstall.*node'
 note: 'Postinstall scripts run automatically during npm install, allowing immediate
   code execution from malicious packages.
 
@@ -6368,8 +5162,8 @@ tags:
 - CWE-1021
 - OWASP-A08:2021-SCI
 rule:
-  kind: Literal
-  pattern: '"lodash": "*"'
+  kind: StringLiteral
+  regex: 'lodash.*\*'
 note: 'Unpinned dependencies can unexpectedly upgrade to compromised versions. Always
   use lockfiles and review updates.
 
@@ -6706,23 +5500,16 @@ tags:
 - CWE-798
 - OWASP-A02:2021-CM
 rule:
-  kind: Literal
-  pattern: apiKey = "sk_live_..."
+  kind: string
+  regex: "sk_live_[a-zA-Z0-9]+"
+  notInside:
+    kind: function_declaration
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Hardcoded API keys are exposed in version control, compiled code, and potentially
   to unauthorized users.
 
-
-  Remediation:
-
-  - Use environment variables
-
-  - Use secret management services
-
-  - Never commit secrets to repositories
-
-  - Use .gitignore and .env files
-
-  - Implement secret scanning in CI/CD
+  Remediation: Use environment variables, secret management services, never commit
+  secrets to repositories.
 
   '
 ---
@@ -6737,23 +5524,16 @@ tags:
 - CWE-798
 - OWASP-A02:2021-CM
 rule:
-  kind: Literal
-  pattern: AWS_ACCESS_KEY_ID
+  kind: string
+  regex: "AKIA[A-Z0-9]{16}"
+  notInside:
+    kind: function_declaration
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'AWS credentials in code can be extracted and used to access cloud resources,
   potentially causing massive damage.
 
-
-  Remediation:
-
-  - Use IAM roles, instance profiles, or environment variables
-
-  - Use AWS Secrets Manager or Parameter Store
-
-  - Use cross-account roles for access
-
-  - Enable MFA for sensitive operations
-
-  - Audit CloudTrail for unusual activity
+  Remediation: Use IAM roles, instance profiles, AWS Secrets Manager or environment
+  variables.
 
   '
 ---
@@ -6768,8 +5548,8 @@ tags:
 - CWE-321
 - OWASP-A02:2021-CM
 rule:
-  kind: Literal
-  pattern: BEGIN RSA PRIVATE KEY
+  kind: StringLiteral
+  regex: 'BEGIN RSA PRIVATE KEY'
 note: 'Private keys in source code can be used to impersonate services, decrypt data,
   or forge signatures.
 
@@ -6799,21 +5579,15 @@ tags:
 - CWE-798
 - OWASP-A02:2021-CM
 rule:
-  kind: Literal
-  pattern: mongodb://user:password@host
+  kind: string
+  regex: "(mongodb|mysql|postgres|redis)://[^:]+:[^@]+@"
+  notInside:
+    kind: function_declaration
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Database connection strings with embedded credentials expose database access
   to anyone with code access.
 
-
-  Remediation:
-
-  - Use environment variables for connection strings
-
-  - Use secret management services
-
-  - Prefer IAM authentication where available
-
-  - Implement connection pooling with credential management
+  Remediation: Use environment variables, secret management services, or IAM authentication.
 
   - Audit database access logs
 
@@ -6977,22 +5751,14 @@ tags:
 - CWE-295
 - OWASP-A02:2021-CM
 rule:
-  kind: Property
+  kind: pair
   pattern: 'rejectUnauthorized: false'
+  notInside:
+    kind: function_declaration
+    regex: "test|Test|mock|Mock|stub|Stub"
 note: 'Disabling TLS certificate validation allows man-in-the-middle attacks.
 
-
-  Remediation:
-
-  - Keep certificate validation enabled
-
-  - Use proper CA certificates
-
-  - Fix certificate issues rather than bypassing validation
-
-  - Update certificate bundles regularly
-
-  - Use certificate pinning for critical connections
+  Remediation: Keep certificate validation enabled, use proper CA certificates.
 
   '
 ---
@@ -7807,13 +6573,16 @@ tags:
 - CWE-798
 - OWASP-A07-2021
 rule:
-  kind: variable_assignment
-  pattern: $VAR = $LITERAL
+  kind: local_variable_declaration
+  has:
+    kind: identifier
+    regex: "password|passwd|pwd|secret|credential|apikey"
+  notInside:
+    kind: method_declaration
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Never embed passwords in source code.
 
   Load credentials from secure configuration sources.
-
-  Variable names: password, passwd, pwd, secret, credential, apikey
 
   '
 ---
@@ -8240,6 +7009,9 @@ tags:
 rule:
   kind: method_invocation
   pattern: $OBJ.setDebug(true)
+  notInside:
+    kind: IfStatement
+    pattern: "getenv|getProperty|System\\.getenv|System\\.getProperty"
 note: 'Disable debug mode in production configuration.
 
   Use environment-specific profiles to manage debug settings.
@@ -8999,7 +7771,7 @@ note: 'Use .equals() for string comparison, not ==.
 ---
 id: go-cwe-330-weak-random-number-generator
 language: go
-severity: critical
+severity: error
 message: 'CWE-330: Use of Insufficiently Random Values - math/rand is not cryptographically
   secure'
 tags:
@@ -9020,7 +7792,7 @@ note: 'math/rand uses a deterministic PRNG unsuitable for security-sensitive ope
 ---
 id: go-cwe-798-hardcoded-cryptographic-keys
 language: go
-severity: critical
+severity: error
 message: 'CWE-798: Use of Hard-coded Credentials - cryptographic keys hardcoded in
   source'
 tags:
@@ -9029,18 +7801,21 @@ tags:
 - CWE-798
 - OWASP-Credentials
 rule:
-  kind: call
-  pattern: aes.NewCipher([]byte("..."))
+  kind: call_expression
+  pattern: aes.NewCipher([]byte($KEY))
+  has:
+    kind: interpreted_string_literal
+  notInside:
+    kind: function_declaration
+    regex: "test|Test|mock|Mock|Example"
 note: 'Hardcoded keys can be extracted from binaries and cannot be rotated. Load keys
-  from environment variables
-
-  or secure storage systems instead.
+  from environment variables or secure storage systems instead.
 
   '
 ---
 id: go-cwe-329-weak-iv
 language: go
-severity: high
+severity: error
 message: 'CWE-329: Not Using an Unpredictable IV - static or zero-initialized IV in
   encryption'
 tags:
@@ -9060,7 +7835,7 @@ note: 'ECB mode and static IVs enable replay attacks and pattern detection. Alwa
 ---
 id: go-cwe-328-deprecated-hash-functions
 language: go
-severity: high
+severity: error
 message: 'CWE-328: Reversible One-Way Hash - MD5 or SHA1 used for cryptographic purposes'
 tags:
 - security
@@ -9079,7 +7854,7 @@ note: 'MD5 and SHA1 have known collision vulnerabilities. Use SHA256, SHA512, or
 ---
 id: go-cwe-326-inadequate-encryption-strength
 language: go
-severity: high
+severity: error
 message: 'CWE-326: Inadequate Encryption Strength - weak TLS version or small RSA
   keys'
 tags:
@@ -9099,7 +7874,7 @@ note: 'SSL 3.0, TLS 1.0, TLS 1.1 have known vulnerabilities. Use TLS 1.2 minimum
 ---
 id: go-cwe-327-weak-cipher-suites
 language: go
-severity: medium
+severity: warning
 message: 'CWE-327: Use of Broken Crypto Algorithm - weak or non-PFS cipher suites'
 tags:
 - security
@@ -9117,7 +7892,7 @@ note: 'RC4, 3DES, and ciphers without PFS are weak. Use ECDHE with AES-GCM or Ch
 ---
 id: go-cwe-90-ldap-injection
 language: go
-severity: high
+severity: error
 message: 'CWE-90: LDAP Injection - user input concatenated into LDAP filters'
 tags:
 - security
@@ -9135,7 +7910,7 @@ note: 'Use ldap.EscapeFilter() to escape special characters in LDAP filters.
 ---
 id: go-cwe-79-template-injection-html
 language: go
-severity: high
+severity: error
 message: 'CWE-79: Cross-site Scripting (XSS) - text/template used for HTML or unsafe
   HTML markers'
 tags:
@@ -9155,7 +7930,7 @@ note: 'Use html/template instead of text/template for HTML output. Go''s templat
 ---
 id: go-cwe-94-code-injection-template
 language: go
-severity: critical
+severity: error
 message: 'CWE-94: Code Injection - user-controlled template parsing or file paths'
 tags:
 - security
@@ -9174,7 +7949,7 @@ note: 'Never allow users to control template content. Only parse trusted embedde
 ---
 id: go-cwe-643-xpath-injection
 language: go
-severity: high
+severity: error
 message: 'CWE-643: XPath Injection - user input concatenated into XPath expressions'
 tags:
 - security
@@ -9195,7 +7970,7 @@ note: 'Escape or parameterize XPath input. Validate against character blacklist 
 ---
 id: go-cwe-117-log-injection
 language: go
-severity: medium
+severity: warning
 message: 'CWE-117: Improper Output Neutralization for Logs - unvalidated user input
   in logs'
 tags:
@@ -9214,7 +7989,7 @@ note: 'Sanitize log input: remove/escape newlines and carriage returns.
 ---
 id: go-cwe-918-ssrf
 language: go
-severity: high
+severity: error
 message: 'CWE-918: Server-Side Request Forgery - unvalidated user URLs in HTTP requests'
 tags:
 - security
@@ -9233,7 +8008,7 @@ note: 'Validate URLs against allowlist of domains. Block internal IPs (127.0.0.1
 ---
 id: go-cwe-319-cleartext-transmission
 language: go
-severity: medium
+severity: warning
 message: 'CWE-319: Cleartext Transmission of Sensitive Information - HTTP instead
   of HTTPS'
 tags:
@@ -9253,7 +8028,7 @@ note: 'Always use HTTPS for network requests. HTTP transmits data in plaintext v
 ---
 id: go-cwe-200-binding-all-interfaces
 language: go
-severity: medium
+severity: warning
 message: 'CWE-200: Exposure of Sensitive Information - server binding to 0.0.0.0'
 tags:
 - security
@@ -9272,7 +8047,7 @@ note: 'Bind to specific interfaces (127.0.0.1 for localhost, or specific interna
 ---
 id: go-cwe-400-missing-http-timeouts
 language: go
-severity: medium
+severity: warning
 message: 'CWE-400: Uncontrolled Resource Consumption - missing HTTP timeouts'
 tags:
 - security
@@ -9290,7 +8065,7 @@ note: 'Set explicit timeouts on http.Client and http.Server to prevent Slowloris
 ---
 id: go-cwe-22-path-traversal
 language: go
-severity: high
+severity: error
 message: 'CWE-22: Path Traversal - user input in file paths without validation'
 tags:
 - security
@@ -9308,7 +8083,7 @@ note: 'Use filepath.Clean() and verify resolved path starts with baseDir.
 ---
 id: go-cwe-732-insecure-file-permissions
 language: go
-severity: medium
+severity: warning
 message: 'CWE-732: Incorrect Permission Assignment - world-writable file/directory
   permissions'
 tags:
@@ -9328,7 +8103,7 @@ note: 'Use restrictive permissions: 0600 for files (owner only), 0644 for readab
 ---
 id: go-cwe-377-insecure-temp-file
 language: go
-severity: medium
+severity: warning
 message: 'CWE-377: Insecure Temporary File - predictable temp file names or TOCTOU
   race'
 tags:
@@ -9347,7 +8122,7 @@ note: 'Use os.CreateTemp() for cryptographically random temp file names.
 ---
 id: go-cwe-59-symlink-following
 language: go
-severity: medium
+severity: warning
 message: 'CWE-59: Symlink Following - operations on user-controlled paths without
   symlink checks'
 tags:
@@ -9366,7 +8141,7 @@ note: 'Check if path is a symlink using os.Lstat() and os.ModeSymlink.
 ---
 id: go-cwe-787-unsafe-package
 language: go
-severity: high
+severity: error
 message: 'CWE-787: Out-of-bounds Write - unsafe package usage'
 tags:
 - security
@@ -9385,7 +8160,7 @@ note: 'Avoid unsafe package; it bypasses memory safety. Use encoding/binary for 
 ---
 id: go-cwe-190-integer-overflow
 language: go
-severity: medium
+severity: warning
 message: 'CWE-190: Integer Overflow - unsafe type conversions without bounds checking'
 tags:
 - security
@@ -9403,7 +8178,7 @@ note: 'Check bounds before conversion: int64Var > math.MaxInt32 or < math.MinInt
 ---
 id: go-cwe-129-array-index-out-of-bounds
 language: go
-severity: medium
+severity: warning
 message: 'CWE-129: Improper Validation of Array Index - slice access without bounds
   checking'
 tags:
@@ -9422,7 +8197,7 @@ note: 'Always validate: userIndex >= 0 && userIndex < len(data).
 ---
 id: go-cwe-120-cgo-buffer-overflow
 language: go
-severity: critical
+severity: error
 message: 'CWE-120: Buffer Copy Without Bounds Checking - CGO unsafe C function calls'
 tags:
 - security
@@ -9441,7 +8216,7 @@ note: 'Use safe alternatives: C.strncpy(), C.snprintf(), C.memmove().
 ---
 id: go-cwe-362-race-condition
 language: go
-severity: high
+severity: error
 message: 'CWE-362: Race Condition - shared variable modification without synchronization'
 tags:
 - security
@@ -9462,7 +8237,7 @@ note: 'Use sync.Mutex for exclusive access, sync.Map for concurrent maps, or cha
 ---
 id: go-cwe-367-toctou-race
 language: go
-severity: medium
+severity: warning
 message: 'CWE-367: Time-of-check Time-of-use Race - state changes between check and
   use'
 tags:
@@ -9482,7 +8257,7 @@ note: 'Open file directly instead of stat-then-open. Use database transactions w
 ---
 id: go-cwe-400-goroutine-leak
 language: go
-severity: medium
+severity: warning
 message: 'CWE-400: Uncontrolled Resource Consumption - goroutine leaks from missing
   context'
 tags:
@@ -9501,7 +8276,7 @@ note: 'Always pass context.Context to goroutines and check for cancellation in s
 ---
 id: go-cwe-798-hardcoded-credentials
 language: go
-severity: critical
+severity: error
 message: 'CWE-798: Use of Hard-coded Credentials - passwords/tokens hardcoded in source'
 tags:
 - security
@@ -9509,8 +8284,13 @@ tags:
 - CWE-798
 - OWASP-Credentials
 rule:
-  kind: assignment
-  pattern: password := "admin123"
+  kind: short_var_declaration
+  has:
+    kind: identifier
+    regex: "password|passwd|secret|credential|token"
+  notInside:
+    kind: function_declaration
+    regex: "test|Test|mock|Mock|Example"
 note: 'Load credentials from environment variables or secret management systems.
 
   Never commit credentials to version control. Use encrypted config files or key vaults.
@@ -9519,7 +8299,7 @@ note: 'Load credentials from environment variables or secret management systems.
 ---
 id: go-cwe-916-weak-password-hashing
 language: go
-severity: high
+severity: error
 message: 'CWE-916: Use of Password Hash With Insufficient Computational Effort - weak
   hash functions'
 tags:
@@ -9538,7 +8318,7 @@ note: 'Use bcrypt (golang.org/x/crypto/bcrypt) or argon2 for password hashing.
 ---
 id: go-cwe-347-jwt-signature-bypass
 language: go
-severity: critical
+severity: error
 message: 'CWE-347: Improper Verification of Cryptographic Signature - JWT validation
   failure'
 tags:
@@ -9557,7 +8337,7 @@ note: 'Validate JWT algorithm (reject "none"). Verify token.Valid and check for 
 ---
 id: go-cwe-208-timing-attack
 language: go
-severity: medium
+severity: warning
 message: 'CWE-208: Observable Timing Discrepancy - string comparison on secrets'
 tags:
 - security
@@ -9575,7 +8355,7 @@ note: 'Use crypto/subtle.ConstantTimeCompare() for passwords, tokens, and signat
 ---
 id: go-cwe-384-session-fixation
 language: go
-severity: high
+severity: error
 message: 'CWE-384: Session Fixation - predictable session IDs or user-controlled sessions'
 tags:
 - security
@@ -9593,7 +8373,7 @@ note: 'Generate cryptographically random session IDs using crypto/rand (32+ byte
 ---
 id: go-cwe-209-error-message-info-leak
 language: go
-severity: medium
+severity: warning
 message: 'CWE-209: Generation of Error Message Containing Sensitive Information'
 tags:
 - security
@@ -9611,7 +8391,7 @@ note: 'Log detailed errors internally but return generic messages to clients.
 ---
 id: go-cwe-210-panic-info-leak
 language: go
-severity: medium
+severity: warning
 message: 'CWE-210: Product-Generated Error Message Information Leak - panic recovery
   exposed'
 tags:
@@ -9630,7 +8410,7 @@ note: 'Log stack traces internally but return generic "Internal server error" to
 ---
 id: go-cwe-489-debug-code
 language: go
-severity: high
+severity: error
 message: 'CWE-489: Active Debug Code - debug mode enabled in production'
 tags:
 - security
@@ -9640,6 +8420,9 @@ tags:
 rule:
   kind: statement
   pattern: gin.SetMode(gin.DebugMode)
+  notInside:
+    kind: IfStatement
+    pattern: "os\\.Getenv|os\\.LookupEnv|environ"
 note: 'Use environment variables to control debug mode. Disable pprof and expvar in
   production.
 
@@ -9649,7 +8432,7 @@ note: 'Use environment variables to control debug mode. Disable pprof and expvar
 ---
 id: go-cwe-200-version-disclosure
 language: go
-severity: low
+severity: info
 message: 'CWE-200: Exposure of Sensitive Information - version information disclosed'
 tags:
 - security
@@ -9667,7 +8450,7 @@ note: 'Remove or obfuscate version headers. Require authentication for version e
 ---
 id: go-cwe-502-unsafe-json-unmarshal
 language: go
-severity: medium
+severity: warning
 message: 'CWE-502: Deserialization of Untrusted Data - unsafe JSON unmarshaling'
 tags:
 - security
@@ -9685,7 +8468,7 @@ note: 'Use specific struct types for unmarshaling. For large numbers, use json.N
 ---
 id: go-cwe-502-unsafe-gob-decode
 language: go
-severity: high
+severity: error
 message: 'CWE-502: Deserialization of Untrusted Data - unsafe Gob decoding'
 tags:
 - security
@@ -9703,7 +8486,7 @@ note: 'Use JSON or Protocol Buffers for untrusted sources. Limit registered type
 ---
 id: go-cwe-502-unsafe-yaml-unmarshal
 language: go
-severity: medium
+severity: warning
 message: 'CWE-502: Deserialization of Untrusted Data - YAML with executable tags'
 tags:
 - security
@@ -9722,7 +8505,7 @@ note: 'Use gopkg.in/yaml.v3 instead of v2 (safer). Validate config structure aft
 ---
 id: go-cwe-611-xxe-injection
 language: go
-severity: high
+severity: error
 message: 'CWE-611: XXE - XML External Entity injection from untrusted XML'
 tags:
 - security
@@ -9740,7 +8523,7 @@ note: 'Go''s encoding/xml is safe by default (no external entity processing).
 ---
 id: go-cwe-284-reflection-bypass
 language: go
-severity: high
+severity: error
 message: 'CWE-284: Improper Access Control - reflection bypasses visibility rules'
 tags:
 - security
@@ -9758,7 +8541,7 @@ note: 'Avoid reflection on untrusted types. Use interfaces instead of reflection
 ---
 id: go-cwe-1333-regex-dos
 language: go
-severity: medium
+severity: warning
 message: 'CWE-1333: Inefficient Regular Expression Complexity - ReDoS vulnerabilities'
 tags:
 - security
@@ -9777,7 +8560,7 @@ note: 'Never compile regex from user input. Use pre-compiled patterns.
 ---
 id: go-cwe-476-nil-pointer-dereference
 language: go
-severity: medium
+severity: warning
 message: 'CWE-476: NULL Pointer Dereference - using nil value after error-prone operation'
 tags:
 - security
@@ -9795,7 +8578,7 @@ note: 'Check error first, then check for nil before dereferencing.
 ---
 id: go-cwe-601-open-redirect
 language: go
-severity: medium
+severity: warning
 message: 'CWE-601: URL Redirection to Untrusted Site - unvalidated redirect URLs'
 tags:
 - security
@@ -9814,7 +8597,7 @@ note: 'Validate URLs against allowlist of domains. Allow only relative paths (st
 ---
 id: go-cwe-352-csrf
 language: go
-severity: high
+severity: error
 message: 'CWE-352: Cross-Site Request Forgery - missing CSRF token validation'
 tags:
 - security
@@ -9832,7 +8615,7 @@ note: 'Use CSRF middleware (e.g., github.com/gorilla/csrf). Include token in for
 ---
 id: go-cwe-1021-missing-security-headers
 language: go
-severity: medium
+severity: warning
 message: 'CWE-1021: Improper Restriction of Frame Reference - missing security headers'
 tags:
 - security
@@ -9850,7 +8633,7 @@ note: 'Add security headers: X-Content-Type-Options: nosniff, X-Frame-Options: D
 ---
 id: go-cwe-614-cookie-without-secure-flag
 language: go
-severity: medium
+severity: warning
 message: 'CWE-614: Sensitive Cookie Without ''Secure'' Flag - insecure cookie settings'
 tags:
 - security
@@ -9868,7 +8651,7 @@ note: 'Set Secure: true (HTTPS only), HttpOnly: true (no JS access), SameSite: S
 ---
 id: go-cwe-290-ip-spoofing
 language: go
-severity: medium
+severity: warning
 message: 'CWE-290: Authentication Bypass by Spoofing - trusting X-Forwarded-For'
 tags:
 - security
@@ -9886,7 +8669,7 @@ note: 'Only trust X-Forwarded-For from known proxies. Validate proxy IP in Remot
 ---
 id: go-cwe-598-query-string-sensitive-data
 language: go
-severity: medium
+severity: warning
 message: 'CWE-598: Information Exposure Through Query Strings - sensitive data in
   URLs'
 tags:
@@ -9905,7 +8688,7 @@ note: 'Use HTTP headers (Authorization) or POST body for sensitive data.
 ---
 id: go-cwe-548-directory-listing
 language: go
-severity: low
+severity: info
 message: 'CWE-548: Exposure of Information Through Directory Listing'
 tags:
 - security
@@ -9923,7 +8706,7 @@ note: 'Disable directory listing. Use custom file server that blocks directory a
 ---
 id: go-cwe-400-unbounded-resource-allocation
 language: go
-severity: medium
+severity: warning
 message: 'CWE-400: Uncontrolled Resource Consumption - unbounded allocation'
 tags:
 - security
@@ -9942,7 +8725,7 @@ note: 'Limit request body: http.MaxBytesReader(). Validate size parameters again
 ---
 id: go-cwe-22-zip-slip
 language: go
-severity: high
+severity: error
 message: 'CWE-22: Path Traversal - Zip Slip vulnerability in archive extraction'
 tags:
 - security
@@ -9961,7 +8744,7 @@ note: 'Validate extracted paths are within destDir. Use strings.HasPrefix() afte
 ---
 id: go-cwe-295-certificate-pinning
 language: go
-severity: medium
+severity: warning
 message: 'CWE-295: Improper Certificate Validation - weak certificate pinning'
 tags:
 - security
@@ -9980,7 +8763,7 @@ note: 'Implement proper certificate pinning: extract subject public key, compute
 ---
 id: go-cwe-915-prototype-pollution
 language: go
-severity: medium
+severity: warning
 message: 'CWE-915: Improper Modification of Dynamically-Determined Attributes - map
   mutation'
 tags:
@@ -10000,7 +8783,7 @@ note: 'Use allowlist for user-controlled keys. Use struct types instead of maps 
 ---
 id: go-cwe-330-insufficient-entropy
 language: go
-severity: high
+severity: error
 message: 'CWE-330: Use of Insufficiently Random Values - secrets with insufficient
   entropy'
 tags:
@@ -10020,7 +8803,7 @@ note: 'Use at least 32 bytes (256 bits) for secrets. Use base64.URLEncoding to p
 ---
 id: go-cwe-426-environment-variable-injection
 language: go
-severity: high
+severity: error
 message: 'CWE-426: Untrusted Search Path - environment variable injection'
 tags:
 - security
@@ -11510,15 +10293,16 @@ tags:
 - secrets
 - CWE-798
 rule:
-  kind: variable_assignment
-  pattern: (?:PASSWORD|password|ADMIN|admin|SECRET)\s*=\s*"[^"]+"
+  kind: LetDeclaration
+  has:
+    kind: Identifier
+    regex: "(?i)^(password|passwd|secret|credential|api_key|token|private_key)$"
+  notInside:
+    kind: FunctionDeclaration
+    regex: "test|mock"
 note: 'Hardcoded credentials can be extracted from binaries.
 
-
   Fix: Use environment variables or secure credential storage.
-
-
-  Reference: CWE-798
 
   '
 ---
@@ -11614,21 +10398,23 @@ id: rust-cwe-798-secrets-in-source
 language: rust
 severity: error
 message: 'CWE-798: Source-controlled secrets are leaked in git history'
+enabled: false  # Disabled: merged into rust-cwe-798-hardcoded-credentials
 tags:
 - security
 - secrets
 - source-control
 - CWE-798
 rule:
-  kind: variable_assignment
-  pattern: (?:API_KEY|api_key|TOKEN|token|SECRET)\s*=\s*"(?:sk-|ghp_|[A-Z0-9]{20,})"
+  kind: let_declaration
+  has:
+    kind: identifier
+    regex: "API_KEY|api_key|TOKEN|token|SECRET|secret"
+  notInside:
+    kind: function_item
+    regex: "test|mock"
 note: 'Source-controlled secrets are leaked in git history.
 
-
   Fix: Use environment variables, secret managers, or config files (gitignored).
-
-
-  Reference: CWE-798
 
   '
 ---
@@ -13259,15 +12045,14 @@ tags:
 - CWE-798
 - OWASP-A07
 rule:
-  kind: literal
-  pattern: 'password\\s*=\\s*[\"'']|connectionString.*password
-
-    '
+  kind: string_literal
+  regex: "password\\s*=|connectionString.*password"
+  notInside:
+    kind: method_declaration
+    regex: "Test|test|Mock|mock"
 note: 'Credentials in source code can be extracted.
 
   Use environment variables, Azure Key Vault, or secure configuration.
-
-  References: CA1065, CWE-798
 
   '
 ---
@@ -13583,6 +12368,11 @@ tags:
 rule:
   kind: property_assignment
   pattern: compilation debug="true"|ASPNETCORE_ENVIRONMENT=Development
+  notInside:
+    any:
+    - kind: IfStatement
+      pattern: "Environment\\.GetEnvironmentVariable|GetEnvironmentVariable"
+    - pattern: "#if DEBUG"
 note: 'Debug mode leaks sensitive information.
 
   Ensure debug is false in production deployments.
@@ -13781,13 +12571,14 @@ tags:
 - CWE-295
 - OWASP-A02
 rule:
-  kind: lambda
-  pattern: ServerCertificateValidationCallback = \(s, c, ch, e\) => true
+  kind: lambda_expression
+  pattern: ServerCertificateValidationCallback = ($$$) => true
+  notInside:
+    kind: method_declaration
+    regex: "Test|test|Mock|mock"
 note: 'Disabling certificate validation enables MITM attacks.
 
   Properly validate certificates, use certificate pinning for sensitive apps.
-
-  References: CA5359, CWE-295
 
   '
 ---
@@ -14265,6 +13056,9 @@ rule:
   pattern: 'connectionString\\s*=\\s*[\"'']Server=.*Password
 
     '
+  notInside:
+    kind: function_definition
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Secrets in source code persist in version control.
 
   Use User Secrets, environment variables, or secret managers.
@@ -14287,6 +13081,9 @@ rule:
   pattern: 'apiKey\\s*=\\s*[\"'']sk-|token\\s*=\\s*[\"'']ghp_
 
     '
+  notInside:
+    kind: function_definition
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'API keys in code can be extracted from binaries/repos.
 
   Use secret management services.
@@ -17664,6 +16461,9 @@ rule:
   pattern: '(password\\s*=\\s*[''\"][^$''\"]+[''\"]|PASSWORD\\s*=\\s*[''\"][^$''\"]+[''\"]|api_key\\s*=\\s*[''\"][^$''\"]+[''\"]|secret\\s*=\\s*[''\"][^$''\"]+[''\"]|token\\s*=\\s*[''\"][^$''\"]+[''\"])
 
     '
+  notInside:
+    kind: function_definition
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Hardcoded credentials are discoverable in source control and files.
 
   Safe: password=$(cat /etc/myapp/secrets/password)
@@ -17737,6 +16537,9 @@ rule:
   pattern: '(AWS_ACCESS_KEY_ID\\s*=\\s*[''\"]?[A-Z0-9]{20}[''\"]?|AWS_SECRET_ACCESS_KEY\\s*=\\s*[''\"]?[A-Za-z0-9/+=]{40}[''\"]?|AKIA[0-9A-Z]{16})
 
     '
+  notInside:
+    kind: function_definition
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'AWS credentials in scripts are easily compromised.
 
   Safe: Use ~/.aws/credentials file
@@ -17914,6 +16717,9 @@ tags:
 rule:
   kind: shell_option
   pattern: set\s+-x|set\s+.*x.*[^+]
+  notInside:
+    kind: IfStatement
+    pattern: "\\$DEBUG|\\$\\{DEBUG\\}|\\$ENV|\\$\\{ENV\\}"
 note: 'Debug mode exposes all variables including passwords in output.
 
   Safe: if [ "$DEBUG" = "true" ]; then set -x; fi
@@ -18820,7 +17626,7 @@ note: 'Subtracting from unsigned integer without check can wrap to large positiv
 ---
 id: c-cwe-197-integer-truncation
 language: c
-severity: medium
+severity: warning
 message: 'CWE-197: Numeric truncation error'
 tags:
 - security
@@ -18840,7 +17646,7 @@ note: 'Casting to smaller type loses high-order bits. For example:
 ---
 id: c-cwe-681-size-t-int-conversion
 language: c
-severity: medium
+severity: warning
 message: 'CWE-681: Incorrect conversion from size_t to int'
 tags:
 - security
@@ -18881,7 +17687,7 @@ note: 'Double free corrupts heap metadata and is exploitable for arbitrary code
 ---
 id: c-cwe-401-memory-leak
 language: c
-severity: medium
+severity: warning
 message: 'CWE-401: Memory leak - malloc without matching free'
 tags:
 - security
@@ -19124,7 +17930,7 @@ note: 'Null check comes after use, defeating the safety check.
 ---
 id: c-cwe-476-null-return-unchecked
 language: c
-severity: medium
+severity: warning
 message: 'CWE-476, CWE-252: Unchecked NULL return from function'
 tags:
 - security
@@ -19188,7 +17994,7 @@ note: 'Signal can interrupt non-reentrant code causing data corruption and
 ---
 id: c-cwe-362-unprotected-shared-variable
 language: c
-severity: medium
+severity: warning
 message: 'CWE-362: Concurrent execution using shared resource without synchronization'
 tags:
 - security
@@ -19242,7 +18048,7 @@ note: 'Contains stack garbage, can leak sensitive data or cause crashes.
 ---
 id: c-cwe-457-uninitialized-struct-member
 language: c
-severity: medium
+severity: warning
 message: 'CWE-457: Uninitialized structure member'
 tags:
 - security
@@ -19260,7 +18066,7 @@ note: 'Padding or unset fields contain garbage values, can leak information.
 ---
 id: c-cwe-457-partial-array-init
 language: c
-severity: medium
+severity: warning
 message: 'CWE-457: Partial array initialization'
 tags:
 - security
@@ -19400,7 +18206,7 @@ note: "\"../\" sequences can access files outside intended directory. Attacker\n
 ---
 id: c-cwe-59-symlink-following
 language: c
-severity: medium
+severity: warning
 message: 'CWE-59: Improper link resolution'
 tags:
 - security
@@ -19520,7 +18326,7 @@ note: 'MD5 is cryptographically broken. Collision attacks exist. Must not be use
 ---
 id: c-cwe-328-sha1-hash
 language: c
-severity: medium
+severity: warning
 message: 'CWE-328: Reversible one-way hash - SHA-1'
 tags:
 - security
@@ -19556,7 +18362,7 @@ note: 'DES has only 56-bit key, easily brute-forced with modern hardware.
 ---
 id: c-cwe-327-ecb-mode
 language: c
-severity: medium
+severity: warning
 message: 'CWE-327: Use of broken algorithm - ECB mode'
 tags:
 - security
@@ -19633,7 +18439,7 @@ note: 'Disabling certificate verification enables man-in-the-middle attacks.
 ---
 id: c-cwe-770-alloca-stack
 language: c
-severity: medium
+severity: warning
 message: 'CWE-770: Unbounded allocation via alloca'
 tags:
 - security
@@ -19651,7 +18457,7 @@ note: 'Large or user-controlled alloca can cause stack overflow and crash.
 ---
 id: c-cwe-770-variable-length-array
 language: c
-severity: medium
+severity: warning
 message: 'CWE-770: Variable length array (VLA) with user-controlled size'
 tags:
 - security
@@ -19782,7 +18588,7 @@ note: 'Casting to wrong type causes memory corruption and undefined behavior.
 ---
 id: c-cwe-843-union-type-confusion
 language: c
-severity: medium
+severity: warning
 message: 'CWE-843: Union type confusion'
 tags:
 - security
@@ -19800,7 +18606,7 @@ note: 'Type punning via unions causes undefined behavior and memory corruption.
 ---
 id: c-cwe-843-void-pointer-cast
 language: c
-severity: medium
+severity: warning
 message: 'CWE-843: Void pointer cast without validation'
 tags:
 - security
@@ -19838,7 +18644,7 @@ note: 'Non-async-safe functions in signal handlers can deadlock or corrupt state
 ---
 id: c-cwe-479-signal-handler-global
 language: c
-severity: medium
+severity: warning
 message: 'CWE-479, CWE-662: Signal handler modifying non-volatile global'
 tags:
 - security
@@ -19859,7 +18665,7 @@ note: 'Without volatile sig_atomic_t, compiler may optimize away updates or
 ---
 id: c-cwe-732-insecure-file-permissions
 language: c
-severity: medium
+severity: warning
 message: 'CWE-732: Incorrect permission assignment'
 tags:
 - security
@@ -19877,7 +18683,7 @@ note: 'World-writable files are accessible to any user. Dangerous for sensitive 
 ---
 id: c-cwe-732-umask-not-set
 language: c
-severity: low
+severity: info
 message: 'CWE-732: Insufficient permission assignment via umask'
 tags:
 - security
@@ -19897,7 +18703,7 @@ note: 'File creation relies on process umask which may be permissive. Better to
 ---
 id: c-cwe-404-unlink-before-close
 language: c
-severity: low
+severity: info
 message: 'CWE-404: Improper resource shutdown'
 tags:
 - security
@@ -19915,7 +18721,7 @@ note: 'Can cause race condition or resource leak.
 ---
 id: c-cwe-252-no-chdir-check
 language: c
-severity: medium
+severity: warning
 message: 'CWE-252: Unchecked return value from chdir'
 tags:
 - security
@@ -19955,7 +18761,7 @@ note: 'Environment variables can be controlled by attacker. Dangerous in setuid 
 ---
 id: c-cwe-835-unbounded-loop
 language: c
-severity: medium
+severity: warning
 message: 'CWE-835: Loop with unreachable exit condition'
 tags:
 - security
@@ -19973,7 +18779,7 @@ note: 'Attacker can cause infinite loop with crafted input, leading to DoS.
 ---
 id: c-cwe-528-sensitive-data-core-dump
 language: c
-severity: medium
+severity: warning
 message: 'CWE-528: Exposure of core dump file'
 tags:
 - security
@@ -20015,7 +18821,7 @@ note: 'Asserts are completely removed from release builds (-DNDEBUG). Security
 ---
 id: c-cwe-477-obsolete-function
 language: c
-severity: medium
+severity: warning
 message: 'CWE-477: Use of obsolete function'
 tags:
 - security
@@ -20115,7 +18921,7 @@ note: 'strncpy doesn''t null-terminate if source is >= n bytes. String functions
 ---
 id: c-cwe-676-strtok-usage
 language: c
-severity: medium
+severity: warning
 message: 'CWE-676: Use of potentially dangerous function - strtok'
 tags:
 - security
@@ -20133,7 +18939,7 @@ note: 'strtok is not thread-safe and modifies input string. Not reentrant.
 ---
 id: c-cwe-489-debug-code
 language: c
-severity: medium
+severity: warning
 message: 'CWE-489: Active debug code'
 tags:
 - security
@@ -20161,6 +18967,9 @@ tags:
 rule:
   kind: variable_declaration
   pattern: password/passwd/secret/apikey string literals
+  notInside:
+    kind: function_definition
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Credentials in source code can be extracted via reverse engineering or
 
   git history.
@@ -20211,7 +19020,7 @@ note: 'Loading user-controlled library path allows arbitrary code execution.
 ---
 id: c-cwe-403-file-descriptor-leak
 language: c
-severity: medium
+severity: warning
 message: 'CWE-403: Exposure of file descriptor'
 tags:
 - security
@@ -20269,7 +19078,7 @@ note: 'sizeof pointer is 4 or 8 bytes, not the array size. Common mistake.
 ---
 id: c-cwe-478-missing-default-switch
 language: c
-severity: medium
+severity: warning
 message: 'CWE-478: Missing default case in switch'
 tags:
 - security
@@ -21501,14 +20310,14 @@ tags:
 - CWE-295
 - OWASP-TransportSecurity
 rule:
-  kind: constant
+  kind: scope_resolution
   pattern: OpenSSL::SSL::VERIFY_NONE
+  notInside:
+    kind: method
+    regex: "test|spec|mock|stub"
 note: 'Disabling SSL verification allows man-in-the-middle attacks.
 
-
-  FIX: Always verify SSL certificates:
-
-  http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+  FIX: Always verify SSL certificates: http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 
   '
 ---
@@ -21723,6 +20532,9 @@ tags:
 rule:
   kind: method_call
   pattern: binding.pry
+  notInside:
+    kind: IfStatement
+    pattern: "ENV\\[|ENV\\.fetch|Rails\\.env"
 note: 'Debug breakpoints in production code can be triggered to gain
 
   interactive shell access.
@@ -22101,6 +20913,12 @@ tags:
 rule:
   kind: expression
   pattern: $STRING += $INPUT
+  inside:
+    any:
+      - kind: for
+      - kind: while
+      - kind: until
+      - kind: do_block
 note: 'Building strings in loops without size limits can exhaust memory
 
   under large input.
@@ -22569,6 +21387,9 @@ tags:
 rule:
   kind: variable_declaration
   pattern: val.*[Aa]pi[Kk]ey.*=.*"[A-Za-z0-9_-]{20,}"
+  notInside:
+    kind: function_definition
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Hardcoded API keys are easily extracted via reverse engineering (jadx, apktool).
 
   This exposes the application to unauthorized API access and potential abuse.
@@ -22612,6 +21433,9 @@ tags:
 rule:
   kind: variable_declaration
   pattern: password\s*=\s*"[^"]+"|pwd\s*=\s*"[^"]+"
+  notInside:
+    kind: function_definition
+    regex: "test|Test|mock|Mock|fake|Fake"
 note: 'Hardcoded passwords are a severe security vulnerability. They can be extracted
   through
 
@@ -27011,8 +25835,13 @@ tags:
 - CWE-78
 - OWASP-CommandInjection
 rule:
-  kind: pattern
-  pattern: (os\.execute|io\.popen)\([^)]*[;|&$`<>(){}\[\]!#~*][^)]*\)
+  kind: function_call
+  any:
+  - pattern: os.execute($CMD)
+  - pattern: io.popen($CMD)
+  has:
+    kind: string
+    regex: "[;|&$`<>(){}\\[\\]!#~*]"
 note: "Shell metacharacters can be used to chain multiple commands or escape the intended\n\
   command. These include: ; | & $ ` \" ' < > ( ) { } [ ] ! # ~ *\n\nVulnerable pattern:\n\
   \  os.execute(\"cat \" .. filename)  # if filename = \"test; rm -rf /\"\n\nRemediation:\n\
@@ -27281,10 +26110,8 @@ tags:
 - sandbox-escape
 - CWE-668
 rule:
-  kind: pattern
-  pattern: 'getmetatable\(""\)
-
-    '
+  kind: function_call
+  pattern: getmetatable("")
 note: "All strings share a single metatable. Modifying it affects ALL string operations\n\
   globally, enabling wide-scale sandbox escapes.\n\nVulnerable pattern:\n  getmetatable(\"\
   \").__index = function(s, k)\n      os.execute(\"whoami\")\n  end\n\nRemediation:\n\
@@ -27344,10 +26171,11 @@ tags:
 - sandbox-escape
 - coroutines
 rule:
-  kind: pattern
-  pattern: 'coroutine\.(create|resume|wrap)
-
-    '
+  kind: function_call
+  any:
+  - pattern: coroutine.create($$$)
+  - pattern: coroutine.resume($$$)
+  - pattern: coroutine.wrap($$$)
 note: "Coroutines may have access to different environments than the current context,\n\
   potentially allowing escape from sandbox restrictions.\n\nVulnerable pattern:\n\
   \  local co = coroutine.create(function()\n      local env = getfenv(0)\n      return\
@@ -27619,7 +26447,6 @@ tags:
 - CWE-476
 rule:
   kind: function_call
-  pattern: ''
 note: "Nil inputs can propagate and cause errors in unexpected places.\n\nVulnerable\
   \ pattern:\n  function greet(name)\n      return \"Hello, \" .. name  -- Error if\
   \ name is nil\n  end\n\nRemediation:\n- Use nil coalescing: name or \"default\"\n\
@@ -31828,7 +30655,7 @@ tags:
 severity: error
 rule:
   pattern: :\s*any\s*[=;,\)]
-note: '|'
+note: "Using 'any' type disables TypeScript's type checking, allowing untrusted data to bypass security validations. Use 'unknown' type instead."
 language: typescript
 
 ---
@@ -31840,7 +30667,7 @@ tags:
 severity: error
 rule:
   pattern: (as\s+\w+|<\w+>.*as\w+)
-note: '|'
+note: "Type assertions override TypeScript's type checking and can mask security vulnerabilities. Prefer type guards and proper type narrowing."
 language: typescript
 
 ---
@@ -31851,7 +30678,7 @@ tags:
 severity: error
 rule:
   pattern: '@ts-ignore\s*(?![\s\S]*?SECURITY|[\s\S]*?AUDIT)'
-note: '|'
+note: "@ts-ignore suppresses type errors that could hide security issues. Include a SECURITY or AUDIT comment explaining why the ignore is safe."
 language: typescript
 
 ---
@@ -31862,7 +30689,7 @@ tags:
 severity: error
 rule:
   pattern: declare\s+module\s+["\']
-note: '|'
+note: "Module augmentation can modify third-party module types globally. Review carefully to ensure no security properties are weakened."
 language: typescript
 
 ---
@@ -31873,7 +30700,7 @@ tags:
 severity: error
 rule:
   pattern: JSON\.parse\s*\([^)]*\)\s*(?!\.)
-note: '|'
+note: "JSON.parse returns 'any' type by default. Validate parsed JSON with schema validation (Zod, io-ts) to ensure data integrity."
 language: typescript
 
 ---
@@ -31884,7 +30711,7 @@ tags:
 severity: error
 rule:
   pattern: (eval\s*\(|new\s+Function\s*\(|Function\s*\()
-note: '|'
+note: "eval() and Function constructor execute arbitrary code, enabling code injection attacks (CWE-95). Use safer alternatives."
 language: typescript
 
 ---
@@ -31895,7 +30722,7 @@ tags:
 severity: error
 rule:
   pattern: (globalThis\.|global\.|Object\.defineProperty\s*\(\s*Object\.prototype)
-note: '|'
+note: "Modifying global state or prototype affects all code in the application. Use module scope instead."
 language: typescript
 
 ---
@@ -31906,7 +30733,7 @@ tags:
 severity: warning
 rule:
   pattern: const\s+(\w+)\s*=\s*\{\s*[^}]*(?:password|secret|apiKey|token)[^}]*\}
-note: '|'
+note: "Objects containing secrets can be accidentally mutated. Use Object.freeze() to make security-critical config immutable."
 language: typescript
 
 ---
@@ -31917,7 +30744,7 @@ tags:
 severity: error
 rule:
   pattern: (sql`|query\s*\(.*\$\{|`.*SELECT.*\$\{)
-note: '|'
+note: "String interpolation in SQL queries enables SQL injection (CWE-89). Use parameterized queries."
 language: typescript
 
 ---
@@ -31928,7 +30755,7 @@ tags:
 severity: error
 rule:
   pattern: innerHTML\s*=\s*[^;]*(?!DOMPurify|sanitize)
-note: '|'
+note: "innerHTML allows arbitrary HTML/script injection (CWE-79 XSS). Sanitize with DOMPurify or use textContent."
 language: typescript
 
 ---
@@ -31939,7 +30766,7 @@ tags:
 severity: warning
 rule:
   pattern: (?:extends.*\?.*:.*extends.*\?)
-note: '|'
+note: "Deeply nested conditional types slow down TypeScript compilation. Simplify with utility types."
 language: typescript
 
 ---
@@ -31950,7 +30777,7 @@ tags:
 severity: info
 rule:
   pattern: enum\s+\w+\s*\{
-note: '|'
+note: "Regular enums generate runtime objects. Use 'const enum' to inline values at compile time."
 language: typescript
 
 ---
@@ -31961,7 +30788,7 @@ tags:
 severity: info
 rule:
   pattern: namespace\s+\w+
-note: '|'
+note: "Namespaces create runtime objects and IIFE wrappers. Use ES modules for better tree-shaking."
 language: typescript
 
 ---
@@ -31972,7 +30799,7 @@ tags:
 severity: warning
 rule:
   pattern: declare\s+(class|function|interface)\s+\w+|interface\s+\w+\s*\{.*\}\s*interface\s+\w+\s*\{
-note: '|'
+note: "Declaration merging can lead to larger type definitions and slower compilation. Consolidate interfaces."
 language: typescript
 
 ---
@@ -31983,7 +30810,7 @@ tags:
 severity: info
 rule:
   pattern: '"moduleResolution":\s*"(classic|node)"'
-note: '|'
+note: "Consider 'bundler' or 'nodenext' moduleResolution for modern projects. Classic resolution is legacy."
 language: typescript
 
 ---
@@ -31994,7 +30821,7 @@ tags:
 severity: warning
 rule:
   pattern: function\s+\w+.*\{[^}]*function\s+\w+.*\{[^}]*function\s+\w+
-note: '|'
+note: "Too many function overloads slow down type checking. Consider using union types or generics."
 language: typescript
 
 ---
@@ -32005,7 +30832,7 @@ tags:
 severity: warning
 rule:
   pattern: type\s+\w+\s*=\s*.*\|.*\|.*\|.*\|.*\|.*\|.*\|.*\|.*\|.*\|
-note: '|'
+note: "Large union types cause exponential type checking complexity. Use discriminated unions."
 language: typescript
 
 ---
@@ -32016,7 +30843,7 @@ tags:
 severity: info
 rule:
   pattern: '"incremental":\s*false|"noEmit":\s*true'
-note: '|'
+note: "Incremental compilation caches type information between builds, speeding up compilation."
 language: typescript
 
 ---
@@ -32027,7 +30854,7 @@ tags:
 severity: error
 rule:
   pattern: '"strict":\s*false|"noImplicitAny":\s*false'
-note: '|'
+note: "Strict mode enables all strict type checking options, catching more errors at compile time."
 language: typescript
 
 ---
@@ -32038,7 +30865,7 @@ tags:
 severity: error
 rule:
   pattern: (?<!:\s)[,\)]\s*(?!.*:\s)
-note: '|'
+note: "Implicit 'any' types defeat TypeScript's purpose. Enable noImplicitAny and add explicit annotations."
 language: typescript
 
 ---
@@ -32049,7 +30876,7 @@ tags:
 severity: error
 rule:
   pattern: (?:function|=>|catch)\s+\w+\s*\([^)]*\)(?!\s*:\s*(?:void|Promise|boolean|string|number|unknown|[\w\.]+))
-note: '|'
+note: "Explicit return types document function contracts. Enable noImplicitReturns for enforcement."
 language: typescript
 
 ---
@@ -32060,7 +30887,7 @@ tags:
 severity: error
 rule:
   pattern: :\s*any(?!\s*\[|\s*\()
-note: '|'
+note: "'unknown' is type-safe alternative to 'any'. It requires explicit type narrowing before use."
 language: typescript
 
 ---
@@ -32071,7 +30898,7 @@ tags:
 severity: warning
 rule:
   pattern: type\s+\w+\s*=\s*\{[^}]*\}
-note: '|'
+note: "Interfaces support declaration merging and provide better error messages. Use 'type' for unions."
 language: typescript
 
 ---
@@ -32082,7 +30909,7 @@ tags:
 severity: warning
 rule:
   pattern: <\w+\s*(?![^>]*extends)(?:>|,)
-note: '|'
+note: "Unconstrained generics accept any type. Use 'extends' to constrain generics to specific types."
 language: typescript
 
 ---
@@ -32093,7 +30920,7 @@ tags:
 severity: warning
 rule:
   pattern: interface\s+\w+\s*\{(?!.*Omit|.*Pick|.*Partial|.*Required)[^}]*\}
-note: '|'
+note: "Built-in utility types reduce duplication. Consider Pick, Omit, Partial, Required, and Readonly."
 language: typescript
 
 ---
@@ -32104,7 +30931,7 @@ tags:
 severity: error
 rule:
   pattern: type\s+\w+\s*=\s*.*\|\s*.*(?!type\s*:|kind\s*:|kind:|type:|status\s*:|status:)
-note: '|'
+note: "Discriminated unions with 'type' or 'kind' field enable exhaustive type checking in switches."
 language: typescript
 
 ---
@@ -32115,7 +30942,7 @@ tags:
 severity: warning
 rule:
   pattern: interface\s+\w+\s*\{(?!.*readonly)[^}]*\s+\w+\s*:[^}]*\}
-note: '|'
+note: "Use 'readonly' modifier to prevent accidental mutation. Consider Readonly<T> utility type."
 language: typescript
 
 ---
@@ -32126,7 +30953,7 @@ tags:
 severity: error
 rule:
   pattern: switch\s*\([^)]*\)\s*\{(?!.*default\s*:|_:\s*)
-note: '|'
+note: "Add default case with exhaustiveness check (const _: never = value) to catch unhandled cases."
 language: typescript
 
 ---
@@ -32137,7 +30964,7 @@ tags:
 severity: warning
 rule:
   pattern: function\s+\w+\s*\([^)]*:\s*boolean
-note: '|'
+note: "Boolean parameters make call sites unclear. Use objects with named properties or enums."
 language: typescript
 
 ---
@@ -32148,7 +30975,7 @@ tags:
 severity: warning
 rule:
   pattern: '([^|]|[^|]\|) \|\| '
-note: '|'
+note: "The || operator treats falsy values (0, '', false) as needing defaults. Use ?? for null/undefined only."
 language: typescript
 
 ---
@@ -32159,7 +30986,7 @@ tags:
 severity: warning
 rule:
   pattern: (?!.*\?\.).*\.[a-zA-Z_]\w*\s*(?:\?|\.)
-note: '|'
+note: "Optional chaining (?.) safely accesses nested properties, returning undefined if property is null."
 language: typescript
 
 ---
@@ -32170,7 +30997,7 @@ tags:
 severity: warning
 rule:
   pattern: :\s*(?:object|{}|Object)(?![<\[])
-note: '|'
+note: "'object', '{}', and 'Object' are too broad. Use specific interfaces or Record<string, unknown>."
 language: typescript
 
 ---
@@ -32181,7 +31008,7 @@ tags:
 severity: info
 rule:
   pattern: enum\s+\w+\s*\{[^}]*=[^}]*\}
-note: '|'
+note: "Regular enums generate runtime objects. Consider 'const enum' or string union types."
 language: typescript
 
 ---
@@ -32192,7 +31019,7 @@ tags:
 severity: warning
 rule:
   pattern: (?!if.*null)if.*typeof
-note: '|'
+note: "Always check for null/undefined before using typeof. Note: typeof null returns 'object'."
 language: typescript
 
 ---
@@ -32203,7 +31030,7 @@ tags:
 severity: warning
 rule:
   pattern: class\s+\w+\s*\{(?!.*(?:public|private|protected))[^}]*\s+\w+\s*[=;:]
-note: '|'
+note: "Explicit access modifiers document encapsulation. Use 'private' for internal state."
 language: typescript
 
 ---
@@ -32214,7 +31041,7 @@ tags:
 severity: info
 rule:
   pattern: (?<!_)\b[a-zA-Z_]\w*\b(?!.*=)\s*[:=]
-note: '|'
+note: "Enable noUnusedLocals and noUnusedParameters. Prefix intentionally unused variables with underscore."
 language: typescript
 
 ---
@@ -32226,8 +31053,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "mysql_query($QUERY) | mysqli_query($CONN, $QUERY) | $pdo->query($QUERY)"
 note: 'SQL Injection - Unparameterized Queries
 
   '
@@ -32241,8 +31068,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: binary_expression
+  pattern: '"SELECT * FROM users WHERE " . $USER_INPUT'
 note: 'SQL Injection - Concatenated WHERE Clauses
 
   '
@@ -32256,8 +31083,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "echo $USER_INPUT | print $USER_INPUT"
 note: 'XSS - Unescaped Output in HTML Context
 
   '
@@ -32271,8 +31098,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: 'echo "<script>" . $USER_INPUT'
 note: 'XSS - Unescaped Output in JavaScript Context
 
   '
@@ -32286,8 +31113,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: 'echo "<a href=" . $USER_INPUT'
 note: 'XSS - Unescaped Output in URL Attribute
 
   '
@@ -32301,8 +31128,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: 'echo "var x = " . $USER_INPUT'
 note: 'XSS - DOM-based XSS via JavaScript Variable Injection
 
   '
@@ -32316,8 +31143,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "exec($CMD) | system($CMD) | passthru($CMD) | shell_exec($CMD)"
 note: 'Command Injection - Unescaped Shell Commands
 
   '
@@ -32331,8 +31158,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "shell_exec($CMD . $USER_INPUT)"
 note: 'Command Injection - shell_exec with String Concatenation
 
   '
@@ -32346,8 +31173,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: include_expression
+  pattern: "include($URL) | require($URL)"
 note: 'Remote File Inclusion (RFI) - External URL Inclusion
 
   '
@@ -32361,8 +31188,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: include_expression
+  pattern: 'include($PATH . "../" . $FILE)'
 note: 'File Inclusion - Path Traversal via Directory Traversal
 
   '
@@ -32376,8 +31203,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "unserialize($USER_INPUT)"
 note: 'Insecure Deserialization - Magic Methods Abuse
 
   '
@@ -32391,8 +31218,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "session_id($STATIC_ID)"
 note: 'Session Fixation - Static Session ID
 
   '
@@ -32406,8 +31233,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "setcookie($NAME, $VALUE)"
 note: 'Session Security - Missing HttpOnly Flag
 
   '
@@ -32421,8 +31248,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "session_set_cookie_params($OPTS)"
 note: 'Session Security - Missing SameSite Attribute
 
   '
@@ -32436,8 +31263,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "md5($PASSWORD) | sha1($PASSWORD)"
 note: 'Weak Hashing - MD5 or SHA1 for Passwords
 
   '
@@ -32451,8 +31278,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "hash($ALGO, $DATA)"
 note: 'Weak Hashing - Hash Function Without Salt
 
   '
@@ -32466,8 +31293,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: assignment_expression
+  pattern: '$key = "hardcoded_secret"'
 note: 'Weak Encryption - Hardcoded Encryption Keys
 
   '
@@ -32481,8 +31308,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: assignment_expression
+  pattern: '$password = "admin123"'
 note: 'Authentication - Hardcoded Credentials
 
   '
@@ -32496,8 +31323,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: if_statement
+  pattern: "if ($password == $USER_INPUT)"
 note: 'Authentication - Weak Login Check
 
   '
@@ -32511,8 +31338,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_definition
+  pattern: "function deleteUser($id)"
 note: 'Authorization - Missing Access Control Checks
 
   '
@@ -32526,8 +31353,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "eval($CODE)"
 note: 'Unsafe Functions - eval() Usage
 
   '
@@ -32541,8 +31368,8 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "assert($EXPR)"
 note: 'Unsafe Functions - assert() with Dynamic Code
 
   '
@@ -32556,2905 +31383,734 @@ tags:
 - security
 - php
 rule:
-  kind: call
-  pattern: '[pattern]'
+  kind: function_call_expression
+  pattern: "create_function($ARGS, $CODE)"
 note: 'Unsafe Functions - create_function() Deprecated
 
   '
+# ==============================================================================
+# CSS Security Rules
+# ==============================================================================
+#
+# CWE Coverage: CWE-79, CWE-200, CWE-319, CWE-829, CWE-1021
+# Categories: CSS-based XSS, Untrusted Resources, Information Disclosure, UI Redressing
+# Total Rules: 30
+#
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# CWE-79: CSS-based XSS (Legacy IE and vendor-specific attack vectors)
+# ------------------------------------------------------------------------------
 
 ---
-id: php-perf-001
-language: php
+id: css-cwe-79-expression
+language: css
 severity: error
-message: String Concatenation in Loops
+message: "CWE-79: CSS expression() - Legacy IE XSS Vector"
 tags:
-- performance
-- php
+- security
+- xss
+- CWE-79
+- OWASP-A03
+- legacy
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'String Concatenation in Loops
+  kind: declaration
+  regex: "expression\\s*\\("
+note: "CSS expression() was an IE-specific feature that allowed JavaScript execution.
 
-  '
+  While deprecated, it may still be found in legacy codebases and is exploitable in older IE versions.
 
+  Remove expression() entirely and use JavaScript event handlers instead.
+
+  "
 ---
-id: php-perf-003
-language: php
+id: css-cwe-79-behavior-url
+language: css
+severity: error
+message: "CWE-79: CSS behavior: url() - IE HTC Vector"
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+- legacy
+rule:
+  kind: declaration
+  regex: "behavior\\s*:\\s*url\\s*\\("
+note: "IE-specific behavior property loads HTC files that can execute JavaScript.
+
+  This is a legacy XSS vector that should be removed entirely.
+
+  Use modern JavaScript alternatives for dynamic behaviors.
+
+  "
+---
+id: css-cwe-79-moz-binding
+language: css
+severity: error
+message: "CWE-79: -moz-binding XSS Vector"
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+- firefox
+rule:
+  kind: declaration
+  regex: "-moz-binding\\s*:\\s*url\\s*\\("
+note: "Firefox -moz-binding could load XBL files with JavaScript execution.
+
+  This feature was removed in modern Firefox but remains an attack vector in legacy code.
+
+  Remove -moz-binding declarations entirely.
+
+  "
+---
+id: css-cwe-79-javascript-url
+language: css
+severity: error
+message: "CWE-79: javascript: URL Scheme in CSS"
+tags:
+- security
+- xss
+- CWE-79
+- OWASP-A03
+rule:
+  kind: plain_value
+  regex: "javascript\\s*:"
+note: "javascript: URLs in CSS properties can execute arbitrary JavaScript.
+
+  This is commonly used in XSS attacks via style injection.
+
+  Sanitize all user-controlled CSS and block javascript: URLs.
+
+  "
+---
+id: css-cwe-79-data-url-script
+language: css
 severity: warning
-message: Repeated str_replace() Calls
+message: "CWE-79: data: URL with Script Content in CSS"
 tags:
-- performance
-- php
+- security
+- xss
+- CWE-79
+- OWASP-A03
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Repeated str_replace() Calls
+  kind: plain_value
+  regex: "data\\s*:\\s*text/(html|javascript)"
+note: "data: URLs with text/html or text/javascript MIME types can embed executable content.
 
-  '
+  While modern browsers block script execution in CSS data URLs, this remains a suspicious pattern.
 
+  Use explicit image MIME types and validate data URL content.
+
+  "
 ---
-id: php-perf-004
-language: php
+id: css-cwe-79-var-injection
+language: css
 severity: warning
-message: Inefficient Regular Expressions
+message: "CWE-79: CSS Custom Property (var()) Injection Risk"
 tags:
-- performance
-- php
+- security
+- xss
+- CWE-79
+- OWASP-A03
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Inefficient Regular Expressions
+  kind: declaration
+  all:
+  - regex: "var\\s*\\("
+  - regex: "url\\s*\\("
+note: "CSS variables combined with url() can be exploited if variable values are user-controlled.
 
-  '
+  An attacker may inject malicious URLs through CSS custom properties.
+
+  Validate and sanitize all sources of CSS custom property values.
+
+  "
+
+# ------------------------------------------------------------------------------
+# CWE-829: Untrusted External Resources
+# ------------------------------------------------------------------------------
 
 ---
-id: php-perf-005
-language: php
-severity: error
-message: Inefficient Array Searches
-tags:
-- performance
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Inefficient Array Searches
-
-  '
-
----
-id: php-perf-006
-language: php
-severity: error
-message: Multiple array_merge() in Loops
-tags:
-- performance
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Multiple array_merge() in Loops
-
-  '
-
----
-id: php-perf-007
-language: php
+id: css-cwe-829-import-external
+language: css
 severity: warning
-message: Inefficient Array Filtering
+message: "CWE-829: @import from External Domain Without Integrity"
 tags:
-- performance
-- php
+- security
+- supply-chain
+- CWE-829
+- OWASP-A08
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Inefficient Array Filtering
+  kind: import_statement
+  regex: "https?://"
+note: "@import loading external CSS without integrity validation is a supply chain risk.
 
-  '
+  External stylesheets can be modified to inject malicious styles or exfiltrate data.
 
+  Host CSS locally or use Subresource Integrity (SRI) in HTML link elements instead.
+
+  "
 ---
-id: php-perf-009
-language: php
+id: css-cwe-829-http-import
+language: css
 severity: error
-message: N+1 Query Problem
+message: "CWE-829: @import Over Insecure HTTP"
 tags:
-- performance
-- php
+- security
+- network
+- CWE-829
+- CWE-319
+- OWASP-A07
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'N+1 Query Problem
+  kind: import_statement
+  regex: "http://"
+note: "@import over HTTP is vulnerable to man-in-the-middle attacks.
 
-  '
+  An attacker can inject malicious styles or JavaScript vectors.
 
+  Always use HTTPS for external resources.
+
+  "
 ---
-id: php-perf-010
-language: php
+id: css-cwe-829-url-external-background
+language: css
 severity: warning
-message: SELECT * in Queries
+message: "CWE-829: External URL in background-image"
 tags:
-- performance
-- php
+- security
+- supply-chain
+- CWE-829
+- OWASP-A08
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'SELECT * in Queries
+  kind: declaration
+  all:
+  - regex: "background(-image)?\\s*:"
+  - regex: "url\\s*\\(\\s*[\"']?https?://"
+note: "External background-image URLs can track users and load untrusted content.
 
-  '
+  Consider hosting images locally or using Content Security Policy (CSP).
 
+  "
 ---
-id: php-perf-012
-language: php
+id: css-cwe-829-http-background
+language: css
 severity: error
-message: Unbounded Query Results
+message: "CWE-829: HTTP URL in background-image (Mixed Content)"
 tags:
-- performance
-- php
+- security
+- network
+- CWE-829
+- CWE-319
+- OWASP-A07
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Unbounded Query Results
+  kind: declaration
+  all:
+  - regex: "background(-image)?\\s*:"
+  - regex: "url\\s*\\(\\s*[\"']?http://"
+note: "HTTP background-image on HTTPS pages is mixed content and vulnerable to MITM.
 
-  '
+  Modern browsers may block mixed content. Always use HTTPS.
 
+  "
 ---
-id: php-perf-013
-language: php
+id: css-cwe-829-font-face-external
+language: css
 severity: warning
-message: Redundant require/include Statements
+message: "CWE-829: @font-face from External/Untrusted CDN"
 tags:
-- performance
-- php
+- security
+- supply-chain
+- CWE-829
+- OWASP-A08
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Redundant require/include Statements
+  kind: at_rule
+  all:
+  - regex: "@font-face"
+  - has:
+      kind: declaration
+      regex: "src\\s*:.*url\\s*\\(.*https?://"
+note: "External @font-face fonts can be modified or used for tracking.
 
-  '
+  Font files can potentially exploit font parsing vulnerabilities.
 
+  Host fonts locally or use trusted CDNs with SRI in HTML.
+
+  "
 ---
-id: php-perf-015
-language: php
+id: css-cwe-829-http-font
+language: css
 severity: error
-message: OPcache Not Enabled or Configured
+message: "CWE-829: @font-face Over Insecure HTTP"
 tags:
-- performance
-- php
+- security
+- network
+- CWE-829
+- CWE-319
+- OWASP-A07
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'OPcache Not Enabled or Configured
+  kind: at_rule
+  all:
+  - regex: "@font-face"
+  - has:
+      kind: declaration
+      regex: "src\\s*:.*url\\s*\\(.*http://"
+note: "@font-face loading fonts over HTTP is vulnerable to MITM attacks.
 
-  '
+  Malicious fonts could exploit browser font parsing bugs.
 
+  Always use HTTPS for font resources.
+
+  "
 ---
-id: php-perf-017
-language: php
-severity: error
-message: Processing Large Files in Memory
-tags:
-- performance
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Processing Large Files in Memory
-
-  '
-
----
-id: php-perf-018
-language: php
+id: css-cwe-829-cursor-external
+language: css
 severity: warning
-message: Unnecessary Object Creation in Loops
+message: "CWE-829: External URL in cursor Property"
 tags:
-- performance
-- php
+- security
+- supply-chain
+- CWE-829
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Unnecessary Object Creation in Loops
+  kind: declaration
+  all:
+  - regex: "cursor\\s*:"
+  - regex: "url\\s*\\(.*https?://"
+note: "External cursor images can track user interactions and mouse position.
 
-  '
+  Host cursor images locally to prevent tracking.
+
+  "
+---
+id: css-cwe-829-list-style-external
+language: css
+severity: warning
+message: "CWE-829: External URL in list-style-image"
+tags:
+- security
+- supply-chain
+- CWE-829
+rule:
+  kind: declaration
+  all:
+  - regex: "list-style(-image)?\\s*:"
+  - regex: "url\\s*\\(.*https?://"
+note: "External list-style-image URLs can track users and load untrusted content.
+
+  Host images locally or use CSS-generated content.
+
+  "
+---
+id: css-cwe-829-content-url
+language: css
+severity: warning
+message: "CWE-829: External URL in content Property"
+tags:
+- security
+- supply-chain
+- CWE-829
+rule:
+  kind: declaration
+  all:
+  - regex: "content\\s*:"
+  - regex: "url\\s*\\(.*https?://"
+note: "External URLs in content property can load untrusted resources.
+
+  This can be used for user tracking or loading malicious content.
+
+  Host resources locally when possible.
+
+  "
+
+# ------------------------------------------------------------------------------
+# CWE-200: Information Disclosure
+# ------------------------------------------------------------------------------
 
 ---
-id: php-qual-005
-language: php
+id: css-cwe-200-visited-disclosure
+language: css
+severity: warning
+message: "CWE-200: :visited Link History Detection"
+tags:
+- security
+- privacy
+- CWE-200
+- OWASP-A01
+rule:
+  kind: rule_set
+  has:
+    kind: selectors
+    regex: ":visited"
+note: ":visited selectors can potentially be abused for history sniffing attacks.
+
+  Modern browsers limit :visited to color changes only, but custom properties may leak.
+
+  Avoid using :visited with properties that can be computed via JavaScript.
+
+  "
+---
+id: css-cwe-200-input-validation-selector
+language: css
+severity: warning
+message: "CWE-200: Input Validation State Disclosure via CSS Selectors"
+tags:
+- security
+- privacy
+- CWE-200
+rule:
+  kind: selectors
+  regex: ":(valid|invalid|in-range|out-of-range|required|optional)"
+note: "Input validation pseudo-classes reveal form state to CSS.
+
+  Combined with timing attacks or CSS injection, this can leak validation rules.
+
+  Be cautious with these selectors in sensitive forms.
+
+  "
+---
+id: css-cwe-200-checked-state
+language: css
 severity: info
-message: Incorrect Naming Convention - Constants
+message: "CWE-200: Checkbox/Radio State Detection via :checked"
 tags:
-- quality
-- php
+- security
+- privacy
+- CWE-200
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Incorrect Naming Convention - Constants
+  kind: selectors
+  all:
+  - regex: ":checked"
+  - regex: "url\\s*\\("
+note: ":checked combined with url() can exfiltrate checkbox states via CSS injection.
 
-  '
+  Each checked state can trigger a request to an attacker server.
 
+  Sanitize user-controlled CSS to prevent such attacks.
+
+  "
 ---
-id: php-qual-006
-language: php
-severity: error
-message: Missing Parameter Type Hints
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Missing Parameter Type Hints
-
-  '
-
----
-id: php-qual-007
-language: php
-severity: error
-message: Missing Return Type Declarations
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Missing Return Type Declarations
-
-  '
-
----
-id: php-qual-008
-language: php
+id: css-cwe-200-attribute-selector-sensitive
+language: css
 severity: warning
-message: Missing Property Type Declarations
+message: "CWE-200: Attribute Selector on Sensitive Data"
 tags:
-- quality
-- php
+- security
+- privacy
+- CWE-200
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Missing Property Type Declarations
+  kind: attribute_selector
+  regex: "(password|token|secret|key|auth|session|credit|ssn|csrf)"
+note: "Attribute selectors matching sensitive data can leak information via CSS.
 
-  '
+  Combined with CSS injection, attackers can exfiltrate sensitive attribute values.
 
+  Avoid placing sensitive data in HTML attributes.
+
+  "
 ---
-id: php-qual-009
-language: php
-severity: warning
-message: Using Weak Type Juggling
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Using Weak Type Juggling
-
-  '
-
----
-id: php-qual-010
-language: php
-severity: error
-message: Silent Error Suppression (@)
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Silent Error Suppression (@)
-
-  '
-
----
-id: php-qual-012
-language: php
-severity: warning
-message: Bare Exception Catching
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Bare Exception Catching
-
-  '
-
----
-id: php-qual-013
-language: php
-severity: warning
-message: Uninitialized Variables
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Uninitialized Variables
-
-  '
-
----
-id: php-qual-014
-language: php
-severity: warning
-message: Missing PHPDoc Comments - Functions
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Missing PHPDoc Comments - Functions
-
-  '
-
----
-id: php-qual-015
-language: php
+id: css-cwe-200-class-sensitive-naming
+language: css
 severity: info
-message: Missing PHPDoc Comments - Classes
+message: "CWE-200: Class Selector Reveals Sensitive Context"
 tags:
-- quality
-- php
+- security
+- privacy
+- CWE-200
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Missing PHPDoc Comments - Classes
+  kind: class_selector
+  regex: "(admin|superuser|privileged|internal|debug|staging|development)"
+note: "Class names revealing user roles or environment can leak sensitive information.
 
-  '
+  Attackers can use CSS injection to detect administrative interfaces.
+
+  Use generic class names that do not reveal security context.
+
+  "
+
+# ------------------------------------------------------------------------------
+# CWE-1021: UI Redressing (Clickjacking)
+# ------------------------------------------------------------------------------
 
 ---
-id: php-qual-016
-language: php
+id: css-cwe-1021-opacity-zero-clickable
+language: css
+severity: warning
+message: "CWE-1021: Zero Opacity Element (Potential Clickjacking)"
+tags:
+- security
+- ui-redress
+- CWE-1021
+- OWASP-A04
+rule:
+  kind: declaration
+  regex: "opacity\\s*:\\s*0\\s*[;!]"
+note: "opacity: 0 creates invisible elements that remain clickable.
+
+  This technique is commonly used in clickjacking and UI redressing attacks.
+
+  Review usage to ensure it is not covering legitimate UI elements.
+
+  "
+---
+id: css-cwe-1021-visibility-hidden-clickable
+language: css
 severity: info
-message: Incorrect PHPDoc Type Annotations
+message: "CWE-1021: visibility: hidden with pointer-events Manipulation"
 tags:
-- quality
-- php
+- security
+- ui-redress
+- CWE-1021
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Incorrect PHPDoc Type Annotations
+  kind: rule_set
+  has:
+    kind: declaration
+    regex: "visibility\\s*:\\s*hidden"
+note: "visibility: hidden combined with pointer-events manipulation can create deceptive UIs.
 
-  '
+  Unlike display: none, hidden elements still occupy space.
 
+  Review for potential UI redressing.
+
+  "
 ---
-id: php-qual-017
-language: php
-severity: error
-message: Missing Unit Tests
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Missing Unit Tests
-
-  '
-
----
-id: php-qual-019
-language: php
-severity: warning
-message: Test Code Coverage Below Threshold
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Test Code Coverage Below Threshold
-
-  '
-
----
-id: php-qual-020
-language: php
-severity: warning
-message: Cyclomatic Complexity Too High
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Cyclomatic Complexity Too High
-
-  '
-
----
-id: php-qual-021
-language: php
-severity: warning
-message: Function Length Exceeded
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Function Length Exceeded
-
-  '
-
----
-id: php-qual-022
-language: php
-severity: warning
-message: Too Many Parameters
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Too Many Parameters
-
-  '
-
----
-id: php-qual-023
-language: php
-severity: warning
-message: Duplicate Code - Copy-Paste
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Duplicate Code - Copy-Paste
-
-  '
-
----
-id: php-qual-025
-language: php
-severity: error
-message: Global Variables Usage
-tags:
-- quality
-- php
-rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Global Variables Usage
-
-  '
-
----
-id: php-qual-026
-language: php
+id: css-cwe-1021-negative-z-index
+language: css
 severity: info
-message: Dead Code - Unused Functions/Variables
+message: "CWE-1021: Negative z-index Hiding Elements"
 tags:
-- quality
-- php
+- security
+- ui-redress
+- CWE-1021
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Dead Code - Unused Functions/Variables
+  kind: declaration
+  regex: "z-index\\s*:\\s*-[0-9]+"
+note: "Negative z-index can hide elements beneath other content.
 
-  '
+  This can be used to conceal malicious overlays or bypass security indicators.
 
+  Review usage for legitimate purpose.
+
+  "
 ---
-id: php-qual-027
-language: php
+id: css-cwe-1021-fixed-fullscreen-overlay
+language: css
 severity: warning
-message: Large Classes - God Object
+message: "CWE-1021: Fixed Position Fullscreen Overlay Pattern"
 tags:
-- quality
-- php
+- security
+- ui-redress
+- CWE-1021
+- OWASP-A04
 rule:
-  kind: call
-  pattern: '[pattern]'
-note: 'Large Classes - God Object
+  kind: rule_set
+  all:
+  - has:
+      kind: declaration
+      regex: "position\\s*:\\s*fixed"
+  - has:
+      kind: declaration
+      regex: "(top|left)\\s*:\\s*0"
+  - has:
+      kind: declaration
+      regex: "(width|height)\\s*:\\s*(100%|100vw|100vh)"
+note: "Fixed fullscreen overlay pattern is commonly used for clickjacking attacks.
 
-  '
+  An invisible overlay captures all user clicks.
 
+  Ensure overlays have legitimate UI purpose and are visible to users.
+
+  "
 ---
-id: swift-sec-force-unwrap
-tags:
-- Security
-severity: error
-message: 'Quality: Avoid force unwrapping optionals'
-note: '|'
-language: swift
-
----
-id: swift-sec-keychain-hardcoding
-tags:
-- Security
-severity: error
-message: 'Quality: Never hardcode keychain passwords or tokens'
-note: '|'
-language: swift
-
----
-id: swift-sec-insecure-storage
-tags:
-- Security
-severity: error
-message: 'Quality: Avoid insecure storage of sensitive data'
-note: '|'
-language: swift
-
----
-id: swift-sec-url-schemes
-tags:
-- Security
-severity: error
-message: 'Quality: Validate custom URL schemes and deep links'
-note: '|'
-language: swift
-
----
-id: swift-sec-app-transport-security
-tags:
-- Security
-severity: error
-message: 'Quality: Enforce App Transport Security (ATS)'
-note: '|'
-language: swift
-
----
-id: swift-sec-biometric-auth
-tags:
-- Security
-severity: error
-message: 'Quality: Validate biometric authentication properly'
-note: '|'
-language: swift
-
----
-id: swift-sec-ssl-pinning
-tags:
-- Security
-severity: error
-message: 'Quality: Implement SSL/TLS certificate pinning for sensitive APIs'
-note: '|'
-language: swift
-
----
-id: swift-sec-injection-attacks
-tags:
-- Security
-severity: error
-message: 'Quality: Prevent injection attacks (SQL, code, command)'
-note: '|'
-language: swift
-
----
-id: swift-sec-memory-safety
-tags:
-- Security
-severity: error
-message: 'Quality: Maintain memory safety with proper pointer usage'
-note: '|'
-language: swift
-
----
-id: swift-perf-value-vs-reference
-tags:
-- Performance
-severity: warning
-message: 'Quality: Choose appropriate value vs reference types'
-note: '|'
-language: swift
-
----
-id: swift-perf-copy-on-write
-tags:
-- Performance
-severity: warning
-message: 'Quality: Leverage copy-on-write semantics for performance'
-note: '|'
-language: swift
-
----
-id: swift-perf-arc-overhead
-tags:
-- Performance
-severity: warning
-message: 'Quality: Minimize Automatic Reference Counting (ARC) overhead'
-note: '|'
-language: swift
-
----
-id: swift-perf-collection-operations
-tags:
-- Performance
-severity: warning
-message: 'Quality: Optimize collection operations for performance'
-note: '|'
-language: swift
-
----
-id: swift-perf-lazy-properties
-tags:
-- Performance
+id: css-cwe-1021-pointer-events-none
+language: css
 severity: info
-message: 'Quality: Use lazy properties for expensive initialization'
-note: '|'
-language: swift
-
----
-id: swift-perf-inline-closures
+message: "CWE-1021: pointer-events: none May Enable Click-Through Attacks"
 tags:
-- Performance
+- security
+- ui-redress
+- CWE-1021
+rule:
+  kind: declaration
+  regex: "pointer-events\\s*:\\s*none"
+note: "pointer-events: none allows clicks to pass through to elements below.
+
+  This can be abused to make users click hidden malicious elements.
+
+  Review for legitimate use cases.
+
+  "
+---
+id: css-cwe-1021-clip-path-hiding
+language: css
 severity: info
-message: 'Quality: Avoid capturing heavy objects in inline closures'
-note: '|'
-language: swift
+message: "CWE-1021: clip-path Used to Hide Content"
+tags:
+- security
+- ui-redress
+- CWE-1021
+rule:
+  kind: declaration
+  regex: "clip(-path)?\\s*:"
+note: "clip-path can hide parts of elements while keeping them interactive.
+
+  This can be used for subtle UI manipulation attacks.
+
+  Review for legitimate use.
+
+  "
+---
+id: css-cwe-1021-absolute-offscreen
+language: css
+severity: info
+message: "CWE-1021: Absolute Positioned Element Moved Offscreen"
+tags:
+- security
+- ui-redress
+- CWE-1021
+rule:
+  kind: rule_set
+  all:
+  - has:
+      kind: declaration
+      regex: "position\\s*:\\s*absolute"
+  - has:
+      kind: declaration
+      regex: "(left|top)\\s*:\\s*-[0-9]{4,}px"
+note: "Absolute positioning with large negative values moves elements offscreen.
+
+  This can be used to hide malicious content that remains in the DOM.
+
+  Review for accessibility or SEO abuse.
+
+  "
+
+# ------------------------------------------------------------------------------
+# CSS Data Exfiltration Patterns
+# ------------------------------------------------------------------------------
 
 ---
-id: swift-perf-avoid-string-concat
+id: css-exfil-attribute-selector-url
+language: css
+severity: error
+message: "Data Exfiltration: Attribute Selector with URL Request"
 tags:
-- Performance
+- security
+- exfiltration
+- CWE-200
+- OWASP-A01
+rule:
+  kind: rule_set
+  all:
+  - has:
+      kind: attribute_selector
+      regex: "\\^=|\\$=|\\*=|~="
+  - has:
+      kind: declaration
+      regex: "(background|content|list-style).*url\\s*\\("
+note: "Attribute selectors combined with url() requests can exfiltrate data character-by-character.
+
+  Each attribute value match triggers a unique server request.
+
+  This is a classic CSS-only data exfiltration technique.
+
+  Sanitize all user-controlled CSS and use Content Security Policy.
+
+  "
+---
+id: css-exfil-input-value-timing
+language: css
 severity: warning
-message: 'Quality: Avoid string concatenation in loops'
-note: '|'
-language: swift
-
----
-id: swift-perf-async-await-deadlock
+message: "Data Exfiltration: Input Value Detection Pattern"
 tags:
-- Performance
-severity: error
-message: 'Quality: Avoid deadlocks with async/await'
-note: '|'
-language: swift
+- security
+- exfiltration
+- CWE-200
+rule:
+  kind: rule_set
+  all:
+  - has:
+      kind: attribute_selector
+      regex: "value\\s*[\\^\\$\\*~]?="
+  - has:
+      kind: declaration
+      regex: "url\\s*\\("
+note: "CSS selectors on input value attributes combined with url() can detect keystrokes.
 
+  As users type, each matching character triggers a request.
+
+  This enables password and sensitive data exfiltration via CSS injection.
+
+  "
 ---
-id: swift-qual-naming-conventions
-tags:
-- Quality
+id: css-exfil-font-face-unicode-range
+language: css
 severity: warning
-message: 'Quality: Follow Swift naming conventions (PascalCase, camelCase)'
-note: '|'
-language: swift
-
----
-id: swift-qual-optionals-usage
+message: "Data Exfiltration: @font-face unicode-range Technique"
 tags:
-- Quality
-severity: error
-message: 'Quality: Use optionals correctly and safely'
-note: '|'
-language: swift
+- security
+- exfiltration
+- CWE-200
+rule:
+  kind: at_rule
+  all:
+  - regex: "@font-face"
+  - has:
+      kind: declaration
+      regex: "unicode-range\\s*:"
+  - has:
+      kind: declaration
+      regex: "src\\s*:.*url\\s*\\(.*https?://"
+note: "@font-face with unicode-range can detect which characters are rendered on page.
 
+  Different fonts for different characters trigger unique server requests.
+
+  This is an advanced CSS-only data exfiltration technique.
+
+  "
 ---
-id: swift-qual-protocol-design
+id: css-exfil-scroll-animation
+language: css
+severity: info
+message: "Data Exfiltration: Scroll-Linked Animation with URL"
 tags:
-- Quality
-severity: warning
-message: 'Quality: Design protocols that are clear and maintainable'
-note: '|'
-language: swift
+- security
+- exfiltration
+- CWE-200
+rule:
+  kind: at_rule
+  all:
+  - regex: "@keyframes"
+  - has:
+      kind: declaration
+      regex: "url\\s*\\("
+note: "Animations combined with url() can trigger requests based on scroll position.
 
+  This can be used to detect user scroll behavior or screen content.
+
+  Review for legitimate use cases.
+
+  "
 ---
-id: swift-qual-error-handling
+id: css-exfil-media-query-fingerprint
+language: css
+severity: info
+message: "Data Exfiltration: Media Query Fingerprinting"
 tags:
-- Quality
-severity: error
-message: 'Quality: Use proper error handling with typed errors'
-note: '|'
-language: swift
-
----
-id: swift-qual-access-control
-tags:
-- Quality
-severity: warning
-message: 'Quality: Apply appropriate access control modifiers'
-note: '|'
-language: swift
-
----
-id: swift-qual-documentation
-tags:
-- Quality
-severity: warning
-message: 'Quality: Document public APIs with DocC or inline comments'
-note: '|'
-language: swift
-
----
-id: swift-qual-dependency-injection
-tags:
-- Quality
-severity: warning
-message: 'Quality: Use dependency injection to improve testability'
-note: '|'
-language: swift
-
----
-id: swift-qual-testability
-tags:
-- Quality
-severity: warning
-message: 'Quality: Write code that is testable'
-note: '|'
-language: swift
-
----
-id: swift-qual-type-safety
-tags:
-- Quality
-severity: warning
-message: 'Quality: Leverage Swift''s type safety'
-note: '|'
-language: swift
-
----
-id: swift-qual-avoid-force-unwrap-general
-tags:
-- Quality
-severity: error
-message: 'Quality: Eliminate all force unwraps except in tests'
-note: '"Comprehensive Swift security, performance, and quality rules"'
-language: swift
-
----
-id: objc-sec-001
-name: Format String Vulnerability Detection
-category: Security
-severity: Critical
-description: Detect format string vulnerabilities in NSString and NSLog calls
-pattern: "(NSLog|NSString|stringWithFormat|stringByAppendingFormat|appendFormat|\n\
-  \ initWithFormat|localizedStringWithFormat|stringWithCString|\n stringWithUTF8String).*%[a-zA-Z0-9@$]*\n"
-check_type: format_string
-vulnerable_patterns:
-- NSLog(userInput)
-- NSLog([dict description])
-- '[NSString stringWithFormat:variable]'
-- '[NSString localizedStringWithFormat:userString]'
-safe_patterns:
-- NSLog(@"%@", variable)
-- '[NSString stringWithFormat:@"%@", variable]'
-- 'NSLog(@"Static format: %@", value)'
-recommendation: 'Always use format strings as literal constants, never from user input
-  or variables.
-
-  Pass user data as parameters to format specifiers:
-
-  - NSLog(@"%@", userString) NOT NSLog(userString)
-
-  - [NSString stringWithFormat:@"%@", value] NOT [NSString stringWithFormat:value]
-
-  '
-cwe:
-- CWE-134
-mitigation: Use %@ for objects, %d for integers, %f for floats. Validate all format
-  strings.
-
----
-id: objc-sec-002
-name: Buffer Overflow Detection
-category: Security
-severity: Critical
-description: Detect potential buffer overflow in C functions and char arrays
-pattern: '(strcpy|strcat|sprintf|scanf|gets|fgets|memcpy|memmove|strncpy|strncat).*
-
-  '
-check_type: buffer_safety
-vulnerable_patterns:
-- strcpy(buffer, input)
-- char buf[256]; strcpy(buf, userInput)
-- sprintf(buffer, format, arg)
-- char array[FIXED_SIZE]; memcpy(array, data, size)
-- gets(buffer)
-safe_patterns:
-- strlcpy(buffer, input, sizeof(buffer))
-- strncat(buffer, input, remaining)
-- snprintf(buffer, sizeof(buffer), format, args)
-- memset(buffer, 0, size); memcpy_s(buffer, size, data, min(size, dataLen))
-recommendation: 'Use bounds-checked alternatives for string/memory operations:
-
-  - Replace strcpy → strlcpy with explicit buffer size
-
-  - Replace strcat → strlcat with explicit buffer size
-
-  - Replace sprintf → snprintf with buffer size
-
-  - Replace memcpy → use NS* equivalents or bounds checking
-
-  - NEVER use gets() - always use fgets() with size limit
-
-  - Use NSString for string handling when possible
-
-  '
-cwe:
-- CWE-120
-- CWE-119
-mitigation: Validate buffer sizes, use safe variants, use NSString/NSData.
-
----
-id: objc-sec-003
-name: Keychain Security Issues
-category: Security
-severity: High
-description: Detect insecure keychain usage and sensitive data handling
-pattern: "(kSecClass|kSecAttrAccessible|kSecUseDataProtection|\n SecItemAdd|SecItemDelete|SecItemUpdate|SecItemCopyMatching|\n\
-  \ SecKeyCreateSignature|SecKeyCreateDecryptedData).*\n"
-check_type: keychain_security
-vulnerable_patterns:
-- 'kSecAttrAccessible: kSecAttrAccessibleAlways'
-- 'kSecAttrAccessible: kSecAttrAccessibleWhenUnlocked'
-- '[keychain storePassword:pwd user:u]'
-- NSString *password = [NSString stringWithContentsOfFile:...]
-- char password[256]; memcpy(password, data, len)
-safe_patterns:
-- 'kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly'
-- 'kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly'
-- 'kSecUseDataProtection: @YES'
-- 'kSecAttrSynchronizable: @NO'
-- volatile char *sensitiveData; memset(sensitiveData, 0, len)
-recommendation: 'Follow Apple Keychain best practices:
-
-  - Use kSecAttrAccessibleWhenUnlockedThisDeviceOnly for maximum security
-
-  - Set kSecAttrSynchronizable: @NO for passwords (disable iCloud Keychain)
-
-  - Use kSecUseDataProtection: @YES for encrypted storage at rest
-
-  - Use volatile for sensitive buffers and zero-fill on release
-
-  - Never log passwords or sensitive data
-
-  - Validate keychain error codes and handle failures gracefully
-
-  - Use SecItemDelete to remove sensitive items when no longer needed
-
-  '
-cwe:
-- CWE-922
-- CWE-316
-mitigation: Use ThisDeviceOnly, disable iCloud sync, zero-fill buffers, handle errors.
-
----
-id: objc-sec-004
-name: Insecure Data Storage Detection
-category: Security
-severity: High
-description: Detect hardcoded credentials, insecure file storage, plaintext data
-pattern: "(@\"password|@\"secret|@\"apikey|@\"token|@\"credential|\n NSUserDefaults|preferences|defaults|NSPropertyListSerialization|\n\
-  \ [NSString writeToFile|[NSData writeToFile|NSSearchPathForDirectoriesInDomains|\n\
-  \ NSDocumentDirectory|NSCachesDirectory|NSApplicationSupportDirectory).*\n"
-check_type: data_storage
-vulnerable_patterns:
-- NSString *password = @"myPassword123"
-- NSString *apiKey = @"sk-xyz123"
-- '[defaults setObject:password forKey:@"pwd"]'
-- '[NSKeyedArchiver archiveRootObject:userData toFile:path]'
-- NSString *filePath = [docs stringByAppendingPathComponent:@"secrets.plist"]
-- '[userData writeToFile:path atomically:YES]'
-safe_patterns:
-- // Credentials from environment or secure configuration
-- '[keychain storePassword:pwd forService:@"app" account:user]'
-- '[keychain retrievePasswordForService:@"app" account:user]'
-- NSDataWritingFileProtectionComplete
-- '[data writeToFile:path options:NSDataWritingFileProtectionComplete error:nil]'
-recommendation: 'Never store sensitive data in code or NSUserDefaults:
-
-  - Use Keychain for passwords, tokens, and credentials
-
-  - Use Data Protection (NSDataWritingFileProtectionComplete) for files
-
-  - Remove hardcoded secrets and use secure configuration
-
-  - Encrypt sensitive files with CommonCrypto or CryptoKit
-
-  - Use NSFileProtectionComplete for file permissions
-
-  - Never log sensitive data
-
-  - Clear sensitive data from memory (memset, zero-fill)
-
-  '
-cwe:
-- CWE-798
-- CWE-312
-- CWE-315
-mitigation: Use Keychain, Data Protection, encrypt files, remove hardcoded secrets.
-
----
-id: objc-sec-005
-name: SSL/TLS Configuration Issues
-category: Security
-severity: High
-description: Detect weak SSL/TLS configuration and certificate validation
-pattern: "(NSURLSessionConfiguration|URLSessionConfiguration|\n serverTrustPolicy|validateServerTrust|allowInvalidCertificates|\n\
-  \ kCFStreamSSLValidatesCertificateChain|kCFStreamSSLLevel|\n SFSafariViewController|WKWebView|UIWebView).*\n"
-check_type: ssl_tls
-vulnerable_patterns:
-- config.allowInvalidCertificates = YES
-- challenge.sender useCredential:[NSURLCredential credentialForTrust:trust]
-- 'kCFStreamSSLValidatesCertificateChain: NO'
-- serverTrustPolicy = [AFNoSSLPinningServerTrustPolicy new]
-- UIWebView loadRequest:request
-safe_patterns:
-- NSURLSessionConfiguration.default
-- '[challenge.sender performDefaultHandlingForAuthenticationChallenge:challenge]'
-- '[challenge.sender rejectProtectionSpaceAndContinueWithChallenge:challenge]'
-- WKWebViewConfiguration with certificate pinning
-- SFSafariViewController for external URLs
-recommendation: 'Implement proper SSL/TLS security:
-
-  - Use NSURLSession with default configuration
-
-  - Implement certificate pinning for sensitive connections
-
-  - Validate certificate chains and hostnames
-
-  - Reject invalid certificates (do NOT set allowInvalidCertificates=YES)
-
-  - Use WKWebView instead of deprecated UIWebView
-
-  - Use SFSafariViewController for external URLs
-
-  - Disable weak SSL versions (SSLv3, TLS 1.0, 1.1)
-
-  - Test with network security configuration (networksecurity.xml on Android)
-
-  '
-cwe:
-- CWE-295
-mitigation: Enable certificate validation, implement pinning, reject invalid certs.
-
----
-id: objc-sec-006
-name: Memory Corruption Detection
-category: Security
-severity: Critical
-description: Detect use-after-free, double-free, and memory safety issues
-pattern: "(__weak|__strong|__autoreleasing|__unsafe_unretained|\n dealloc|release|autorelease|retain|copy|strong|weak|assign|\n\
-  \ unsafe_unretained|NSZombieEnabled|MallocStackLogging).*\n"
-check_type: memory_safety
-vulnerable_patterns:
-- Object *obj = ...; [obj release]; [obj method]
-- __unsafe_unretained Object *obj = ...
-- assign properties without __weak
-- dealloc { [observer removeObserver:self] } // after object freed
-- '[_array addObject:obj]; [obj release]'
-safe_patterns:
-- Object *obj = ... // ARC manages release
-- '@property (weak, nonatomic) Object *obj'
-- '@property (strong, nonatomic) Object *obj'
-- '- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self] }'
-recommendation: 'Follow ARC and memory management best practices:
-
-  - Use ARC - only manually manage in specific legacy code
-
-  - Use __weak for delegates and observers to break retain cycles
-
-  - Use __strong (default) for ownership
-
-  - Implement dealloc to remove observers and clean up resources
-
-  - Test with Zombie Objects and MallocStackLogging
-
-  - Avoid __unsafe_unretained except in performance-critical code
-
-  - Use tools: Instruments (Allocations, Leaks), AddressSanitizer
-
-  '
-cwe:
-- CWE-416
-- CWE-415
-mitigation: Use ARC, __weak for delegates, implement dealloc, test with Instruments.
-
----
-id: objc-sec-007
-name: Injection Attack Detection
-category: Security
-severity: High
-description: Detect SQL injection, predicate injection, and code injection
-pattern: "(NSFetchRequest|predicate|predicateWithFormat|SQLiteDatabase|\n sqlite3_prepare|sqlite3_bind|executeQuery|NSPredicate|\n\
-  \ NSCompoundPredicate|stringByAppendingString|stringByAppendingFormat).*\n"
-check_type: injection
-vulnerable_patterns:
-- '[NSPredicate predicateWithFormat:userInput]'
-- NSString *query = [NSString stringWithFormat:@"SELECT * FROM users WHERE id = %d",
-  userId]
-- NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:@"Entity"];
-- request.predicate = [NSPredicate predicateWithFormat:@"name = %@", userInput]
-- sqlite3_prepare_v2(db, query, -1, &stmt, NULL)
-safe_patterns:
-- '[NSPredicate predicateWithFormat:@"name = %@", userInput]'
-- '[NSPredicate predicateWithFormat:@"age > %d", userAge]'
-- sqlite3_prepare_v2(db, @"SELECT * FROM users WHERE id = ?", -1, &stmt, NULL)
-- sqlite3_bind_int(stmt, 1, userId)
-- request.predicate = [NSPredicate predicateWithFormat:@"status = %@", statusValue]
-recommendation: 'Use parameterized queries and predicates:
-
-  - Always use %@ for objects and %d for integers in predicates
-
-  - Use bound parameters in SQL queries (? placeholders)
-
-  - Never concatenate user input directly into predicates or queries
-
-  - Validate and sanitize all user input before use
-
-  - Use SQLite3 prepared statements instead of string formatting
-
-  - Implement input validation for expected types and ranges
-
-  - Log and monitor injection attempts
-
-  '
-cwe:
-- CWE-89
-- CWE-90
-mitigation: Use parameterized queries, validate input, use bound parameters.
-
----
-id: objc-sec-008
-name: Unvalidated URL Handling
-category: Security
-severity: High
-description: Detect unvalidated URL schemes and deep linking vulnerabilities
-pattern: "(NSURL|openURL|canOpenURL|openAppSettings|openExternalURL|\n application:openURL:options|application:handleOpenURL|\n\
-  \ URLScheme|universalLinks|handlesURL).*\n"
-check_type: url_handling
-vulnerable_patterns:
-- '[[UIApplication sharedApplication] openURL:url]'
-- if ([UIApplication.shared canOpenURL:url]) { [UIApplication.shared openURL:url]
-  }
-- NSURL *url = [NSURL URLWithString:userInput]
-- '- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url ...'
-- '[UIApplication.shared openURL:url options:@{} completionHandler:nil]'
-safe_patterns:
-- NSURL *url = [NSURL URLWithString:@"https://example.com"]
-- if (url && [url.scheme isEqualToString:@"https"]) { ... }
-- if ([url.host isEqualToString:@"trusted.domain.com"]) { ... }
-- '- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary
-  *)options'
-- '{ if ([self validateURL:url]) { ... } return NO; }'
-recommendation: 'Implement secure URL handling:
-
-  - Validate URL scheme (whitelist https, custom schemes)
-
-  - Validate URL host against trusted domains
-
-  - Check source of URLs (prevent open redirects)
-
-  - Validate deep link parameters
-
-  - Use URL parsing (components, query parameters)
-
-  - Implement input validation for all URL-based navigation
-
-  - Prevent open redirects by validating domains
-
-  - Log suspicious URL handling attempts
-
-  '
-cwe:
-- CWE-601
-- CWE-941
-mitigation: Validate schemes, hosts, and parameters. Prevent open redirects.
-
----
-id: objc-sec-009
-name: Weak Cryptography Detection
-category: Security
-severity: High
-description: Detect weak encryption algorithms and cryptographic misuse
-pattern: "(CCCrypt|SecKeyCreateSignature|SecKeyCreateDecryptedData|\n MD5|SHA1|DES|AES|CommonCrypto|SecCertificateRef|\n\
-  \ kCCAlgorithmAES|kCCAlgorithmDES|CCAlgorithm|SecKeyAlgorithm).*\n"
-check_type: cryptography
-vulnerable_patterns:
-- 'kCCAlgorithm: kCCAlgorithmDES'
-- HMAC-SHA1
-- MD5 hash for password storage
-- SecKeyCreateSignature without proper algorithm
-- CCCrypt(kCCEncryptionMode,kCCAlgorithmDES,...)
-safe_patterns:
-- 'kCCAlgorithm: kCCAlgorithmAES128'
-- 'CCMode: kCCModeCBC with random IV'
-- HMAC-SHA256
-- 'SecKeyAlgorithm: kSecKeyAlgorithmRSASignatureMessagePKCS1v15SHA256'
-- CryptoKit.SHA256.hash(data:)
-recommendation: 'Use modern cryptographic practices:
-
-  - Use AES-128 minimum (prefer AES-256) for encryption
-
-  - Use SHA-256+ for hashing (avoid MD5, SHA1)
-
-  - Use HMAC for message authentication
-
-  - Use random IVs and secure key derivation (PBKDF2, bcrypt)
-
-  - Use CryptoKit framework (modern, audited)
-
-  - Avoid ECB mode (use CBC, CTR, GCM)
-
-  - Use authenticated encryption (AES-GCM)
-
-  - Never reuse IVs with same key
-
-  '
-cwe:
-- CWE-327
-mitigation: Use AES-256, SHA-256+, HMAC, CryptoKit, authenticated encryption.
-
----
-id: objc-sec-010
-name: Insecure Deserialization Detection
-category: Security
-severity: High
-description: Detect unsafe deserialization of untrusted data
-pattern: "(NSKeyedUnarchiver|NSPropertyListSerialization|JSONSerialization|\n NSCoding|NSSecureCoding|unarchiveObjectWithData|unarchiveTopLevelObjectWithData|\n\
-  \ propertyListWithData|JSONObjectWithData|decode).*\n"
-check_type: deserialization
-vulnerable_patterns:
-- '[NSKeyedUnarchiver unarchiveObjectWithData:untrustedData]'
-- '[NSPropertyListSerialization propertyListWithData:data options:0 format:nil error:nil]'
-- '[NSPropertyListSerialization propertyListWithData:data options:NSPropertyListImmutable
-  format:nil error:nil]'
-- unarchiveTopLevelObjectWithData:data error:nil
-- '[NSJSONSerialization JSONObjectWithData:untrustedData options:0 error:nil]'
-safe_patterns:
-- '[NSKeyedUnarchiver unarchivedObjectOfClass:[MyClass class] fromData:data error:nil]'
-- '[NSKeyedUnarchiver unarchiveTopLevelObjectWithData:data error:nil]'
-- 'NSPropertyListSerialization:unarchivedObjectOfClass:forKey:fromData:error:'
-- NSSecureCoding protocol implementation
-- 'JSONDecoder().decode(MyClass.self, from: data)'
-recommendation: 'Implement secure deserialization:
-
-  - Use NSSecureCoding protocol instead of NSCoding
-
-  - Use unarchivedObjectOfClass: to restrict types
-
-  - Validate deserialized objects before use
-
-  - Never deserialize from untrusted sources without validation
-
-  - Use Codable/JSONDecoder for JSON (type-safe)
-
-  - Implement NSSecureCoding.supportsSecureCoding = YES
-
-  - Validate all deserialized data
-
-  - Avoid PropertyList deserialization from untrusted sources
-
-  '
-cwe:
-- CWE-502
-mitigation: Use NSSecureCoding, restrict types, validate objects.
-
----
-id: objc-sec-011
-name: Path Traversal Detection
-category: Security
-severity: High
-description: Detect path traversal and directory traversal vulnerabilities
-pattern: "(NSFileManager|fileManager|NSDocumentDirectory|NSCachesDirectory|\n NSApplicationSupportDirectory|NSTemporaryDirectory|stringByAppendingPathComponent|\n\
-  \ stringByAppendingString|NSSearchPathForDirectoriesInDomains|pathWithComponents).*\n"
-check_type: path_traversal
-vulnerable_patterns:
-- NSString *basePath = NSSearchPathForDirectoriesInDomains(...)[0]
-- NSString *filePath = [basePath stringByAppendingPathComponent:userInput]
-- NSString *path = [NSString stringWithFormat:@"%@/%@", basePath, userPath]
-- '[fileManager fileExistsAtPath:[basePath stringByAppendingString:path]]'
-safe_patterns:
-- NSString *basePath = NSSearchPathForDirectoriesInDomains(...)[0]
-- if ([userInput containsString:@".."]) { return nil }
-- NSString *filePath = [basePath stringByAppendingPathComponent:filename]
-- if (![filePath hasPrefix:basePath]) { return nil }
-recommendation: 'Prevent path traversal attacks:
-
-  - Validate all file paths before accessing
-
-  - Check that resolved path is within base directory
-
-  - Reject paths containing \"..\" or absolute paths
-
-  - Use stringByAppendingPathComponent: instead of string concatenation
-
-  - Implement whitelist of allowed files/directories
-
-  - Validate user input matches expected filename format
-
-  - Use realpath() equivalent to resolve full path
-
-  - Check file permissions and ownership
-
-  '
-cwe:
-- CWE-22
-mitigation: Validate paths, reject .., use stringByAppendingPathComponent:.
-
----
-id: objc-sec-012
-name: Weak Random Number Generation
-category: Security
-severity: High
-description: Detect insecure random number generation for cryptography
-pattern: "(random|arc4random|drand48|rand|srand|srandom|\n RAND_bytes|SecRandomCopyBytes|getRandomBytes).*\n"
-check_type: rng
-vulnerable_patterns:
-- int token = arc4random() % 1000
-- srand(time(NULL)); int random = rand()
-- double random = drand48()
-- srandom(seed); int value = random()
-safe_patterns:
-- SecRandomCopyBytes(kSecRandomDefault, sizeof(bytes), bytes)
-- uint8_t bytes[32]; SecRandomCopyBytes(kSecRandomDefault, 32, bytes)
-- CommonCrypto arc4random_buf
-- CryptoKit.SecureBytes
-recommendation: 'Use cryptographically secure random generation:
-
-  - Use SecRandomCopyBytes for cryptographic randomness
-
-  - Use arc4random_buf for secure random bytes
-
-  - Never use random(), rand(), drand48() for security
-
-  - Use secure sources: /dev/urandom, SecRandomDefault
-
-  - For tokens: use 32+ bytes of secure random data
-
-  - For nonces: use cryptographically secure generation
-
-  - Test randomness with statistical analysis tools
-
-  '
-cwe:
-- CWE-338
-mitigation: Use SecRandomCopyBytes, arc4random_buf, not random/rand.
-
----
-id: objc-sec-013
-name: Null Pointer Dereference Detection
-category: Security
-severity: Medium
-description: Detect potential null pointer dereferences and unsafe access
-pattern: "(nil|NULL|NSNull|@try|@catch|guard|if.*nil|unwrap|\n if\\s*\\(\\s*\\!\\\
-  s*\\w+\\s*\\)|if\\s*\\(\\w+.*==\\s*nil|if\\s*\\(\\w+.*!=\\s*nil).*\n"
-check_type: null_safety
-vulnerable_patterns:
-- '[nilObject method]'
-- NSString *str = [dict objectForKey:@"key"]; [str uppercaseString]
-- '[array lastObject]'
-- self.property.subproperty
-- '[results firstObject].property'
-safe_patterns:
-- if (obj) { [obj method] }
-- 'NSString *str = [dict objectForKey:@"key"] ?: @""'
-- if (array.count > 0) { id last = array.lastObject }
-- if (obj && obj.property) { ... }
-recommendation: 'Implement safe null checking:
-
-  - Always check for nil before accessing objects
-
-  - Use optional chaining for property access
-
-  - Use ?: operator for nil coalescing
-
-  - Use guard statements to ensure objects exist
-
-  - Implement nullability annotations (__nullable, __nonnull)
-
-  - Use @try/@catch for exception handling
-
-  - Test with nullability warnings enabled
-
-  - Use _Nonnull in method signatures
-
-  '
-cwe:
-- CWE-476
-mitigation: 'Check for nil, use ?: operator, nullability annotations.'
-
----
-id: objc-sec-014
-name: Race Condition Detection
-category: Security
-severity: Medium
-description: Detect potential race conditions in multi-threaded code
-pattern: "(@synchronized|dispatch_async|dispatch_sync|dispatch_barrier|\n pthread_mutex|NSLock|NSRecursiveLock|NSConditionLock|\n\
-  \ @property.*nonatomic|@property.*atomic|GCD|DispatchQueue).*\n"
-check_type: race_condition
-vulnerable_patterns:
-- '@property (nonatomic) NSMutableArray *array'
-- dispatch_async(queue, ^{ [self.array addObject:obj] })
-- '[self.dict setObject:val forKey:key] // from multiple threads'
-- '@property NSMutableDictionary *mutableDict // accessed from multiple threads'
-safe_patterns:
-- '@property (atomic) NSMutableArray *array'
-- dispatch_barrier_async(queue, ^{ [self.array addObject:obj] })
-- '@synchronized(self) { [self.array addObject:obj] }'
-- NSLock *lock; [lock lock]; [self.array addObject:obj]; [lock unlock]
-recommendation: 'Implement thread-safe synchronization:
-
-  - Use @synchronized for simple synchronization
-
-  - Use NSLock/NSRecursiveLock for granular control
-
-  - Use dispatch_barrier_async for synchronized writes
-
-  - Use dispatch_sync for synchronized reads
-
-  - Consider immutable objects for thread safety
-
-  - Document thread-safety guarantees
-
-  - Use atomic properties for simple properties
-
-  - Test with ThreadSanitizer and race condition detectors
-
-  '
-cwe:
-- CWE-362
-mitigation: '@synchronized, NSLock, dispatch_barrier_async, atomic properties.'
-
----
-id: objc-sec-015
-name: Privilege Escalation Detection
-category: Security
-severity: High
-description: Detect privilege escalation and insecure system operations
-pattern: "(system|exec|fork|spawn|getuid|setuid|geteuid|seteuid|\n getgid|setgid|getegid|setegid|chmod|chown|sudo|elevated).*\n"
-check_type: privilege
-vulnerable_patterns:
-- system(userCommand)
-- execl("/bin/sh", userInput)
-- setuid(0) // attempt to become root
-- system("rm -rf /") // dangerous
-safe_patterns:
-- Task execution with checked parameters
-- Limited user privileges for operations
-- Capability-based security model
-recommendation: 'Avoid privilege escalation vulnerabilities:
-
-  - Never call system() with user input
-
-  - Never use setuid/seteuid for privilege escalation
-
-  - Run with least privilege principle
-
-  - Drop privileges after operations
-
-  - Implement capability-based security
-
-  - Validate all shell commands
-
-  - Use elevated privileges only when necessary
-
-  '
-cwe:
-- CWE-250
-- CWE-94
-mitigation: Avoid system(), use least privilege, validate commands.
-
----
-id: objc-perf-001
-name: Autorelease Pool Management
-category: Performance
-severity: High
-description: Detect inefficient autorelease pool usage causing memory spikes
-pattern: "(@autoreleasepool|autorelease|NSAutoreleasePool|\n autoreleasingReferencingObjectAtIndex|drain).*\n"
-check_type: autorelease_management
-inefficient_patterns:
-- for (int i = 0; i < 1000000; i++) { NSString *str = [NSString stringWithFormat:...]
-  }
-- // No @autoreleasepool in tight loops
-- '[array enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) { NSString
-  *s = [obj description] }]'
-efficient_patterns:
-- '@autoreleasepool { for (int i = 0; i < 1000000; i++) { NSString *str = ... } }'
-- for (int i = 0; i < 1000000; i++) { @autoreleasepool { NSString *str = ... } }
-- '[array enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) { @autoreleasepool
-  { NSString *s = [obj description] } }]'
-recommendation: 'Optimize autorelease pool usage:
-
-  - Use @autoreleasepool in tight loops creating temporary objects
-
-  - Drain autorelease pool in loops processing large collections
-
-  - Move @autoreleasepool outside loop if possible
-
-  - Use fast enumeration with autorelease pools
-
-  - Consider using NSMutableString instead of string concatenation
-
-  - Profile with Instruments to identify autorelease spikes
-
-  - Use proper scoping for temporary objects
-
-  '
-mitigation: Add @autoreleasepool in tight loops and collection processing.
-
----
-id: objc-perf-002
-name: ARC Overhead Detection
-category: Performance
-severity: Medium
-description: Detect excessive retain/release overhead in ARC-managed code
-pattern: "(@property.*strong|@property.*copy|retain|release|\n __strong|__weak|__unsafe_unretained|copy|mutableCopy).*\n"
-check_type: arc_overhead
-inefficient_patterns:
-- '@property (copy, nonatomic) NSString *string // string property'
-- '@property (strong, nonatomic) NSArray *immutableArray // unnecessary strong'
-- NSString *copy = [original copy] // in tight loop
-efficient_patterns:
-- '@property (nonatomic, copy) NSString *string // correct'
-- '@property (strong, nonatomic) NSMutableArray *mutableArray'
-- '@property (weak, nonatomic) id<MyDelegate> delegate // prevent cycles'
-recommendation: 'Optimize ARC performance:
-
-  - Use __weak for delegates and observers
-
-  - Use __strong only for retained properties
-
-  - Use __unsafe_unretained for performance-critical code with careful lifetime management
-
-  - Avoid excessive copying of immutable objects
-
-  - Use copy properties only for thread-safe immutable objects
-
-  - Batch property updates to reduce retain/release pairs
-
-  - Profile retain/release activity with Instruments
-
-  - Use copy only when thread safety requires it
-
-  '
-mitigation: __weak for delegates, avoid unnecessary copy, profile with Instruments.
-
----
-id: objc-perf-003
-name: Collection Operation Inefficiency
-category: Performance
-severity: High
-description: Detect inefficient collection operations (O(n) operations in loops)
-pattern: "(NSArray|NSMutableArray|NSDictionary|NSMutableDictionary|NSSet|NSMutableSet|\n\
-  \ enumerateObjectsUsingBlock|enumerateKeysAndObjectsUsingBlock|\n containsObject|indexOfObject|objectForKey|removeObjectForKey|\n\
-  \ for.*in|addObject|removeObject|sortedArray).*\n"
-check_type: collection_performance
-inefficient_patterns:
-- for (id obj in array) { if ([otherArray containsObject:obj]) { ... } } // O(n^2)
-- for (id key in dict) { [mutableArray addObject:[dict objectForKey:key]] } // O(n)
-- '[array sortedArrayUsingSelector:@selector(compare:)] // recreates array'
-- while ([array containsObject:obj]) { [array removeObject:obj] } // O(n^2)
-efficient_patterns:
-- NSSet *otherSet = [NSSet setWithArray:otherArray]
-- for (id obj in array) { if ([otherSet containsObject:obj]) { ... } } // O(n)
-- '[array enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) { ... }]'
-- '[mutableArray sortUsingSelector:@selector(compare:)] // sorts in-place'
-recommendation: 'Optimize collection operations:
-
-  - Use NSSet instead of NSArray for containsObject: checks
-
-  - Convert arrays to sets for membership testing (O(1) vs O(n))
-
-  - Use enumerateObjectsUsingBlock: instead of for loops (better memory)
-
-  - Use sortUsingSelector: on mutable arrays (in-place vs copy)
-
-  - Batch removals instead of removing one at a time
-
-  - Use predicates for filtering NSArray
-
-  - Pre-allocate collections with capacity when size known
-
-  - Cache results of expensive operations (count, etc.)
-
-  '
-mitigation: Use NSSet for membership, batch operations, use predicates.
-
----
-id: objc-perf-004
-name: String Handling Inefficiency
-category: Performance
-severity: High
-description: Detect inefficient string operations and concatenation
-pattern: "(stringByAppendingString|stringByAppendingFormat|NSMutableString|\n stringByReplacingOccurrencesOfString|componentsSeparatedByString|\n\
-  \ lowercaseString|uppercaseString|stringWithFormat).*\n"
-check_type: string_performance
-inefficient_patterns:
-- NSString *result = @""; for (...) { result = [result stringByAppendingString:part]
-  } // O(n^2)
-- for (id obj in array) { str = [str stringByAppendingString:[obj description]] }
-- '[string stringByReplacingOccurrencesOfString:@"a" withString:@"b"] // multiple
-  times'
-efficient_patterns:
-- NSMutableString *result = [NSMutableString string]
-- for (...) { [result appendString:part] } // O(n)
-- '[result appendString:[NSString stringWithFormat:@"%d", value]]'
-- '[mutableString replaceOccurrencesOfString:@"a" withString:@"b" options:0 range:NSMakeRange(0,
-  [mutableString length])]'
-recommendation: 'Optimize string operations:
-
-  - Use NSMutableString for concatenation in loops
-
-  - Use stringWithFormat: instead of multiple appends
-
-  - Cache string properties (length, substring operations)
-
-  - Use componentsSeparatedByString: vs manual parsing
-
-  - Use regular expressions for complex replacements
-
-  - Consider using NSScanner for parsing
-
-  - Avoid repeated case conversions
-
-  - Use string pooling for repeated strings
-
-  '
-mitigation: Use NSMutableString, cache operations, avoid loops with append.
-
----
-id: objc-perf-005
-name: Image Caching Strategy
-category: Performance
-severity: High
-description: Detect missing or inefficient image caching mechanisms
-pattern: "(UIImage|imageNamed|imageWithContentsOfFile|imageWithData|\n UIImageView|setImage|sd_setImageWithURL|drawInRect|\n\
-  \ NSURLCache|URLCache|ImageCache).*\n"
-check_type: image_caching
-inefficient_patterns:
-- UIImage *image = [UIImage imageWithContentsOfFile:path] // in cell display
-- for (NSString *filename in filenames) { UIImage *img = [UIImage imageNamed:filename]
-  }
-- '[imageView setImage:[UIImage imageWithData:data]] // no caching'
-- UIImage *image = [UIImage imageWithData:[NSData dataWithContentsOfURL:url]] // blocking
-  main thread
-efficient_patterns:
-- UIImage *image = [UIImage imageNamed:@"cached"] // cached in bundle
-- NSCache *imageCache; id cachedImage = [imageCache objectForKey:path]
-- '[imageView sd_setImageWithURL:url placeholderImage:placeholder]'
-- dispatch_async(dispatch_get_global_queue(...), ^{ UIImage *img = [UIImage imageWithData:data]
-  })
-recommendation: 'Implement efficient image caching:
-
-  - Use NSCache for in-memory image caching
-
-  - Implement disk caching for downloaded images
-
-  - Use SDWebImage or similar for network image loading
-
-  - Decode images off main thread
-
-  - Resize images to view size before caching
-
-  - Implement memory warnings handling (clearCache)
-
-  - Use imageWithData: for temporary images only
-
-  - Profile image memory with Instruments
-
-  - Pre-load critical images
-
-  '
-mitigation: Use NSCache, SDWebImage, decode off main, resize before cache.
-
----
-id: objc-perf-006
-name: Lazy Loading and Initialization
-category: Performance
-severity: Medium
-description: Detect missing lazy loading and initialization patterns
-pattern: "(init|initWithFrame|awakeFromNib|viewDidLoad|layoutSubviews|\n dealloc|_|lazy|@synthesize).*\n"
-check_type: lazy_loading
-inefficient_patterns:
-- '- (id)init { ... [self initializeExpensiveObject] ... } // initialize everything'
-- UIView *view = [[UIView alloc] init]; view.hidden = YES // never shown
-- viewDidLoad loads all views even if not visible
-efficient_patterns:
-- '- (MyObject *)expensiveObject { if (!_expensiveObject) { _expensiveObject = ...;
-  } return _expensiveObject; }'
-- '@property (nonatomic, lazy) MyObject *object'
-- '- (void)viewDidLoad { // load visible views only }'
-recommendation: 'Implement lazy loading and initialization:
-
-  - Defer expensive initialization to first use
-
-  - Create properties on demand with getter checks
-
-  - Use lazy evaluation patterns
-
-  - Load views only when needed (table cell configuration)
-
-  - Defer network requests until visible
-
-  - Implement lazy property initialization
-
-  - Use lazy collections and data structures
-
-  - Monitor initialization performance with Instruments
-
-  '
-mitigation: Defer expensive init, check before creation, lazy properties.
-
----
-id: objc-perf-007
-name: Memory Allocation Inefficiency
-category: Performance
-severity: Medium
-description: Detect excessive memory allocations and inefficient allocation patterns
-pattern: "(malloc|calloc|realloc|alloca|sizeof|NSMutableArray|NSMutableDictionary|\n\
-  \ NSMutableString|new|alloc|copy|mutableCopy).*\n"
-check_type: memory_allocation
-inefficient_patterns:
-- for (int i = 0; i < n; i++) { NSMutableArray *arr = [NSMutableArray array] }
-- NSMutableArray *array = [[NSMutableArray alloc] init]; // without capacity
-- '[array addObject:obj]; [array addObject:obj2]; // repeated grows'
-efficient_patterns:
-- NSMutableArray *array = [NSMutableArray arrayWithCapacity:expectedSize]
-- NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity:size]
-- Reuse collection objects instead of recreating
-recommendation: 'Optimize memory allocations:
-
-  - Pre-allocate collections with capacity when size known
-
-  - Reuse collection objects instead of creating new ones
-
-  - Use object pooling for frequently allocated objects
-
-  - Avoid excessive small allocations
-
-  - Use immutable collections when possible (less memory overhead)
-
-  - Profile allocations with Instruments (Allocations tool)
-
-  - Monitor high-water memory mark
-
-  '
-mitigation: Pre-allocate with capacity, reuse objects, use object pooling.
-
----
-id: objc-perf-008
-name: Main Thread Blocking
-category: Performance
-severity: Critical
-description: Detect blocking operations on main thread causing UI freezes
-pattern: "(dispatch_get_main_queue|dispatchOnMainQueue|performSelectorOnMainThread|\n\
-  \ dispatch_async.*main|dispatch_sync.*main|\n NSData.*URL|NSString.*URL|URLSession|dataTaskWithURL|\n\
-  \ viewDidLoad|viewWillAppear|drawRect|layoutSubviews).*\n"
-check_type: main_thread_blocking
-inefficient_patterns:
-- viewDidLoad { NSData *data = [NSData dataWithContentsOfURL:url] } // blocking network
-- dispatch_sync(dispatch_get_main_queue(), ^{ ... }) // deadlock risk
-- '[NSString stringWithContentsOfURL:url encoding:NSUTF8StringEncoding error:nil]
-  // blocking'
-- '- (void)drawRect:(CGRect)rect { [self loadDataFromDisk] }'
-efficient_patterns:
-- dispatch_async(dispatch_get_global_queue(...), ^{
-- '  NSData *data = [NSData dataWithContentsOfURL:url]'
-- '  dispatch_async(dispatch_get_main_queue(), ^{ [self updateUI:data] })'
-- '})'
-recommendation: 'Avoid blocking main thread:
-
-  - Move network operations to background queue
-
-  - Move file I/O to background queue
-
-  - Move database operations to background queue
-
-  - Use dispatch_async to avoid deadlocks
-
-  - Profile with Main Thread Checker (Xcode)
-
-  - Set os_log points to identify blocking operations
-
-  - Use NSURLSession for network (built-in queue support)
-
-  - Keep main thread for UI updates only
-
-  '
-mitigation: dispatch_async for background work, Main Thread Checker.
-
----
-id: objc-perf-009
-name: View Hierarchy Complexity
-category: Performance
-severity: Medium
-description: Detect overly complex view hierarchies causing rendering issues
-pattern: "(UIView|addSubview|insertSubview|UIStackView|\n layoutSubviews|drawRect|CALayer|cornerRadius|\n\
-  \ masksToBounds|shadowPath|opacity).*\n"
-check_type: view_hierarchy
-inefficient_patterns:
-- // Deeply nested view hierarchies (>10 levels)
-- view.layer.cornerRadius = 50; view.layer.masksToBounds = YES // rasterizes
-- view.layer.shadowPath = nil // expensive shadow
-- '[superview addSubview:view] // in loop without batching'
-efficient_patterns:
-- UIStackView for layout (flattens hierarchy)
-- view.layer.cornerRadius = 50 WITH view.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:...]
-- Use CADisplayLink for smooth animations
-- 'Batch view creation: CATransaction { [superview addSubview:v] }'
-recommendation: 'Optimize view hierarchies:
-
-  - Keep view depth < 10 levels
-
-  - Use UIStackView for dynamic layouts
-
-  - Set shadowPath explicitly (not nil/null)
-
-  - Use rasterization sparingly (disable when animating)
-
-  - Batch view updates with CATransaction
-
-  - Pre-render static content (image snapshots)
-
-  - Use CADisplayLink for animation
-
-  - Profile rendering with Core Animation tool
-
-  '
-mitigation: Flatten hierarchy, UIStackView, explicit shadowPath, CATransaction.
-
----
-id: objc-perf-010
-name: Scrolling Performance Issues
-category: Performance
-severity: High
-description: Detect UITableView/UICollectionView scrolling performance problems
-pattern: "(UITableViewCell|UICollectionViewCell|cellForRowAtIndexPath|\n cellForItemAtIndexPath|dequeueReusableCellWithIdentifier|\n\
-  \ heightForRowAtIndexPath|estimatedHeightForRowAtIndexPath|\n scrollViewDidScroll|willDisplayCell).*\n"
-check_type: scroll_performance
-inefficient_patterns:
-- '- (UITableViewCell *)tableView:(UITableView *)table cellForRowAtIndexPath:(NSIndexPath
-  *)indexPath {'
-- '  cell.imageView.image = [UIImage imageWithContentsOfFile:path] // main thread'
-- '  cell.textLabel.text = [expensiveObject description]'
-- '  return cell'
-- '}'
-- '- (CGFloat)tableView:(UITableView *)table heightForRowAtIndexPath:(NSIndexPath
-  *)indexPath {'
-- '  return [self calculateHeightForRow:indexPath] // expensive'
-- '}'
-efficient_patterns:
-- '- (void)configureCell:(UITableViewCell *)cell forIndexPath:(NSIndexPath *)indexPath'
-- '  cell.imageView.image = [self.imageCache objectForKey:indexPath]'
-- '}'
-- '- (CGFloat)tableView:(UITableView *)table estimatedHeightForRowAtIndexPath:(NSIndexPath
-  *)indexPath'
-- '  return 44.0 // estimated'
-- '}'
-recommendation: 'Optimize table/collection view scrolling:
-
-  - Use estimatedHeightForRowAtIndexPath instead of exact height
-
-  - Pre-calculate row heights and cache
-
-  - Cache cell heights in NSIndexPath-indexed dictionary
-
-  - Load images asynchronously
-
-  - Avoid complex calculations in cellForRowAtIndexPath
-
-  - Reuse cells properly (dequeueReusableCellWithIdentifier)
-
-  - Pre-render complex cell content
-
-  - Use shouldHighlightRowAtIndexPath to skip unnecessary work
-
-  - Profile with Core Animation and Time Profiler
-
-  '
-mitigation: Use estimated heights, cache, async images, pre-render cells.
-
----
-id: objc-perf-011
-name: Database Query Inefficiency
-category: Performance
-severity: High
-description: Detect inefficient Core Data/SQLite queries
-pattern: "(NSFetchRequest|NSPredicate|NSFetchedResultsController|\n sqlite3_prepare|sqlite3_step|sqlite3_finalize|\n\
-  \ fetchAllObjects|executeFetchRequest|NSManagedObjectContext).*\n"
-check_type: database_performance
-inefficient_patterns:
-- NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:@"Entity"]
-- '[context executeFetchRequest:request error:nil] // no predicate, fetches all'
-- for (Entity *obj in results) { [obj.relationships count] } // faults loaded
-- NSFetchRequest without batch size // loads all to memory
-efficient_patterns:
-- NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:@"Entity"]
-- request.predicate = [NSPredicate predicateWithFormat:@"status = %@", @"active"]
-- request.relationshipKeyPathsForPrefetching = @[@"related"]
-- request.returnsObjectsAsFaults = NO
-- request.fetchBatchSize = 100
-recommendation: 'Optimize database queries:
-
-  - Use predicates to filter early (server-side filtering)
-
-  - Use relationshipKeyPathsForPrefetching for joins
-
-  - Set appropriate fetchBatchSize (default 0 = all)
-
-  - Use returnsObjectsAsFaults for efficiency
-
-  - Index frequently queried columns
-
-  - Use NSFetchedResultsController for table views
-
-  - Avoid N+1 queries (faulting relationships)
-
-  - Profile with Core Data debugging tools
-
-  '
-mitigation: Use predicates, prefetch, batch size, NSFetchedResultsController.
-
----
-id: objc-perf-012
-name: Regular Expression Performance
-category: Performance
-severity: Medium
-description: Detect inefficient regular expression usage
-pattern: "(NSRegularExpression|enumerateMatchesInString|\n NSRegularExpressionSearch|componentsSeparatedByRegex|\n\
-  \ stringByMatching|stringByReplacingOccurrences).*\n"
-check_type: regex_performance
-inefficient_patterns:
-- for (NSString *str in array) {
-- '  NSRegularExpression *regex = [NSRegularExpression ... pattern:regexPattern ...]'
-- '  [regex enumerateMatchesInString:str ...]'
-- '} // regex compiled each time'
-efficient_patterns:
-- NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
-  options:0 error:nil]
-- for (NSString *str in array) {
-- '  [regex enumerateMatchesInString:str ...]'
-- '}'
-recommendation: 'Optimize regular expression usage:
-
-  - Cache compiled regex objects (not create per match)
-
-  - Use NSRegularExpressionCaseInsensitive option for optimization
-
-  - Use NSRegularExpressionAnchorsMatchLines for multiline
-
-  - Consider simple string operations for basic patterns
-
-  - Use NSScanner for simple parsing instead of regex
-
-  - Profile regex performance on large strings
-
-  - Consider precompiled/optimized patterns
-
-  '
-mitigation: Cache regex, compile once, reuse for multiple matches.
-
----
-id: objc-perf-013
-name: Animation Performance
-category: Performance
-severity: Medium
-description: Detect inefficient animation implementations
-pattern: "(UIView.*animateWithDuration|CABasicAnimation|CAKeyframeAnimation|\n CADisplayLink|CATransaction|[CATransaction\
-  \ begin|[CATransaction commit|\n animationWithKeyPath|opacity|position|scale|cornerRadius).*\n"
-check_type: animation_performance
-inefficient_patterns:
-- '[UIView animateWithDuration:0.3 animations:^{'
-- '  for (int i = 0; i < 100; i++) {'
-- '    view.alpha = 1.0 - (i / 100.0) // expensive'
-- '  }'
-- '}]'
-efficient_patterns:
-- CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"opacity"]
-- anim.fromValue = @(1.0); anim.toValue = @(0.0)
-- anim.duration = 0.3
-- '[view.layer addAnimation:anim forKey:@"opacity"]'
-recommendation: 'Optimize animations:
-
-  - Use CABasicAnimation instead of block animations for smooth 60fps
-
-  - Use CADisplayLink for complex animations
-
-  - Avoid animating complex views (pre-render/snapshot)
-
-  - Disable shadows and rounded corners during animation
-
-  - Use CATransaction for batch animations
-
-  - Profile with Core Animation and Time Profiler
-
-  - Use shouldRasterize sparingly (disable after animation)
-
-  '
-mitigation: Use CABasicAnimation, CADisplayLink, disable effects during anim.
-
----
-id: objc-perf-014
-name: Framework Load Time Optimization
-category: Performance
-severity: Medium
-description: Detect excessive framework loading and initialization overhead
-pattern: "(didFinishLaunchingWithOptions|applicationDidBecomeActive|\n import|@import|Framework|dyld|DYLD_|launch|startup|load).*\n"
-check_type: framework_loading
-inefficient_patterns:
-- // Importing many frameworks in main thread
-- '[self initializeAllFrameworks] // in didFinishLaunching'
-- dispatch_sync(mainQueue) // in framework init
-efficient_patterns:
-- Lazy load frameworks on first use
-- Initialize non-critical frameworks on background
-- Use modulemap for framework management
-recommendation: 'Optimize framework loading:
-
-  - Measure app launch time with Instruments
-
-  - Lazy load frameworks on first use
-
-  - Defer non-critical initialization
-
-  - Profile with Time Profiler tool
-
-  - Consider removing unused frameworks
-
-  - Use dynamic linking for optional features
-
-  '
-mitigation: Lazy load, defer init, measure launch time with Instruments.
-
----
-id: objc-qual-001
-name: Apple Naming Conventions
-category: Quality
-severity: Medium
-description: Enforce Apple-style naming conventions for classes, methods, properties
-pattern: '(^[A-Z]|^[a-z].*:|method|property|variable|class|protocol).*
-
-  '
-check_type: naming_conventions
-violations:
-- class myClass { } // should be MyClass
-- '@property NSString *strValue; // should be string'
-- '- (void)GetValue { } // should be getValue (camelCase)'
-- '@property String *str; // should be NSString'
-- '- (void)PROCESS_DATA { } // should be processData'
-correct_usage:
-- class MyClass { } // PascalCase for classes
-- '@property (nonatomic) NSString *string; // camelCase for properties'
-- '- (void)getValue { } // camelCase for methods'
-- '- (void)setName:(NSString *)name { } // setter with (void)'
-- '- (BOOL)isEnabled { } // boolean with ''is'' prefix'
-recommendation: 'Follow Apple naming conventions:
-
-  - Classes: PascalCase (MyViewController, NSMutableArray)
-
-  - Properties/variables: camelCase (firstName, isEnabled)
-
-  - Methods: camelCase (getValue:, processData)
-
-  - Constants: ALL_CAPS with K prefix (kMaxRetries, kPIValue)
-
-  - Protocols: PascalCase with Delegate/DataSource suffix (MyDelegate)
-
-  - Getters: getPropertyName: only for expensive operations
-
-  - Setters: setPropertyName: or property = syntax
-
-  - Booleans: is/has/should prefix (isEnabled, hasData, shouldRetry)
-
-  - Prefixes: Use 2-3 letter class prefix to avoid conflicts
-
-  '
-mitigation: Use PascalCase for classes, camelCase for methods/properties.
-
----
-id: objc-qual-002
-name: Property Attributes
-category: Quality
-severity: High
-description: Enforce proper property attribute declarations
-pattern: "(@property|nonatomic|atomic|strong|weak|copy|assign|\n readonly|readwrite|getter|setter).*\n"
-check_type: property_attributes
-violations:
-- '@property NSString *name; // missing nonatomic'
-- '@property (strong) NSMutableArray *array; // redundant, default'
-- '@property (retain) NSString *str; // use strong in ARC'
-- '@property (assign) id delegate; // should use weak'
-correct_usage:
-- '@property (nonatomic, copy) NSString *name; // immutable'
-- '@property (nonatomic, strong) NSMutableArray *array; // mutable'
-- '@property (weak, nonatomic) id<MyDelegate> delegate; // break cycles'
-- '@property (nonatomic, readonly) NSInteger identifier; // read-only'
-- '@property (nonatomic, getter=isEnabled) BOOL enabled; // custom getter'
-recommendation: 'Use correct property attributes:
-
-  - nonatomic: almost always (atomic expensive, rarely needed)
-
-  - strong: for owned objects (default in ARC)
-
-  - weak: for delegates, observers, self-referential objects
-
-  - copy: for immutable objects (NSString, NSArray, NSData)
-
-  - assign: rarely (for primitives and weak non-ARC pointers)
-
-  - readonly/readwrite: explicit when limiting access
-
-  - getter/setter: custom accessors for special handling
-
-  - Avoid atomic unless truly thread-safe required
-
-  '
-mitigation: Add nonatomic, use weak for delegates, copy for immutable.
-
----
-id: objc-qual-003
-name: Nullability Annotations
-category: Quality
-severity: High
-description: Enforce nullability annotations for type safety
-pattern: "(_Nullable|_Nonnull|nullable|nonnull|null_resettable|\n __nullable|__nonnull|__null_unspecified).*\n"
-check_type: nullability
-violations:
-- '- (NSString *)getName { } // unclear if can return nil'
-- '- (void)setName:(NSString *)name { } // can name be nil?'
-- '@property NSArray *items; // unclear if mutable'
-correct_usage:
-- '- (nullable NSString *)getName { } // can return nil'
-- '- (void)setName:(nonnull NSString *)name { } // name cannot be nil'
-- '@property (nonnull) NSArray *items; // never nil'
-- '- (nullable NSError **)error; // out parameter'
-- '@property (nonnull, copy) NSString *identifier; // never nil, copy for safety'
-recommendation: 'Add nullability annotations:
-
-  - Use _Nonnull for parameters and properties that cannot be nil
-
-  - Use _Nullable for return values and out parameters that can be nil
-
-  - Use __null_unspecified for legacy code (migrate over time)
-
-  - Use NS_ASSUME_NONNULL_BEGIN/END for bulk annotations
-
-  - Annotate all public API headers
-
-  - Enable warnings: -Wnullability-completeness
-
-  - Document nil behavior in method comments
-
-  '
-mitigation: Add _Nonnull/_Nullable, use NS_ASSUME_NONNULL_BEGIN.
-
----
-id: objc-qual-004
-name: Memory Management Patterns
-category: Quality
-severity: High
-description: Enforce proper ARC memory management patterns
-pattern: "(dealloc|release|retain|autorelease|copy|strong|weak|\n __strong|__weak|NSZombieEnabled|MallocStackLogging).*\n"
-check_type: memory_patterns
-violations:
-- // Missing dealloc for observer cleanup
-- // Retaining self in block causing cycle
-- '- (void)setupBlock { self.block = ^{ [self doSomething] } }'
-- __strong Object *obj = strongRef; // unnecessary
-correct_usage:
-- '- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self] }'
-- __weak typeof(self) weakSelf = self; self.block = ^{ [weakSelf doSomething] }
-- '@property (weak) id<MyDelegate> delegate; // no retain cycle'
-- '@interface MyClass { NSMutableArray *_internal; }'
-recommendation: 'Follow ARC memory management:
-
-  - Use ARC exclusively (no manual retain/release)
-
-  - Use __weak in blocks to break retain cycles
-
-  - Implement dealloc for cleanup (observers, timers, etc.)
-
-  - Use __strong only when explicitly needed
-
-  - Document retain cycle risks in comments
-
-  - Test with Leaks and Allocations instruments
-
-  - Use Weak/Strong Dance pattern: weakSelf/strongSelf in blocks
-
-  - Avoid circular references through delegates
-
-  '
-mitigation: __weak in blocks, dealloc for cleanup, no manual ARC.
-
----
-id: objc-qual-005
-name: Protocol Design
-category: Quality
-severity: Medium
-description: Enforce proper protocol design and compliance
-pattern: "(@protocol|@required|@optional|delegate|dataSource|\n conformsToProtocol|respondsToSelector).*\n"
-check_type: protocol_design
-violations:
-- '@protocol MyProtocol // no methods (unclear intent)'
-- '- (void)update; // vague, unclear parameters'
-- '@protocol MyDelegate <NSObject> // missing NSCopying adoption'
-- // Protocol mixing delegates and data source responsibilities
-correct_usage:
-- '@protocol MyDelegate <NSObject>'
-- '@required'
-- '- (void)updateWithData:(nonnull NSData *)data;'
-- '@optional'
-- '- (void)didFinishWithError:(nullable NSError *)error;'
-- '@end'
-recommendation: 'Design protocols properly:
-
-  - Inherit from NSObject for compatibility
-
-  - Separate delegates from data sources (single responsibility)
-
-  - Use @required for mandatory methods
-
-  - Use @optional for optional behavior (with respondsToSelector checks)
-
-  - Document parameter meanings (especially NULL/nil cases)
-
-  - Use nullability annotations in protocol declarations
-
-  - Keep protocols focused and cohesive
-
-  - Use protocol composition for complex requirements
-
-  '
-mitigation: Separate concerns, use @required/@optional, annotate nullability.
-
----
-id: objc-qual-006
-name: Error Handling Patterns
-category: Quality
-severity: High
-description: Enforce proper error handling and exception use
-pattern: "(@try|@catch|@finally|@throw|NSError|NSException|\n error:|completionHandler|resultHandler).*\n"
-check_type: error_handling
-violations:
-- '- (NSString *)loadFile:(NSString *)path error:(NSError **)error {'
-- '  [UIImage imageNamed:path] // ignores error, crashes on missing'
-- '  return data'
-- '}'
-- '@try { ... } @catch (...) { } @finally { } // bare catches'
-correct_usage:
-- '- (nullable NSData *)loadFile:(nonnull NSString *)path error:(NSError * _Nullable
-  *)error {'
-- '  if (!path || !path.length) {'
-- '    if (error) { *error = [NSError errorWithDomain:... code:... userInfo:...] }'
-- '    return nil'
-- '  }'
-- '  return data'
-- '}'
-- '@try { ... } @catch (NSException *ex) { /* handle */ } @finally { /* cleanup */
-  }'
-recommendation: 'Implement proper error handling:
-
-  - Use NSError for recoverable errors (not exceptions)
-
-  - Use exceptions only for programming errors
-
-  - Return nil with error pointer for failures
-
-  - Validate error pointer before dereferencing (if (error) { *error = ... })
-
-  - Use error domains and codes for categorization
-
-  - Include NSUnderlyingError for error chains
-
-  - Log errors but don''t expose to users
-
-  - Provide recovery suggestions in userInfo
-
-  - Use @try/@catch only for exception handling
-
-  '
-mitigation: Use NSError for failures, check error pointer, validate inputs.
-
----
-id: objc-qual-007
-name: Constants and Enums
-category: Quality
-severity: Medium
-description: Enforce proper constant and enum declarations
-pattern: "(const|NS_ENUM|NS_OPTIONS|typedef|#define|static|\n extern|kConstant|Constant).*\n"
-check_type: constants_enums
-violations:
-- '#define kMaxRetries 5 // unsafe macro'
-- static NSString *GlobalString = nil // mutable global
-- enum Status { OK = 0, ERROR = 1 } // untyped enum
-- extern int MAX_SIZE; // unsafe, should be const
-correct_usage:
-- static const NSInteger kMaxRetries = 5; // type-safe
-- static NSString * const kErrorDomain = @"com.app.error"; // immutable
-- typedef NS_ENUM(NSInteger, Status) { StatusOK = 0, StatusError = 1 }
-- typedef NS_OPTIONS(NSUInteger, Permissions) { PermissionRead = 1, PermissionWrite
-  = 2 }
-- extern NSString * const kMyConstant; // in header
-recommendation: 'Declare constants properly:
-
-  - Use static const for primitive constants
-
-  - Use extern for public constants (declare in header, define in implementation)
-
-  - Use NS_ENUM for enumeration types
-
-  - Use NS_OPTIONS for bitmask options
-
-  - Avoid #define (use const instead)
-
-  - Prefix constants with k (kMaxRetries, kAppName)
-
-  - Use stringification for string constants
-
-  - Document constant meanings and usage
-
-  '
-mitigation: Use NS_ENUM/NS_OPTIONS, static const, extern for public.
-
----
-id: objc-qual-008
-name: Method Signature Clarity
-category: Quality
-severity: Medium
-description: Enforce clear and descriptive method signatures
-pattern: '(^-|^\\+|\\(void\\)|\\(BOOL\\)|\\(id\\)|parameter|argument|return).*
-
-  '
-check_type: method_clarity
-violations:
-- '- (id)process { } // vague return type'
-- '- (void)set:(id)value { } // unclear parameter'
-- '- (void)doSomething:(NSString *)str other:(id)o { } // unclear'
-- '- (NSString *)getValue { } // unclear what gets value'
-correct_usage:
-- '- (nullable id<MyDelegate>)delegate { return _delegate; }'
-- '- (void)setValue:(nonnull id)value forKey:(nonnull NSString *)key { }'
-- '- (void)updateWithData:(nonnull NSData *)data error:(NSError **)error { }'
-- '- (nullable NSError *)validateWithOptions:(NSDictionary *)options { }'
-recommendation: 'Write clear method signatures:
-
-  - Use descriptive parameter names (user, not u)
-
-  - Indicate parameter purpose with descriptive names
-
-  - Use completion blocks for asynchronous results
-
-  - Return values that indicate success/failure
-
-  - Use error pointers for recoverable errors
-
-  - Document complex parameter meanings
-
-  - Keep signatures to 3-4 parameters maximum
-
-  - Use factory methods for common initializations
-
-  '
-mitigation: Use descriptive names, clear parameters, error pointers.
-
----
-id: objc-qual-009
-name: Documentation Standards
-category: Quality
-severity: Medium
-description: Enforce proper code documentation and comments
-pattern: '(///|@param|@return|@throws|@warning|@deprecated|MARK|pragma).*
-
-  '
-check_type: documentation
-violations:
-- '- (void)complexMethod { } // no documentation'
-- /**/ // incomplete documentation
-- '@property NSString *data; // no comment explaining purpose'
-correct_usage:
-- /**
-- ' * Processes the input data and returns the result.'
-- ' *'
-- ' * @param data The data to process.'
-- ' * @return The processed result, or nil if processing fails.'
-- ' * @warning This method blocks the calling thread.'
-- ' */'
-- '- (nullable id)processData:(nonnull NSData *)data;'
-recommendation: 'Document code properly:
-
-  - Add header comments for all public methods
-
-  - Document parameters, return values, and exceptions
-
-  - Use @param, @return, @throws style documentation
-
-  - Add @warning for non-obvious behavior
-
-  - Use @deprecated for obsolete methods
-
-  - Add @see for related methods
-
-  - Use // for inline explanations
-
-  - Use #pragma mark for section organization
-
-  - Document thread safety guarantees
-
-  '
-mitigation: Add documentation comments, use standard format, document warnings.
-
----
-id: objc-qual-010
-name: Type Safety and Casting
-category: Quality
-severity: High
-description: Enforce type safety and proper object casting
-pattern: '(id|NSObject|cast|as|typeof|isKindOfClass|isMemberOfClass).*
-
-  '
-check_type: type_safety
-violations:
-- NSString *str = (NSString *)obj; // unsafe cast
-- if ([obj class] == [NSString class]) { } // direct class comparison
-- '[array objectAtIndex:0]; // returns id, type unknown'
-- NSObject *obj = ...; [obj doSomething]; // unknown method
-correct_usage:
-- if ([obj isKindOfClass:[NSString class]]) { NSString *str = (NSString *)obj; }
-- '@try { NSString *str = (NSString *)obj; } @catch (...) { }'
-- id result = array.firstObject; NSString *str = nil;
-- if ([result isKindOfClass:[NSString class]]) { str = result; }
-recommendation: 'Ensure type safety:
-
-  - Check type with isKindOfClass: before casting
-
-  - Use respondsToSelector: for dynamic method calls
-
-  - Avoid unsafe casts (use if statements with checks)
-
-  - Use generic collections (NSArray<NSString *> *)
-
-  - Document expected types in comments
-
-  - Use explicit type annotations
-
-  - Use -Wstrict-selector-match for selector checking
-
-  '
-mitigation: Check type before casting, use generics, respondsToSelector:.
-
----
-id: objc-qual-011
-name: Initialization Patterns
-category: Quality
-severity: Medium
-description: Enforce proper initialization and designated initializers
-pattern: '(init|initWith|new|alloc|designated|initializer).*
-
-  '
-check_type: initialization
-violations:
-- '- (id)init { return [super init]; } // incomplete init'
-- // Multiple init methods without designated pattern
-- '[[MyClass alloc] init] // correct usage'
-- '- (id)initWithValue:(id)val { self.value = val; return self; }'
-correct_usage:
-- '- (instancetype)initWithValue:(nonnull id)value {'
-- '  self = [super init];'
-- '  if (!self) return nil;'
-- '  _value = value;'
-- '  return self;'
-- '}'
-- '- (instancetype)initWithValue:(nonnull id)value name:(nonnull NSString *)name {'
-- '  // Call designated initializer'
-- '  return [self initWithValue:value];'
-- '}'
-recommendation: 'Follow initialization patterns:
-
-  - Use instancetype as return type (not id)
-
-  - Implement [super init] first and check result
-
-  - Establish one designated initializer per class
-
-  - Other inits should call designated initializer
-
-  - Return nil on initialization failure
-
-  - Initialize all ivars in designated init
-
-  - Use lazy initialization for expensive properties
-
-  - Document required initialization steps
-
-  '
-mitigation: Use instancetype, call super init, designated pattern.
-
----
-id: objc-qual-012
-name: Category Usage
-category: Quality
-severity: Medium
-description: Enforce proper category design and naming
-pattern: '(@interface.*\\(|category|+|extension).*
-
-  '
-check_type: category_design
-violations:
-- '@interface NSString (MyExtension) // no prefix'
-- '@interface MyClass (SomethingRandom) // multiple categories conflict'
-- '@interface NSString (Transform) @property ... // property in category'
-correct_usage:
-- '@interface NSString (APP_MyExtension) // app-prefixed'
-- '@interface MyClass (Transform)'
-- '- (NSString *)uppercaseFirstLetter;'
-- '@end'
-- '// Separate files: MyClass+Transform.h/m'
-recommendation: 'Use categories properly:
-
-  - Use app/framework prefix to avoid collisions
-
-  - One category per file (MyClass+Transform.m)
-
-  - Don''t add properties to categories (use private class extension)
-
-  - Don''t override existing methods in categories
-
-  - Use for organizing related methods
-
-  - Document cross-file dependencies
-
-  - Consider private extensions for internal organization
-
-  - Use +functionName for functions in categories
-
-  '
-mitigation: Use prefixes, one category per file, avoid properties.
-
----
-id: objc-qual-013
-name: Compatibility Annotations
-category: Quality
-severity: Medium
-description: Enforce deprecation and availability annotations
-pattern: "(DEPRECATED_ATTRIBUTE|NS_DEPRECATED|__attribute__|\n UNAVAILABLE_ATTRIBUTE|NS_UNAVAILABLE|available|introduced|deprecated).*\n"
-check_type: compatibility
-violations:
-- '- (void)oldMethod { } // no deprecation marking'
-- // No indication of iOS version requirements
-- '- (void)newMethod // no availability marking'
-correct_usage:
-- '- (void)oldMethod NS_DEPRECATED_IOS(2_0, 5_0, "Use -newMethod instead")'
-- '@available(iOS 13.0, *) - (void)modernMethod { }'
-- API_AVAILABLE(ios(13.0)) - (void)newMethod { }
-- NS_UNAVAILABLE - (void)unsupportedMethod { }
-recommendation: 'Mark compatibility properly:
-
-  - Use NS_DEPRECATED_IOS for deprecated methods
-
-  - Use NS_UNAVAILABLE for removed methods
-
-  - Use @available for version-specific code
-
-  - Document replacement methods
-
-  - Include minimum version requirements
-
-  - Use __attribute__ for compiler directives
-
-  - Test on minimum supported version
-
-  '
-mitigation: Add deprecation marks, @available, NS_UNAVAILABLE.
-
----
-id: objc-qual-014
-name: Assertion and Defensive Programming
-category: Quality
-severity: Medium
-description: Enforce defensive programming with assertions
-pattern: "(NSAssert|NSAssert[1-5]|NSParameterAssert|NSCAssert|\n assert|@throw|precondition|postcondition).*\n"
-check_type: assertions
-violations:
-- '- (void)setName:(NSString *)name { _name = name; } // no validation'
-- '- (NSString *)getName { return _name; } // could be nil'
-- NSArray *array = ...; [array objectAtIndex:index] // no bounds check
-correct_usage:
-- '- (void)setName:(nonnull NSString *)name {'
-- '  NSParameterAssert(name);'
-- '  NSParameterAssert(name.length > 0);'
-- '  _name = [name copy];'
-- '}'
-- '- (void)insertObject:(nonnull id)obj atIndex:(NSUInteger)idx {'
-- '  NSAssert(idx <= [_items count], @"Index out of bounds");'
-- '  [_items insertObject:obj atIndex:idx];'
-- '}'
-recommendation: 'Use assertions for defense:
-
-  - Use NSParameterAssert for parameter validation
-
-  - Use NSAssert for invariant validation
-
-  - Use NSCAssert for C code assertions
-
-  - Assertions compile out in Release builds
-
-  - Add assertions after guard statements
-
-  - Use descriptive assertion messages
-
-  - Test with assertions enabled
-
-  - Don''t rely on assertions for user input validation
-
-  '
-mitigation: Add NSParameterAssert, NSAssert for validation.
-
----
-id: objc-qual-015
-name: Code Organization and Structure
-category: Quality
-severity: Medium
-description: Enforce proper code organization within files
-pattern: "(pragma mark|MARK|interface|implementation|synthesize|\n extension|private|public|protected).*\n"
-check_type: code_organization
-violations:
-- // No organization, methods in random order
-- '@interface/@implementation mixed'
-- // Private and public methods interleaved
-correct_usage:
-- '@interface MyClass ()'
-- '@property (nonatomic) NSString *private;'
-- '@end'
-- '@implementation MyClass'
-- '#pragma mark - Lifecycle'
-- '- (instancetype)init { ... }'
-- '- (void)dealloc { ... }'
-- '#pragma mark - Public Methods'
-- '- (void)publicMethod { ... }'
-- '#pragma mark - Private Methods'
-- '- (void)privateMethod { ... }'
-- '#pragma mark - Getters & Setters'
-- '@end'
-recommendation: 'Organize code properly:
-
-  - Use #pragma mark for section organization
-
-  - Group related methods together
-
-  - Order: lifecycle, public, private, getters/setters
-
-  - Use private class extension for private properties
-
-  - Keep implementation organized by functionality
-
-  - Use separate files for categories
-
-  - Limit file size (<500 lines is good)
-
-  - Document complex sections with comments
-
-  '
-mitigation: 'Use #pragma mark, organize by section, private extensions.'
-
----
-id: objc-qual-016
-name: Performance Profiling Markers
-category: Quality
-severity: Low
-description: Enforce use of performance profiling markers
-pattern: "(os_log|os_signpost|signpost_interval_begin|signpost_interval_end|\n SIGNPOST_|OSLog).*\n"
-check_type: profiling_markers
-inefficient_patterns:
-- // No profiling markers in critical paths
-- // Complex operations without timing
-efficient_patterns:
-- 'os_log(.info, log: OSLog.default, "Starting operation")'
-- 'os_signpost(.begin, log: OSLog.default, name: "DataLoad")'
-- '[performWork]'
-- 'os_signpost(.end, log: OSLog.default, name: "DataLoad")'
-recommendation: 'Add profiling markers:
-
-  - Use os_log for informational logging
-
-  - Use os_signpost for performance intervals
-
-  - Mark critical operations for profiling
-
-  - Test with Instruments signpost tool
-
-  - Use appropriate log levels (debug, info, error)
-
-  - Profile on actual devices
-
-  - Remove debug logs in production
-
-  '
-mitigation: Add os_signpost markers for profiling, use os_log.
-
----
-id: react-xss-dangerously-inner-html
-tags:
-- Security
-severity: error
-message: 'Quality: XSS via dangerouslySetInnerHTML'
-note: '|'
-language: javascript
-
----
-id: react-state-management-side-effects
-tags:
-- Quality
-severity: error
-message: 'Quality: State Management and Side Effects Anti-patterns'
-note: '|'
-language: javascript
-
----
-id: react-unnecessary-rerenders
-tags:
-- Performance
-severity: warning
-message: 'Quality: Unnecessary Component Re-renders'
-note: '|'
-language: javascript
-
----
-id: react-memo-prop-drilling
-tags:
-- Performance
-severity: warning
-message: 'Quality: memo() Ineffective with Deep Props'
-note: '|'
-language: javascript
-
----
-id: react-useeffect-cleanup
-tags:
-- Quality
-severity: error
-message: 'Quality: Missing useEffect Cleanup Functions'
-note: '|'
-language: javascript
-
----
-id: react-native-secure-storage
-tags:
-- Security
-severity: error
-message: 'Quality: Storing Sensitive Data Insecurely'
-note: '|'
-language: javascript
-
----
-id: angular-template-injection
-tags:
-- Security
-severity: error
-message: 'Quality: Template Injection and XSS'
-note: '|'
-language: typescript
-
----
-id: angular-change-detection
-tags:
-- Performance
-severity: warning
-message: 'Quality: Inefficient Change Detection Strategy'
-note: '|'
-language: typescript
-
----
-id: angular-unsubscribe-memory-leak
-tags:
-- Quality
-severity: error
-message: 'Quality: Unsubscribed Observables Cause Memory Leaks'
-note: '|'
-language: typescript
-
----
-id: angular-trackby-ngfor
-tags:
-- Performance
-severity: warning
-message: 'Quality: Missing trackBy in *ngFor Loops'
-note: '|'
-language: typescript
-
----
-id: vue-v-html-xss
-tags:
-- Security
-severity: error
-message: 'Quality: XSS via v-html Directive'
-note: '|'
-language: javascript
-
----
-id: vue-reactive-pitfalls
-tags:
-- Quality
-severity: error
-message: 'Quality: Reactive Object Pitfalls and Anti-patterns'
-note: '|'
-language: javascript
-
----
-id: vue-computed-vs-methods
-tags:
-- Performance
-severity: warning
-message: 'Quality: Computed Properties vs Methods Optimization'
-note: '|'
-language: javascript
-
----
-id: vue-watcher-cleanup
-tags:
-- Quality
-severity: error
-message: 'Quality: Watcher Memory Leaks and Cleanup'
-note: '|'
-language: javascript
-
----
-id: django-sql-injection
-tags:
-- Security
-severity: error
-message: 'Quality: SQL Injection via Raw Queries'
-note: '|'
-language: python
-
----
-id: django-xss-template-injection
-tags:
-- Security
-severity: error
-message: 'Quality: XSS and Template Injection'
-note: '|'
-language: python
-
----
-id: django-csrf-bypass
-tags:
-- Security
-severity: error
-message: 'Quality: CSRF Protection Bypass'
-note: '|'
-language: python
-
----
-id: django-n-plus-one-queries
-tags:
-- Performance
-severity: error
-message: 'Quality: N+1 Query Problem'
-note: '|'
-language: python
-
----
-id: django-settings-security
-tags:
-- Security
-severity: error
-message: 'Quality: Insecure Settings Configuration'
-note: '|'
-language: python
-
----
-id: django-model-mass-assignment
-tags:
-- Security
-severity: warning
-message: 'Quality: Mass Assignment / Over-posting'
-note: '|'
-language: python
-
----
-id: spring-spel-injection
-tags:
-- Security
-severity: error
-message: 'Quality: SpEL (Spring Expression Language) Injection'
-note: '|'
-language: java
-
----
-id: spring-mass-assignment
-tags:
-- Security
-severity: error
-message: 'Quality: Mass Assignment / Unsafe Deserialization'
-note: '|'
-language: java
-
----
-id: spring-actuator-exposure
-tags:
-- Security
-severity: error
-message: 'Quality: Exposed Actuator Endpoints'
-note: '|'
-language: java
-
----
-id: spring-connection-pooling
-tags:
-- Performance
-severity: warning
-message: 'Quality: Database Connection Pool Misconfiguration'
-note: '|'
-language: java
-
----
-id: spring-caching-pitfalls
-tags:
-- Quality
-severity: warning
-message: 'Quality: Caching Issues and Cache Invalidation'
-note: '|'
-language: java
-
----
-id: spring-bean-scope-confusion
-tags:
-- Quality
-severity: warning
-message: 'Quality: Bean Scope Misuse and Thread Safety'
-note: '|'
-language: java
-
----
-id: rails-mass-assignment
-tags:
-- Security
-severity: error
-message: 'Quality: Mass Assignment Vulnerability'
-note: '|'
-language: ruby
-
----
-id: rails-sql-injection
-tags:
-- Security
-severity: error
-message: 'Quality: SQL Injection'
-note: '|'
-language: ruby
-
----
-id: rails-xss-prevention
-tags:
-- Security
-severity: error
-message: 'Quality: XSS via Unsafe HTML Rendering'
-note: '|'
-language: ruby
-
----
-id: rails-n-plus-one-queries
-tags:
-- Performance
-severity: error
-message: 'Quality: N+1 Query Problem'
-note: '|'
-language: ruby
-
----
-id: rails-caching-invalidation
-tags:
-- Performance
-severity: warning
-message: 'Quality: Cache Invalidation and Fragment Caching'
-note: '|'
-language: ruby
-
----
-id: rails-convention-patterns
-tags:
-- Quality
-severity: warning
-message: 'Quality: Rails Convention Over Configuration Best Practices'
-note: '|'
-language: ruby
-
----
-id: rails-testing-patterns
-tags:
-- Quality
-severity: warning
-message: 'Quality: Testing Best Practices and Patterns'
-note: '|'
-language: ruby
+- security
+- privacy
+- CWE-200
+rule:
+  kind: at_rule
+  all:
+  - regex: "@media"
+  - has:
+      kind: declaration
+      regex: "url\\s*\\(.*https?://"
+note: "Media queries with external URLs can fingerprint user devices.
+
+  Screen size, resolution, and color scheme can be exfiltrated.
+
+  Consider privacy implications when using external resources in media queries.
+
+  "
