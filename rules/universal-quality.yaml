@@ -4,14 +4,14 @@
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 #
 # Generated: 2026-01-09
-# Total Rules: 822
+# Total Rules: 875
 # Categories: 15+ quality dimensions
 #
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ LANGUAGES COVERED                                                           │
 # ├─────────────────────────────────────────────────────────────────────────────┤
 # │ Python (78)      │ JavaScript (76)  │ Java (36)        │ Go (32)           │
-# │ Rust (48)        │ C++ (58)         │ C# (140)         │ Kotlin (30)       │
+# │ Rust (48)        │ C++ (58)         │ C# (140)         │ Kotlin (83)       │
 # │ Scala (80)       │ Ruby (80)        │ Lua (35)         │ Clojure (55)      │
 # │ PowerShell (40)  │ Shell/Bash (60)  │ Infrastructure (65)                  │
 # └─────────────────────────────────────────────────────────────────────────────┘
@@ -20582,3 +20582,1754 @@ note: |
         (this * context.resources.displayMetrics.density).toInt()
 
     view.layoutParams.width = 200.dpToPx(context)
+
+# ==============================================================================
+# Java Quality Rules
+# ==============================================================================
+#
+# Comprehensive Java code quality and best practices detection.
+# Categories: Naming Conventions, Code Complexity, Best Practices,
+#             Modern Java, Documentation
+# Total: 55 rules
+#
+# Usage:
+#   uast-grep scan -r rules/universal-quality.yaml --language java ./src
+#
+# ==============================================================================
+
+# ==============================================================================
+# NAMING CONVENTIONS (11 rules)
+# ==============================================================================
+
+---
+id: java-quality-class-not-pascal-case
+language: java
+severity: warning
+message: "Quality: Class name '$NAME' should be PascalCase - rename to follow Java naming conventions"
+tags: [quality, naming, conventions, readability]
+rule:
+  kind: class_declaration
+  pattern: |
+    class $NAME {
+      ...
+    }
+  constraints:
+    NAME:
+      regex: "^[a-z]|_"
+note: |
+  Java class names must use PascalCase (UpperCamelCase) by convention.
+
+  BAD:   class myClass, class user_data, class HTTPresponse
+  GOOD:  class MyClass, class UserData, class HttpResponse
+
+  Benefits:
+    1. Instantly distinguishes types from variables/methods
+    2. Standard across all Java codebases
+    3. IDE tooling expects this convention
+    4. Follows Java Language Specification guidelines
+
+---
+id: java-quality-interface-not-pascal-case
+language: java
+severity: warning
+message: "Quality: Interface name '$NAME' should be PascalCase"
+tags: [quality, naming, conventions, readability]
+rule:
+  kind: interface_declaration
+  pattern: |
+    interface $NAME {
+      ...
+    }
+  constraints:
+    NAME:
+      regex: "^[a-z]|_"
+note: |
+  Interface names follow the same PascalCase convention as class names.
+
+  BAD:   interface userService, interface data_handler
+  GOOD:  interface UserService, interface DataHandler
+
+  Common patterns:
+    - Adjective-like: Comparable, Runnable, Serializable
+    - Noun-like: List, Map, UserRepository
+
+---
+id: java-quality-interface-i-prefix
+language: java
+severity: info
+message: "Quality: Interface name with 'I' prefix is a C# pattern - Java uses plain PascalCase"
+tags: [quality, naming, conventions, anti-pattern]
+rule:
+  kind: interface_declaration
+  pattern: |
+    interface $NAME {
+      ...
+    }
+  constraints:
+    NAME:
+      regex: "^I[A-Z]"
+note: |
+  The "I" prefix (IUserService, IRepository) is a C#/.NET convention.
+  Java traditionally uses plain PascalCase for interfaces.
+
+  C# style (avoid in Java):  IUserService, IDataHandler
+  Java style (preferred):    UserService, DataHandler
+
+  Implementation classes can use "Impl" suffix if needed:
+    interface UserService
+    class UserServiceImpl implements UserService
+
+  Or use descriptive names:
+    interface PaymentProcessor
+    class StripePaymentProcessor implements PaymentProcessor
+
+---
+id: java-quality-method-not-camel-case
+language: java
+severity: warning
+message: "Quality: Method name should be camelCase - rename to follow Java conventions"
+tags: [quality, naming, conventions, readability]
+rule:
+  kind: method_declaration
+  pattern: |
+    $MODIFIER $TYPE $NAME($PARAMS) {
+      ...
+    }
+  constraints:
+    NAME:
+      regex: "^[A-Z]|_"
+note: |
+  Java method names must use camelCase (lowerCamelCase).
+
+  BAD:   public void GetUser(), public void process_data()
+  GOOD:  public void getUser(), public void processData()
+
+  Method naming conventions:
+    - Start with verb: get, set, is, has, can, do, make, create
+    - Accessors: getField(), setField()
+    - Boolean: isActive(), hasPermission(), canDelete()
+    - Factory: createUser(), newInstance()
+
+---
+id: java-quality-constant-not-upper-snake-case
+language: java
+severity: warning
+message: "Quality: Constant should use UPPER_SNAKE_CASE"
+tags: [quality, naming, conventions, readability]
+rule:
+  kind: field_declaration
+  pattern: |
+    static final $TYPE $NAME = $VALUE;
+  constraints:
+    NAME:
+      regex: "^[a-z]"
+note: |
+  Constants (static final fields) should use UPPER_SNAKE_CASE.
+
+  BAD:   static final int maxRetries = 3;
+         static final String apiKey = "...";
+  GOOD:  static final int MAX_RETRIES = 3;
+         static final String API_KEY = "...";
+
+  This convention instantly distinguishes constants from regular fields.
+  Exception: Logger instances often use lowercase: private static final Logger logger
+
+---
+id: java-quality-package-uppercase
+language: java
+severity: warning
+message: "Quality: Package name contains uppercase - should be all lowercase"
+tags: [quality, naming, conventions]
+rule:
+  kind: package_declaration
+  pattern: |
+    package $NAME;
+  constraints:
+    NAME:
+      regex: "[A-Z]"
+note: |
+  Java package names must be all lowercase.
+
+  BAD:   package com.myCompany.DataModels;
+  GOOD:  package com.mycompany.datamodels;
+
+  Convention for domain-based packages:
+    com.example.myproject
+    org.apache.commons.lang
+
+  Avoids conflicts on case-insensitive file systems.
+
+---
+id: java-quality-boolean-getter-prefix
+language: java
+severity: info
+message: "Quality: Boolean getter should use 'is' or 'has' prefix instead of 'get'"
+tags: [quality, naming, conventions, javabeans]
+rule:
+  kind: method_declaration
+  pattern: |
+    public boolean get$NAME() {
+      return $EXPR;
+    }
+note: |
+  Boolean getters should use 'is' or 'has' prefix for clarity.
+  This is the JavaBeans specification standard.
+
+  BAD:   public boolean getActive() { return active; }
+         public boolean getValid() { return valid; }
+
+  GOOD:  public boolean isActive() { return active; }
+         public boolean isValid() { return valid; }
+         public boolean hasPermission() { return permission != null; }
+         public boolean canExecute() { return executable; }
+
+  Prefixes by meaning:
+    is*   - state/condition (isActive, isEnabled, isValid)
+    has*  - ownership/presence (hasChildren, hasPermission)
+    can*  - capability (canWrite, canExecute)
+
+---
+id: java-quality-variable-single-letter
+language: java
+severity: info
+message: "Quality: Single-letter variable name outside loop iterator - use descriptive name"
+tags: [quality, naming, readability]
+rule:
+  kind: local_variable_declaration
+  notInside:
+    any:
+      - kind: for_statement
+      - kind: enhanced_for_statement
+  pattern: |
+    $TYPE $NAME = $VALUE;
+  constraints:
+    NAME:
+      regex: "^[a-z]$"
+      notRegex: "^[ijk]$"
+note: |
+  Single-letter variable names reduce code readability.
+  Use descriptive names that convey meaning.
+
+  BAD:   String s = user.getName();
+         int n = items.size();
+
+  GOOD:  String userName = user.getName();
+         int itemCount = items.size();
+
+  Acceptable single letters:
+    - Loop iterators: i, j, k
+    - Coordinates: x, y, z
+    - Lambda parameters: e -> e.getValue()
+
+---
+id: java-quality-enum-not-upper-case
+language: java
+severity: warning
+message: "Quality: Enum constant should use UPPER_SNAKE_CASE"
+tags: [quality, naming, conventions]
+rule:
+  kind: enum_declaration
+  has:
+    kind: enum_constant
+    pattern: |
+      $NAME
+    constraints:
+      NAME:
+        regex: "^[a-z]"
+note: |
+  Enum constants are effectively static final and should use UPPER_SNAKE_CASE.
+
+  BAD:   enum Status { active, inactive, pending }
+  GOOD:  enum Status { ACTIVE, INACTIVE, PENDING }
+
+  BAD:   enum HttpStatus { notFound, internalServerError }
+  GOOD:  enum HttpStatus { NOT_FOUND, INTERNAL_SERVER_ERROR }
+
+  This matches the constant naming convention and improves readability.
+
+---
+id: java-quality-type-parameter-naming
+language: java
+severity: info
+message: "Quality: Type parameter should be single uppercase letter (T, E, K, V) or meaningful name ending in T"
+tags: [quality, naming, conventions, generics]
+rule:
+  kind: type_parameter
+  pattern: |
+    $NAME
+  constraints:
+    NAME:
+      regex: "^[a-z]|^[A-Z]{2,}$"
+      notRegex: "T$"
+note: |
+  Type parameters should use single uppercase letters or descriptive names ending in T.
+
+  Standard single letters:
+    T - Type
+    E - Element
+    K - Key
+    V - Value
+    N - Number
+    S, U, V - Additional types
+
+  BAD:   <Type>, <element>, <KEY_VALUE>
+  GOOD:  <T>, <E>, <K, V>, <RequestT, ResponseT>
+
+  For descriptive names, suffix with T:
+    <EntityT>, <ResultT>, <InputT, OutputT>
+
+---
+id: java-quality-test-method-naming
+language: java
+severity: info
+message: "Quality: Test method name should be descriptive - consider 'should_' or 'when_then_' pattern"
+tags: [quality, naming, testing]
+rule:
+  kind: method_declaration
+  inside:
+    kind: class_declaration
+    pattern: |
+      class $CLASS {
+        ...
+      }
+    constraints:
+      CLASS:
+        regex: "Test$|Tests$"
+  pattern: |
+    @Test
+    $MODIFIER void test$NAME() {
+      ...
+    }
+note: |
+  Test method names should describe the behavior being tested.
+
+  BAD:   @Test void test1() { }
+         @Test void testMethod() { }
+
+  GOOD patterns:
+    - should_returnEmpty_whenListIsNull()
+    - givenInvalidInput_whenValidate_thenThrowsException()
+    - createUser_withValidData_returnsUser()
+
+  Benefits:
+    1. Test failures are self-documenting
+    2. Tests serve as living documentation
+    3. Easy to find specific behavior tests
+
+# ==============================================================================
+# CODE COMPLEXITY (12 rules)
+# ==============================================================================
+
+---
+id: java-quality-method-too-many-params
+language: java
+severity: warning
+message: "Quality: Method has 5+ parameters - consider parameter object or builder"
+tags: [quality, complexity, maintainability, smell]
+rule:
+  kind: method_declaration
+  pattern: |
+    $MODIFIER $TYPE $METHOD($P1, $P2, $P3, $P4, $P5, $$$REST) {
+      ...
+    }
+note: |
+  Methods with 5+ parameters are hard to call correctly.
+
+  BAD:
+    User createUser(String name, String email, int age,
+                    String address, String phone, boolean active) { }
+
+  GOOD - Parameter object:
+    User createUser(UserCreateRequest request) { }
+
+  GOOD - Builder:
+    User.builder()
+        .name("John")
+        .email("john@example.com")
+        .build();
+
+  Benefits:
+    1. Named parameters (no positional confusion)
+    2. Optional parameters with defaults
+    3. Extensible without breaking callers
+
+---
+id: java-quality-class-too-many-methods
+language: java
+severity: warning
+message: "Quality: Class has many methods - may violate Single Responsibility Principle"
+tags: [quality, complexity, solid, srp]
+rule:
+  kind: class_declaration
+  has:
+    kind: method_declaration
+    has:
+      kind: method_declaration
+      has:
+        kind: method_declaration
+        has:
+          kind: method_declaration
+          has:
+            kind: method_declaration
+            has:
+              kind: method_declaration
+              has:
+                kind: method_declaration
+                has:
+                  kind: method_declaration
+                  has:
+                    kind: method_declaration
+                    has:
+                      kind: method_declaration
+note: |
+  Classes with 20+ methods often violate Single Responsibility Principle.
+  This is a "God class" code smell.
+
+  Signs of SRP violation:
+    - Methods that don't use most fields
+    - Groups of methods only used together
+    - Class name with "And" or "Manager" suffix
+
+  Refactoring:
+    1. Extract cohesive method groups into new classes
+    2. Use composition over inheritance
+    3. Apply facade pattern for complex subsystems
+    4. Consider domain-driven design bounded contexts
+
+---
+id: java-quality-deep-nesting
+language: java
+severity: warning
+message: "Quality: Deep nesting (4+ levels) - use guard clauses or extract methods"
+tags: [quality, complexity, nesting, readability]
+rule:
+  kind: if_statement
+  notInside:
+    kind: else
+  has:
+    kind: if_statement
+    notInside:
+      kind: else
+    has:
+      kind: if_statement
+      notInside:
+        kind: else
+      has:
+        kind: if_statement
+note: |
+  Deep nesting creates "arrow code" that is hard to read and maintain.
+
+  BAD:
+    if (user != null) {
+      if (user.isActive()) {
+        if (user.hasPermission()) {
+          if (data != null) {
+            process(data);
+          }
+        }
+      }
+    }
+
+  GOOD - Guard clauses:
+    if (user == null) return;
+    if (!user.isActive()) return;
+    if (!user.hasPermission()) return;
+    if (data == null) return;
+    process(data);
+
+  GOOD - Extract method:
+    if (canProcess(user, data)) {
+      process(data);
+    }
+
+---
+id: java-quality-long-method-many-statements
+language: java
+severity: warning
+message: "Quality: Method contains many statements - consider extracting smaller methods"
+tags: [quality, complexity, maintainability]
+rule:
+  kind: method_declaration
+  has:
+    kind: block
+    has:
+      kind: expression_statement
+      has:
+        kind: expression_statement
+        has:
+          kind: expression_statement
+          has:
+            kind: expression_statement
+            has:
+              kind: expression_statement
+              has:
+                kind: expression_statement
+                has:
+                  kind: expression_statement
+                  has:
+                    kind: expression_statement
+note: |
+  Long methods are hard to understand, test, and maintain.
+  Ideal method length is 5-15 lines.
+
+  Signs a method is too long:
+    - Multiple levels of abstraction
+    - Comments separating "sections"
+    - Scrolling required to read it
+
+  Refactoring strategies:
+    1. Extract method for each logical section
+    2. Replace temp with query
+    3. Introduce parameter object
+    4. Replace method with method object
+
+---
+id: java-quality-switch-many-cases
+language: java
+severity: info
+message: "Quality: Switch with many cases - consider strategy pattern or enum dispatch"
+tags: [quality, complexity, oop, pattern]
+rule:
+  kind: switch_expression
+  has:
+    kind: switch_block_statement_group
+    has:
+      kind: switch_block_statement_group
+      has:
+        kind: switch_block_statement_group
+        has:
+          kind: switch_block_statement_group
+          has:
+            kind: switch_block_statement_group
+            has:
+              kind: switch_block_statement_group
+              has:
+                kind: switch_block_statement_group
+note: |
+  Switch statements with 7+ cases may indicate missing abstraction.
+
+  Alternatives:
+
+  1. Strategy pattern (polymorphism):
+     interface Handler { void handle(); }
+     Map<Type, Handler> handlers = Map.of(...);
+     handlers.get(type).handle();
+
+  2. Enum with behavior:
+     enum Operation {
+       ADD { int apply(int a, int b) { return a + b; } },
+       SUB { int apply(int a, int b) { return a - b; } }
+     }
+
+  3. Lookup table for simple mappings:
+     Map<String, String> messages = Map.of(...);
+
+---
+id: java-quality-constructor-too-many-params
+language: java
+severity: warning
+message: "Quality: Constructor has 5+ parameters - use builder pattern"
+tags: [quality, complexity, pattern, maintainability]
+rule:
+  kind: constructor_declaration
+  pattern: |
+    $NAME($P1, $P2, $P3, $P4, $P5, $$$REST) {
+      ...
+    }
+note: |
+  Constructors with many parameters are hard to use correctly.
+
+  BAD:
+    new User("John", "john@test.com", 30, "123 Main St", "555-1234", true, "admin");
+
+  GOOD - Builder pattern:
+    User.builder()
+        .name("John")
+        .email("john@test.com")
+        .age(30)
+        .build();
+
+  GOOD - Factory with parameter object:
+    User.create(UserSpec.builder()...build());
+
+  Use Lombok @Builder or implement manually.
+
+---
+id: java-quality-nested-try-catch
+language: java
+severity: warning
+message: "Quality: Nested try-catch blocks - extract to separate methods"
+tags: [quality, complexity, exception-handling]
+rule:
+  kind: try_statement
+  has:
+    kind: try_statement
+note: |
+  Nested try-catch blocks are hard to follow and reason about.
+
+  BAD:
+    try {
+      try {
+        readFile();
+      } catch (IOException e) {
+        // inner handling
+      }
+    } catch (Exception e) {
+      // outer handling
+    }
+
+  GOOD - Extract to methods:
+    try {
+      processFile();
+    } catch (FileProcessingException e) {
+      handleError(e);
+    }
+
+    void processFile() throws FileProcessingException {
+      try {
+        readFile();
+      } catch (IOException e) {
+        throw new FileProcessingException(e);
+      }
+    }
+
+---
+id: java-quality-complex-boolean-expression
+language: java
+severity: info
+message: "Quality: Complex boolean expression - extract to named variable or method"
+tags: [quality, complexity, readability]
+rule:
+  kind: if_statement
+  has:
+    kind: binary_expression
+    has:
+      kind: binary_expression
+      has:
+        kind: binary_expression
+        has:
+          kind: binary_expression
+note: |
+  Complex boolean expressions are hard to understand.
+
+  BAD:
+    if (user != null && user.isActive() &&
+        (role.equals("admin") || role.equals("superuser")) &&
+        !user.isLocked() && attempts < MAX_ATTEMPTS) { }
+
+  GOOD - Named variable:
+    boolean isAuthorizedAdmin = user != null && user.isActive() &&
+        (role.equals("admin") || role.equals("superuser"));
+    boolean canAttempt = !user.isLocked() && attempts < MAX_ATTEMPTS;
+
+    if (isAuthorizedAdmin && canAttempt) { }
+
+  GOOD - Method:
+    if (canPerformAdminAction(user, role, attempts)) { }
+
+---
+id: java-quality-anonymous-class-large
+language: java
+severity: info
+message: "Quality: Large anonymous class - consider extracting to named class"
+tags: [quality, complexity, readability]
+rule:
+  kind: anonymous_class_body
+  has:
+    kind: method_declaration
+    has:
+      kind: method_declaration
+note: |
+  Anonymous classes with multiple methods should be extracted.
+
+  BAD:
+    new Comparator<User>() {
+      @Override
+      public int compare(User a, User b) { ... }
+      private int helper() { ... }
+      private String format() { ... }
+    }
+
+  GOOD - Named class:
+    class UserComparator implements Comparator<User> {
+      @Override
+      public int compare(User a, User b) { ... }
+      private int helper() { ... }
+      private String format() { ... }
+    }
+
+  For single-method interfaces, use lambda instead.
+
+---
+id: java-quality-method-chaining-excessive
+language: java
+severity: info
+message: "Quality: Excessive method chaining - may indicate Law of Demeter violation"
+tags: [quality, complexity, coupling]
+rule:
+  pattern: "$A.$B().$C().$D().$E().$F().$G()"
+note: |
+  Excessive method chaining (7+ calls) may indicate tight coupling.
+
+  Exception: Builder/fluent APIs are designed for chaining:
+    User.builder()
+        .name("John")
+        .email("john@test.com")
+        .age(30)
+        .address(Address.builder()...)
+        .build();
+
+  Problematic chaining (Law of Demeter violation):
+    user.getAddress().getCity().getZipCode().getPrefix()
+
+  Fix: Add wrapper methods:
+    user.getCityZipPrefix()  // encapsulates the traversal
+
+---
+id: java-quality-triple-nested-loop
+language: java
+severity: info
+message: "Quality: Triple nested loop - O(n^3) complexity, verify this is necessary"
+tags: [quality, complexity, performance]
+rule:
+  any:
+    - kind: for_statement
+    - kind: enhanced_for_statement
+    - kind: while_statement
+  has:
+    any:
+      - kind: for_statement
+      - kind: enhanced_for_statement
+      - kind: while_statement
+    has:
+      any:
+        - kind: for_statement
+        - kind: enhanced_for_statement
+        - kind: while_statement
+note: |
+  Triple nested loops indicate O(n^3) complexity.
+
+  Valid uses:
+    - Matrix operations (multiplication, transforms)
+    - 3D graphics/voxel processing
+    - Dynamic programming with 3D state
+
+  Often indicates need for:
+    - Hash-based lookups instead of linear search
+    - Precomputed data structures
+    - Algorithm redesign
+
+---
+id: java-quality-lambda-too-long
+language: java
+severity: info
+message: "Quality: Lambda expression is too long - extract to named method"
+tags: [quality, complexity, readability, lambda]
+rule:
+  kind: lambda_expression
+  has:
+    kind: block
+    has:
+      kind: expression_statement
+      has:
+        kind: expression_statement
+        has:
+          kind: expression_statement
+note: |
+  Long lambda expressions reduce readability.
+
+  BAD:
+    items.stream()
+        .map(item -> {
+          String name = item.getName();
+          int count = item.getCount();
+          // ... many lines
+          return new Result(name, count * factor);
+        })
+        .collect(Collectors.toList());
+
+  GOOD - Method reference:
+    items.stream()
+        .map(this::transformItem)
+        .collect(Collectors.toList());
+
+    private Result transformItem(Item item) {
+      // logic here
+    }
+
+# ==============================================================================
+# BEST PRACTICES (16 rules)
+# ==============================================================================
+
+---
+id: java-quality-empty-catch-v2
+language: java
+severity: error
+message: "Quality: Empty catch block silently swallows exception"
+tags: [quality, exception-handling, debugging, error]
+rule:
+  kind: catch_clause
+  pattern: |
+    catch ($TYPE $E) {
+    }
+note: |
+  Empty catch blocks hide errors and make debugging impossible.
+
+  BAD:
+    try { riskyOperation(); }
+    catch (Exception e) { }  // Exception vanishes
+
+  Minimum acceptable:
+    catch (Exception e) {
+      logger.debug("Expected exception: {}", e.getMessage());
+    }
+
+  If truly intentional, document why:
+    catch (InterruptedException e) {
+      Thread.currentThread().interrupt();  // Restore interrupt flag
+    }
+
+---
+id: java-quality-catch-throwable
+language: java
+severity: error
+message: "Quality: Catching Throwable catches unrecoverable errors - catch Exception instead"
+tags: [quality, exception-handling, correctness]
+rule:
+  kind: catch_clause
+  pattern: |
+    catch (Throwable $E) {
+      ...
+    }
+note: |
+  Catching Throwable catches OutOfMemoryError, StackOverflowError, etc.
+  These are unrecoverable - catching them leads to undefined behavior.
+
+  BAD:
+    try { ... }
+    catch (Throwable t) { log.error(t); }  // Catches OOM!
+
+  GOOD:
+    try { ... }
+    catch (Exception e) { log.error(e); }  // Only recoverable
+
+  The only valid use is in framework code that must log and rethrow.
+
+---
+id: java-quality-raw-type-usage
+language: java
+severity: warning
+message: "Quality: Raw type usage - add type parameters for type safety"
+tags: [quality, generics, type-safety]
+rule:
+  kind: object_creation_expression
+  any:
+    - pattern: "new ArrayList()"
+    - pattern: "new HashMap()"
+    - pattern: "new HashSet()"
+    - pattern: "new LinkedList()"
+    - pattern: "new TreeMap()"
+    - pattern: "new TreeSet()"
+note: |
+  Raw types bypass generics type checking, losing compile-time safety.
+
+  BAD:
+    List list = new ArrayList();
+    list.add("string");
+    list.add(123);  // No compile error, but wrong!
+    String s = (String) list.get(1);  // ClassCastException at runtime
+
+  GOOD:
+    List<String> list = new ArrayList<>();
+    list.add("string");
+    list.add(123);  // Compile error!
+
+  Use diamond operator (<>) for inference since Java 7.
+
+---
+id: java-quality-string-concat-loop-v2
+language: java
+severity: warning
+message: "Quality: String concatenation in loop - use StringBuilder"
+tags: [quality, performance, string]
+rule:
+  any:
+    - kind: for_statement
+    - kind: enhanced_for_statement
+    - kind: while_statement
+  has:
+    any:
+      - pattern: "$STR = $STR + $SUFFIX"
+      - pattern: "$STR += $SUFFIX"
+note: |
+  String concatenation in loops creates O(n^2) intermediate objects.
+
+  BAD (O(n^2) - creates n String objects):
+    String result = "";
+    for (String s : items) {
+      result += s;  // Each iteration copies entire string
+    }
+
+  GOOD (O(n) - single buffer):
+    StringBuilder sb = new StringBuilder();
+    for (String s : items) {
+      sb.append(s);
+    }
+    String result = sb.toString();
+
+  For simple cases, use String.join() or Collectors.joining().
+
+---
+id: java-quality-equals-without-hashcode
+language: java
+severity: error
+message: "Quality: equals() overridden without hashCode() - breaks HashMap/HashSet contract"
+tags: [quality, correctness, collections]
+rule:
+  kind: class_declaration
+  has:
+    kind: method_declaration
+    pattern: |
+      public boolean equals(Object $OBJ) {
+        ...
+      }
+  notHas:
+    kind: method_declaration
+    pattern: |
+      public int hashCode() {
+        ...
+      }
+note: |
+  Overriding equals() without hashCode() violates Object contract.
+
+  The contract requires:
+    - If a.equals(b), then a.hashCode() == b.hashCode()
+
+  Breaking this causes HashMap/HashSet failures:
+    Set<User> set = new HashSet<>();
+    set.add(new User("John"));
+    set.contains(new User("John"));  // May return false!
+
+  Always override both together. Use Objects.hash() for hashCode():
+    @Override
+    public int hashCode() {
+      return Objects.hash(name, email, age);
+    }
+
+---
+id: java-quality-public-field
+language: java
+severity: warning
+message: "Quality: Public non-final field breaks encapsulation - use private with getter/setter"
+tags: [quality, encapsulation, oop]
+rule:
+  kind: field_declaration
+  pattern: |
+    public $TYPE $NAME;
+note: |
+  Public fields expose internal state and prevent future changes.
+
+  BAD:
+    public class User {
+      public String name;  // Anyone can modify!
+    }
+
+  GOOD:
+    public class User {
+      private String name;
+
+      public String getName() { return name; }
+      public void setName(String name) {
+        this.name = Objects.requireNonNull(name);
+      }
+    }
+
+  Exception: public static final constants are acceptable.
+  Note: Records provide immutable public fields with proper encapsulation.
+
+---
+id: java-quality-system-out
+language: java
+severity: warning
+message: "Quality: Using System.out/err - use proper logging framework"
+tags: [quality, logging, production]
+rule:
+  any:
+    - pattern: "System.out.println($MSG)"
+    - pattern: "System.out.print($MSG)"
+    - pattern: "System.err.println($MSG)"
+    - pattern: "System.err.print($MSG)"
+note: |
+  System.out is not appropriate for production code.
+
+  Problems:
+    1. No log levels (can't filter debug from error)
+    2. No timestamps or context
+    3. Cannot redirect to files/aggregators
+    4. Synchronous (blocks on I/O)
+
+  Use logging framework (SLF4J, Log4j, java.util.logging):
+    private static final Logger log = LoggerFactory.getLogger(MyClass.class);
+    log.debug("Processing: {}", item);
+    log.error("Failed", exception);
+
+  Exception: CLI tools, simple utilities, and tests.
+
+---
+id: java-quality-magic-number
+language: java
+severity: info
+message: "Quality: Magic number in code - extract to named constant"
+tags: [quality, readability, maintainability]
+rule:
+  kind: binary_expression
+  any:
+    - pattern: "$VAR > $NUM"
+    - pattern: "$VAR < $NUM"
+    - pattern: "$VAR == $NUM"
+    - pattern: "$VAR >= $NUM"
+    - pattern: "$VAR <= $NUM"
+  constraints:
+    NUM:
+      regex: "^[0-9]{2,}$"
+      notRegex: "^(0|1|10|100)$"
+note: |
+  Magic numbers obscure meaning and create maintenance burden.
+
+  BAD:
+    if (age >= 18) { ... }
+    if (retries > 3) { ... }
+    buffer = new byte[4096];
+
+  GOOD:
+    private static final int LEGAL_AGE = 18;
+    private static final int MAX_RETRIES = 3;
+    private static final int BUFFER_SIZE = 4096;
+
+    if (age >= LEGAL_AGE) { ... }
+
+  Acceptable magic numbers: 0, 1, -1, 2 (for halving), 100 (percentages).
+
+---
+id: java-quality-mutable-static-v2
+language: java
+severity: error
+message: "Quality: Mutable static field is thread-unsafe and unpredictable"
+tags: [quality, thread-safety, immutability]
+rule:
+  kind: field_declaration
+  any:
+    - pattern: "static $TYPE $NAME = new ArrayList$REST"
+    - pattern: "static $TYPE $NAME = new HashMap$REST"
+    - pattern: "static $TYPE $NAME = new HashSet$REST"
+note: |
+  Mutable static fields are shared across all instances and threads.
+
+  Problems:
+    1. Race conditions on concurrent access
+    2. State leaks between tests
+    3. Unpredictable behavior in different contexts
+
+  Solutions:
+    1. Immutable: static final List<X> = List.of(...)
+    2. Thread-safe: static final Map<K,V> = new ConcurrentHashMap<>()
+    3. Instance field if per-object state needed
+    4. ThreadLocal if per-thread state needed
+
+---
+id: java-quality-exception-message-missing
+language: java
+severity: info
+message: "Quality: Exception thrown without message - add descriptive message"
+tags: [quality, exception-handling, debugging]
+rule:
+  kind: throw_statement
+  any:
+    - pattern: "throw new $TYPE();"
+    - pattern: "throw new $TYPE($CAUSE);"
+  constraints:
+    CAUSE:
+      kind: identifier
+note: |
+  Exceptions without messages are hard to debug.
+
+  BAD:
+    throw new IllegalArgumentException();
+    throw new RuntimeException(cause);
+
+  GOOD:
+    throw new IllegalArgumentException("age must be positive, got: " + age);
+    throw new RuntimeException("Failed to process user " + userId, cause);
+
+  Include:
+    - What was expected
+    - What was received
+    - Context (which user, which file, etc.)
+
+---
+id: java-quality-return-null-collection
+language: java
+severity: warning
+message: "Quality: Returning null instead of empty collection - return Collections.emptyList()"
+tags: [quality, null-safety, api-design]
+rule:
+  kind: return_statement
+  inside:
+    kind: method_declaration
+    has:
+      kind: type_identifier
+      regex: "List|Set|Collection|Map"
+  pattern: "return null;"
+note: |
+  Returning null for empty collections forces null checks on every caller.
+
+  BAD:
+    List<User> getUsers() {
+      if (noUsers) return null;
+      ...
+    }
+    // Caller must: if (users != null && !users.isEmpty())
+
+  GOOD:
+    List<User> getUsers() {
+      if (noUsers) return Collections.emptyList();
+      ...
+    }
+    // Caller can: if (!users.isEmpty())
+
+  Use Collections.emptyList/Set/Map() for immutable empties.
+  Use List.of() since Java 9.
+
+---
+id: java-quality-comparing-strings-equals
+language: java
+severity: error
+message: "Quality: String comparison with == instead of .equals() - use .equals()"
+tags: [quality, correctness, string]
+rule:
+  kind: binary_expression
+  pattern: "$STR1 == $STR2"
+  constraints:
+    STR1:
+      kind: string_literal
+note: |
+  == compares object identity, not content. Use .equals() for strings.
+
+  BAD:
+    if (name == "admin") { }  // Almost always false!
+
+  GOOD:
+    if ("admin".equals(name)) { }  // Null-safe
+    if (name.equals("admin")) { }  // NPE if name is null
+
+  Put literal first for null-safety: "admin".equals(name)
+  Or use Objects.equals(name, "admin") for explicit null handling.
+
+---
+id: java-quality-box-unbox-loop
+language: java
+severity: info
+message: "Quality: Boxing/unboxing in loop may cause performance issues"
+tags: [quality, performance, autoboxing]
+rule:
+  any:
+    - kind: for_statement
+    - kind: enhanced_for_statement
+    - kind: while_statement
+  has:
+    kind: object_creation_expression
+    any:
+      - pattern: "new Integer($VAL)"
+      - pattern: "new Long($VAL)"
+      - pattern: "new Double($VAL)"
+      - pattern: "Integer.valueOf($VAL)"
+note: |
+  Autoboxing in loops creates many temporary objects.
+
+  BAD:
+    List<Integer> list = new ArrayList<>();
+    for (int i = 0; i < 1000000; i++) {
+      list.add(i);  // Autoboxing: Integer.valueOf(i) each iteration
+    }
+
+  GOOD (if primitive array works):
+    int[] array = new int[1000000];
+    for (int i = 0; i < 1000000; i++) {
+      array[i] = i;  // No boxing
+    }
+
+  For collections, use primitive-specialized libraries:
+    - Eclipse Collections: IntList, LongSet
+    - Trove: TIntArrayList
+    - Fastutil: IntArrayList
+
+---
+id: java-quality-thread-sleep-catch
+language: java
+severity: warning
+message: "Quality: InterruptedException caught but interrupt flag not restored"
+tags: [quality, concurrency, correctness]
+rule:
+  kind: catch_clause
+  pattern: |
+    catch (InterruptedException $E) {
+      ...
+    }
+  notHas:
+    pattern: "Thread.currentThread().interrupt()"
+note: |
+  Catching InterruptedException without restoring interrupt flag breaks shutdown.
+
+  BAD:
+    try { Thread.sleep(1000); }
+    catch (InterruptedException e) {
+      logger.warn("Interrupted");  // Interrupt flag lost!
+    }
+
+  GOOD:
+    try { Thread.sleep(1000); }
+    catch (InterruptedException e) {
+      Thread.currentThread().interrupt();  // Restore flag
+      logger.warn("Interrupted");
+    }
+
+  The interrupt flag signals that shutdown is requested.
+  Swallowing it prevents graceful shutdown of thread pools.
+
+---
+id: java-quality-calendar-instead-of-time
+language: java
+severity: info
+message: "Quality: Using Calendar - prefer java.time API (LocalDate, LocalDateTime)"
+tags: [quality, modern-java, datetime]
+rule:
+  any:
+    - pattern: "Calendar.getInstance()"
+    - pattern: "new GregorianCalendar()"
+note: |
+  Calendar is mutable, error-prone, and deprecated in favor of java.time.
+
+  BAD:
+    Calendar cal = Calendar.getInstance();
+    cal.add(Calendar.DAY_OF_MONTH, 7);  // Mutates!
+    Date date = cal.getTime();
+
+  GOOD:
+    LocalDate date = LocalDate.now().plusDays(7);  // Immutable
+    LocalDateTime dateTime = LocalDateTime.now();
+    ZonedDateTime zoned = ZonedDateTime.now(ZoneId.of("UTC"));
+
+  Benefits of java.time:
+    1. Immutable (thread-safe)
+    2. Clear naming (LocalDate vs LocalDateTime vs ZonedDateTime)
+    3. Proper timezone handling
+    4. ISO-8601 formatting built-in
+
+---
+id: java-quality-finalize-method
+language: java
+severity: error
+message: "Quality: finalize() is deprecated - use try-with-resources or Cleaner"
+tags: [quality, deprecated, resource-management]
+rule:
+  kind: method_declaration
+  pattern: |
+    protected void finalize() {
+      ...
+    }
+note: |
+  finalize() is deprecated since Java 9 and removed in later versions.
+
+  Problems:
+    1. Non-deterministic execution (GC decides when)
+    2. Performance overhead
+    3. Can resurrect objects
+    4. Thread-unsafe
+
+  Alternatives:
+    1. try-with-resources (best):
+       try (Resource r = new Resource()) { }
+
+    2. Cleaner API (Java 9+):
+       Cleaner cleaner = Cleaner.create();
+       cleaner.register(this, cleanupAction);
+
+    3. Explicit close():
+       resource.close();
+
+# ==============================================================================
+# MODERN JAVA (11 rules)
+# ==============================================================================
+
+---
+id: java-quality-vector-instead-of-list
+language: java
+severity: warning
+message: "Quality: Vector is legacy - use ArrayList or CopyOnWriteArrayList"
+tags: [quality, modern-java, collections, performance]
+rule:
+  any:
+    - pattern: "new Vector()"
+    - pattern: "new Vector<$TYPE>()"
+note: |
+  Vector is a legacy synchronized class from Java 1.0.
+
+  Problems:
+    1. Synchronized on every operation (slow for single-threaded use)
+    2. Old-style iteration (Enumeration)
+    3. Verbose API
+
+  Replacements:
+    - Single-threaded: ArrayList
+    - Multi-threaded read-heavy: CopyOnWriteArrayList
+    - Multi-threaded balanced: Collections.synchronizedList(new ArrayList<>())
+
+  Vector remains only for legacy compatibility.
+
+---
+id: java-quality-hashtable-instead-of-map
+language: java
+severity: warning
+message: "Quality: Hashtable is legacy - use HashMap or ConcurrentHashMap"
+tags: [quality, modern-java, collections, performance]
+rule:
+  any:
+    - pattern: "new Hashtable()"
+    - pattern: "new Hashtable<$K, $V>()"
+note: |
+  Hashtable is a legacy synchronized class from Java 1.0.
+
+  Problems:
+    1. Synchronized on every operation
+    2. Does not allow null keys or values
+    3. Old-style iteration
+
+  Replacements:
+    - Single-threaded: HashMap
+    - Multi-threaded: ConcurrentHashMap (lock striping, better performance)
+    - Null-friendly synchronized: Collections.synchronizedMap(new HashMap<>())
+
+---
+id: java-quality-stringbuffer-single-thread
+language: java
+severity: info
+message: "Quality: StringBuffer is synchronized - use StringBuilder for single-threaded code"
+tags: [quality, modern-java, performance, string]
+rule:
+  pattern: "new StringBuffer()"
+note: |
+  StringBuffer is synchronized, adding overhead in single-threaded code.
+
+  BAD:
+    StringBuffer sb = new StringBuffer();  // Synchronized
+
+  GOOD:
+    StringBuilder sb = new StringBuilder();  // Not synchronized
+
+  Use StringBuilder unless:
+    - Multiple threads append to the same builder (rare)
+    - Legacy code requires StringBuffer
+
+---
+id: java-quality-missing-try-with-resources
+language: java
+severity: warning
+message: "Quality: Resource not in try-with-resources - may leak on exception"
+tags: [quality, modern-java, resource-management]
+rule:
+  kind: local_variable_declaration
+  any:
+    - pattern: "$TYPE $VAR = new FileInputStream($PATH)"
+    - pattern: "$TYPE $VAR = new FileOutputStream($PATH)"
+    - pattern: "$TYPE $VAR = new BufferedReader($READER)"
+    - pattern: "$TYPE $VAR = new BufferedWriter($WRITER)"
+    - pattern: "$TYPE $VAR = new FileReader($PATH)"
+    - pattern: "$TYPE $VAR = new FileWriter($PATH)"
+  notInside:
+    kind: try_with_resources_statement
+note: |
+  Resources not in try-with-resources may leak on exceptions.
+
+  BAD:
+    FileInputStream fis = new FileInputStream(file);
+    try {
+      // use fis
+    } finally {
+      fis.close();  // Exception here loses original exception
+    }
+
+  GOOD:
+    try (FileInputStream fis = new FileInputStream(file)) {
+      // use fis
+    }  // Automatically closed, suppressed exceptions handled
+
+  Works with any AutoCloseable. Multiple resources supported:
+    try (InputStream in = ...; OutputStream out = ...) { }
+
+---
+id: java-quality-missing-diamond-operator
+language: java
+severity: info
+message: "Quality: Redundant type arguments - use diamond operator <>"
+tags: [quality, modern-java, readability]
+rule:
+  kind: object_creation_expression
+  pattern: "new $GENERIC<$TYPE>($ARGS)"
+  constraints:
+    TYPE:
+      notRegex: "^$"
+note: |
+  Type arguments on right side are redundant since Java 7.
+
+  BAD:
+    Map<String, List<Integer>> map = new HashMap<String, List<Integer>>();
+
+  GOOD:
+    Map<String, List<Integer>> map = new HashMap<>();
+
+  The diamond operator <> infers types from left side.
+  Note: Anonymous classes require explicit types until Java 9.
+
+---
+id: java-quality-date-instead-of-time
+language: java
+severity: info
+message: "Quality: java.util.Date is mutable and error-prone - use java.time API"
+tags: [quality, modern-java, datetime]
+rule:
+  any:
+    - pattern: "new Date()"
+    - pattern: "new Date($MILLIS)"
+note: |
+  java.util.Date is mutable, poorly designed, and deprecated.
+
+  Problems:
+    1. Mutable (can be changed after creation)
+    2. Month is 0-indexed (January = 0)
+    3. Year offset from 1900
+    4. No timezone awareness
+
+  Replacements:
+    - Date only: LocalDate
+    - Date + time: LocalDateTime
+    - With timezone: ZonedDateTime
+    - Instant in time: Instant
+
+  Conversion:
+    Date date = Date.from(instant);
+    Instant instant = date.toInstant();
+
+---
+id: java-quality-enhanced-for-loop
+language: java
+severity: info
+message: "Quality: Use enhanced for loop instead of index-based iteration"
+tags: [quality, modern-java, readability]
+rule:
+  kind: for_statement
+  pattern: |
+    for (int $I = 0; $I < $LIST.size(); $I++) {
+      $TYPE $ITEM = $LIST.get($I);
+      ...
+    }
+note: |
+  Enhanced for loops are cleaner than index-based iteration.
+
+  BAD:
+    for (int i = 0; i < items.size(); i++) {
+      Item item = items.get(i);
+      process(item);
+    }
+
+  GOOD:
+    for (Item item : items) {
+      process(item);
+    }
+
+  Use index-based only when:
+    - Need the index value
+    - Modifying the list during iteration
+    - Iterating multiple lists in parallel
+
+---
+id: java-quality-optional-get-without-check
+language: java
+severity: warning
+message: "Quality: Optional.get() without isPresent() check - use orElse/orElseThrow"
+tags: [quality, modern-java, null-safety]
+rule:
+  pattern: "$OPT.get()"
+  notInside:
+    any:
+      - pattern: "if ($OPT.isPresent())"
+      - pattern: "if ($OPT.isEmpty())"
+note: |
+  Optional.get() throws NoSuchElementException if empty.
+
+  BAD:
+    Optional<User> opt = findUser(id);
+    User user = opt.get();  // Throws if empty!
+
+  GOOD:
+    User user = opt.orElseThrow(() ->
+        new UserNotFoundException("User not found: " + id));
+
+    User user = opt.orElse(DEFAULT_USER);
+
+    opt.ifPresent(user -> process(user));
+
+    opt.map(User::getName).orElse("Unknown");
+
+---
+id: java-quality-stream-forEach-modify
+language: java
+severity: warning
+message: "Quality: Stream.forEach should not modify external state - use collect or for-loop"
+tags: [quality, modern-java, functional, side-effects]
+rule:
+  pattern: "$STREAM.forEach($CONSUMER)"
+  inside:
+    has:
+      any:
+        - pattern: "$VAR = "
+        - pattern: "$VAR += "
+        - pattern: "$COLLECTION.add"
+note: |
+  forEach with side effects defeats the purpose of functional streams.
+
+  BAD:
+    List<String> result = new ArrayList<>();
+    items.stream().forEach(item -> result.add(item.getName()));
+
+  GOOD:
+    List<String> result = items.stream()
+        .map(Item::getName)
+        .collect(Collectors.toList());
+
+  forEach is for terminal actions (logging, sending), not accumulation.
+  Side effects in forEach can cause issues with parallel streams.
+
+---
+id: java-quality-streams-collect-counting
+language: java
+severity: info
+message: "Quality: Use Stream.count() instead of Collectors.counting()"
+tags: [quality, modern-java, streams]
+rule:
+  pattern: "$STREAM.collect(Collectors.counting())"
+note: |
+  Stream.count() is simpler than collecting with Collectors.counting().
+
+  BAD:
+    long count = items.stream()
+        .filter(predicate)
+        .collect(Collectors.counting());
+
+  GOOD:
+    long count = items.stream()
+        .filter(predicate)
+        .count();
+
+  Collectors.counting() is for use in groupingBy downstream:
+    Map<Type, Long> counts = items.stream()
+        .collect(Collectors.groupingBy(Item::getType, Collectors.counting()));
+
+---
+id: java-quality-var-keyword-clarity
+language: java
+severity: info
+message: "Quality: var obscures type - consider explicit type for clarity"
+tags: [quality, modern-java, readability]
+rule:
+  kind: local_variable_declaration
+  pattern: "var $NAME = $METHOD($ARGS)"
+  constraints:
+    METHOD:
+      notRegex: "^new |^List\\.of|^Map\\.of|^Set\\.of"
+note: |
+  var can obscure types when the right side doesn't make type obvious.
+
+  GOOD use of var (type is obvious):
+    var list = new ArrayList<String>();
+    var map = Map.of("key", "value");
+    var user = new User("John");
+
+  BAD use of var (type unclear):
+    var result = service.process(data);  // What type is result?
+    var x = helper.calculate();          // int? double? BigDecimal?
+
+  Use explicit types when:
+    - Method return type isn't obvious from name
+    - Type is important for understanding the code
+    - Complex generic types
+
+# ==============================================================================
+# DOCUMENTATION (5 rules)
+# ==============================================================================
+
+---
+id: java-quality-public-method-no-javadoc
+language: java
+severity: info
+message: "Quality: Public method without Javadoc - add documentation for API"
+tags: [quality, documentation, api]
+rule:
+  kind: method_declaration
+  pattern: |
+    public $TYPE $NAME($PARAMS) {
+      ...
+    }
+  notHas:
+    kind: block_comment
+    regex: "\\*"
+note: |
+  Public methods are API and should be documented.
+
+  BAD:
+    public User createUser(String name, String email) { ... }
+
+  GOOD:
+    /**
+     * Creates a new user with the given name and email.
+     *
+     * @param name the user's display name, must not be null
+     * @param email the user's email address, must be valid format
+     * @return the newly created User
+     * @throws IllegalArgumentException if name or email is invalid
+     */
+    public User createUser(String name, String email) { ... }
+
+  At minimum, document:
+    - Purpose (what, not how)
+    - Parameters (meaning and constraints)
+    - Return value (what it represents)
+    - Exceptions (when thrown)
+
+---
+id: java-quality-todo-in-production
+language: java
+severity: info
+message: "Quality: TODO/FIXME comment in code - track in issue tracker instead"
+tags: [quality, documentation, technical-debt]
+rule:
+  kind: comment
+  regex: "TODO|FIXME|XXX|HACK"
+note: |
+  TODO comments indicate unfinished work that should be tracked.
+
+  Problems:
+    1. TODOs get forgotten and accumulate
+    2. No ownership or timeline
+    3. Not visible in issue trackers
+    4. Can't be prioritized or scheduled
+
+  Better approach:
+    1. Create issue in tracker (JIRA, GitHub Issues)
+    2. Reference issue in comment if needed:
+       // See JIRA-1234 for context on this workaround
+    3. Set reminders or due dates in tracker
+
+  If TODO must stay, include owner and date:
+    // TODO (john, 2024-03-01): Refactor after API v2 release
+
+---
+id: java-quality-commented-out-code
+language: java
+severity: info
+message: "Quality: Commented-out code should be removed - use version control"
+tags: [quality, documentation, dead-code]
+rule:
+  kind: comment
+  regex: "^\\s*(//|/\\*).*\\b(if|for|while|return|public|private|class|void|int|String)\\b.*[;{}]"
+note: |
+  Commented-out code clutters the codebase.
+
+  Problems:
+    1. Creates confusion about what's active
+    2. Gets out of sync with changes
+    3. Makes code harder to read
+    4. Version control preserves history anyway
+
+  Instead of commenting:
+    1. Delete the code (git keeps history)
+    2. If experimental, use feature flag
+    3. If alternative approach, document in design doc
+    4. If temporary disable, create tracking issue
+
+---
+id: java-quality-missing-param-javadoc
+language: java
+severity: info
+message: "Quality: Javadoc missing @param for method parameters"
+tags: [quality, documentation, javadoc]
+rule:
+  kind: method_declaration
+  has:
+    kind: block_comment
+    regex: "/\\*\\*"
+    notRegex: "@param"
+  has:
+    kind: formal_parameters
+    has:
+      kind: formal_parameter
+note: |
+  Javadoc should document all parameters with @param.
+
+  BAD:
+    /**
+     * Creates a user.
+     */
+    public User create(String name, String email) { }
+
+  GOOD:
+    /**
+     * Creates a user.
+     *
+     * @param name the user's display name
+     * @param email the user's email address
+     * @return the created User
+     */
+    public User create(String name, String email) { }
+
+  Include for each @param:
+    - Parameter name
+    - What it represents
+    - Valid values/constraints (nullable? format?)
+
+---
+id: java-quality-missing-return-javadoc
+language: java
+severity: info
+message: "Quality: Javadoc missing @return for non-void method"
+tags: [quality, documentation, javadoc]
+rule:
+  kind: method_declaration
+  has:
+    kind: block_comment
+    regex: "/\\*\\*"
+    notRegex: "@return"
+  notHas:
+    kind: void_type
+note: |
+  Non-void methods should document return value with @return.
+
+  BAD:
+    /**
+     * Finds a user by ID.
+     * @param id the user ID
+     */
+    public Optional<User> findById(long id) { }
+
+  GOOD:
+    /**
+     * Finds a user by ID.
+     *
+     * @param id the user ID
+     * @return the user if found, or empty Optional if not found
+     */
+    public Optional<User> findById(long id) { }
+
+  Describe:
+    - What the return value represents
+    - Possible states (null? empty? default?)
+    - Any special values (e.g., -1 for not found)
