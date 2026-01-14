@@ -39,8 +39,8 @@ mod query_compiler;
 // Re-export public types
 pub use constraints::{
     AllConstraint, AnyConstraint, Constraint, FollowsConstraint, HasConstraint, InsideConstraint,
-    KindConstraint, LengthConstraint, NotConstraint, NotHasConstraint, NotInsideConstraint,
-    PatternConstraint, PrecedesConstraint, RegexConstraint, StopBehavior,
+    KindConstraint, LengthConstraint, MatchContext, NotConstraint, NotHasConstraint,
+    NotInsideConstraint, PatternConstraint, PrecedesConstraint, RegexConstraint, StopBehavior,
 };
 
 pub use matcher::{CapturedValue, MatchResult, PatternMatcher};
@@ -57,6 +57,9 @@ pub use query_compiler::{compile_to_tree_sitter_query, QueryCompilationError};
 mod tests {
     use super::*;
     use crate::uast::schema::{SourceSpan, UastKind, UastNode};
+
+    // Empty source for tests that don't use lazy text extraction
+    const EMPTY_SOURCE: &str = "";
 
     fn make_test_node(kind: UastKind, name: Option<&str>) -> UastNode {
         let mut node = UastNode::new(kind, "rust", SourceSpan::empty());
@@ -133,7 +136,7 @@ mod tests {
         let pattern = parse_simple_pattern("FunctionDeclaration", "rust").unwrap();
         let matcher = PatternMatcher::new();
 
-        let result = matcher.try_match(&node, &pattern);
+        let result = matcher.try_match(&node, &pattern, EMPTY_SOURCE);
         assert!(result.is_some());
     }
 
@@ -143,7 +146,7 @@ mod tests {
         let pattern = parse_simple_pattern("FunctionDeclaration", "rust").unwrap();
         let matcher = PatternMatcher::new();
 
-        let result = matcher.try_match(&node, &pattern);
+        let result = matcher.try_match(&node, &pattern, EMPTY_SOURCE);
         assert!(result.is_none());
     }
 
@@ -153,7 +156,7 @@ mod tests {
         let pattern = parse_simple_pattern("*", "rust").unwrap();
         let matcher = PatternMatcher::new();
 
-        let result = matcher.try_match(&node, &pattern);
+        let result = matcher.try_match(&node, &pattern, EMPTY_SOURCE);
         assert!(result.is_some());
     }
 
@@ -163,7 +166,7 @@ mod tests {
         let pattern = parse_simple_pattern("$FUNC", "rust").unwrap();
         let matcher = PatternMatcher::new();
 
-        let result = matcher.try_match(&node, &pattern);
+        let result = matcher.try_match(&node, &pattern, EMPTY_SOURCE);
         assert!(result.is_some());
         let match_result = result.unwrap();
         assert!(match_result.captures.contains_key("FUNC"));
@@ -183,7 +186,7 @@ mod tests {
         let pattern = parse_simple_pattern("FunctionDeclaration", "rust").unwrap();
         let matcher = PatternMatcher::new();
 
-        let matches = matcher.find_all(&root, &pattern);
+        let matches = matcher.find_all(&root, &pattern, EMPTY_SOURCE);
         assert_eq!(matches.len(), 2);
     }
 }

@@ -74,40 +74,66 @@ echo "def foo(): pass" | uast-grep run -p function_definition -l python --stdin
 
 ### scan
 
-Scan files using YAML rules.
+Scan files using YAML rules. By default, scans with all ~3,380 built-in rules.
 
 ```bash
-uast-grep scan [OPTIONS] -r <RULES> [PATHS]...
+uast-grep scan [OPTIONS] [PATHS]...
 ```
 
 #### Options
 
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
-| `--rules` | `-r` | YAML rule file or directory | *Required* |
+| `--rules` | `-r` | Built-in ruleset: `security`, `performance`, `quality`, or `all` | `all` |
+| `--external` | `-e` | External YAML rules file or directory | None |
+| `--exclude` | `-x` | Exclude files/directories matching glob (can be repeated) | None |
 | `--format` | `-f` | Output format (text, json, sarif) | `text` |
-| `--language` | `-l` | Override language detection | Auto-detect |
 | `--jobs` | `-j` | Number of parallel jobs | CPU count |
 | `--no-ignore` | | Don't respect .gitignore | `false` |
 | `--hidden` | | Include hidden files | `false` |
+| `--fix` | | Apply auto-fixes to files | `false` |
+| `--fail-on-issues` | | Exit with error if issues found (for CI) | `false` |
+
+#### Built-in Rulesets
+
+| Ruleset | Rules | Description |
+|---------|-------|-------------|
+| `security` / `sec` | ~1,430 | Security rules covering 179 CWEs |
+| `performance` / `perf` | ~1,130 | Performance optimization rules |
+| `quality` / `qual` | ~820 | Code quality rules |
+| `all` / `*` | ~3,380 | All rules combined (default) |
 
 #### Examples
 
 ```bash
-# Scan with single rule file
-uast-grep scan -r rules/security.yaml ./src
+# Scan with all built-in rules (default)
+uast-grep scan ./src
 
-# Scan with directory of rules
-uast-grep scan -r rules/ ./src
+# Scan with built-in security rules only
+uast-grep scan -r security ./src
+
+# Scan with built-in performance rules
+uast-grep scan -r perf ./src
+
+# Use external rules only
+uast-grep scan -e ./my-rules/ ./src
+
+# Combine built-in and external rules
+uast-grep scan -r security -e ./custom-rules/ ./src
+
+# Exclude directories or file patterns
+uast-grep scan -x "**/test/**" ./src
+uast-grep scan -x "*.generated.cs" -x "**/Debug/**" ./src
+uast-grep scan -r security -x "**/node_modules/**" ./src
 
 # Output as SARIF (for CI/CD)
-uast-grep scan -r rules/ -f sarif ./src > results.sarif
+uast-grep scan -r all -f sarif ./src > results.sarif
 
 # Output as JSON
-uast-grep scan -r rules/ -f json ./src
+uast-grep scan -f json ./src
 
-# Force specific language
-uast-grep scan -r rules/python/ -l python ./src
+# Fail CI if issues found
+uast-grep scan -r security --fail-on-issues ./src
 ```
 
 ---
@@ -326,8 +352,11 @@ uast-grep run -p FunctionDeclaration -l python ./src -j 8
 # Limit depth for faster searches
 uast-grep run -p FunctionDeclaration -l python ./src --max-depth 3
 
-# Ignore tests for faster scans
-uast-grep run -p FunctionDeclaration -l python ./src --hidden
+# Exclude test directories
+uast-grep scan -x "**/test/**" -x "**/tests/**" ./src
+
+# Exclude multiple patterns
+uast-grep scan -x "*.generated.cs" -x "**/Debug/**" -x "**/node_modules/**" ./src
 ```
 
 ### CI/CD Integration

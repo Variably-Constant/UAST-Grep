@@ -156,6 +156,10 @@ pub struct RulePatternYaml {
     /// Match by regex on source text.
     #[serde(default)]
     pub regex: Option<String>,
+
+    /// Exclude matches where source text matches this regex.
+    #[serde(default, rename = "notRegex")]
+    pub not_regex: Option<String>,
 }
 
 impl RulePatternYaml {
@@ -173,6 +177,7 @@ impl RulePatternYaml {
             && self.follows.is_none()
             && self.kind.is_none()
             && self.regex.is_none()
+            && self.not_regex.is_none()
     }
 }
 
@@ -211,6 +216,14 @@ pub struct RelationYaml {
     #[serde(default)]
     pub kind: Option<String>,
 
+    /// Regex to filter matched nodes by their source text.
+    #[serde(default)]
+    pub regex: Option<String>,
+
+    /// Match any of these patterns (OR) - allows inside: { any: [...] }.
+    #[serde(default)]
+    pub any: Option<Vec<RelationYaml>>,
+
     /// How far to search: "end" (default) or "neighbor".
     #[serde(default = "default_stop_by")]
     pub stop_by: String,
@@ -218,6 +231,14 @@ pub struct RelationYaml {
     /// Whether the relation must be immediate (for precedes/follows).
     #[serde(default)]
     pub immediate: bool,
+
+    /// Nested has constraint (for recursive depth matching).
+    #[serde(default)]
+    pub has: Option<Box<RelationYaml>>,
+
+    /// Nested notHas constraint (for recursive exclusion matching).
+    #[serde(default, rename = "notHas")]
+    pub not_has: Option<Box<RelationYaml>>,
 }
 
 fn default_stop_by() -> String {

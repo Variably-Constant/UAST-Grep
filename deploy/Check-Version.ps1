@@ -44,8 +44,8 @@ $VersionFiles = @{
         Pattern = 'GRAMMAR_VERSION: &str = "v{0}"'
         Regex = 'GRAMMAR_VERSION.*"v([^"]+)"'
     }
-    'UAST.Native.csproj' = @{
-        Path = Join-Path $ProjectRoot 'src/UAST.Native/UAST.Native.csproj'
+    'UAST.Net.csproj' = @{
+        Path = Join-Path $ProjectRoot 'src/UAST.Net/UAST.Net.csproj'
         Pattern = '<Version>{0}</Version>'
         Regex = '<Version>([^<]+)</Version>'
     }

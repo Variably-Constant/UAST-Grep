@@ -1,6 +1,6 @@
 # Code Quality Rules
 
-UAST-Grep provides **952 code quality rules** for **20+ languages** plus universal rules that work across all 71 supported languages. These rules detect code smells, complexity issues, naming violations, dead code, and anti-patterns.
+UAST-Grep provides **~820 code quality rules** for **20+ languages** plus universal rules that work across all 71 supported languages. These rules detect code smells, complexity issues, naming violations, dead code, and anti-patterns.
 
 > **See Also:** [Rules Catalog](rules-catalog.md) for the complete rule index | [CWE & OWASP Coverage](cwe-owasp-coverage.md) for security coverage
 

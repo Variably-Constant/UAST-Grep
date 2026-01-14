@@ -162,8 +162,9 @@ mod tests {
         assert!(langs.contains(&"rust"));
         assert!(langs.contains(&"python"));
         assert!(langs.contains(&"javascript"));
-        // Should have 70 languages
-        assert!(langs.len() >= 70);
+        // Should have 37 built-in languages (see CLAUDE.md)
+        // Note: 34 more are available as WASM on-demand
+        assert!(langs.len() >= 37, "Expected at least 37 built-in languages, got {}", langs.len());
     }
 
     #[test]

@@ -17,9 +17,10 @@ CLI command tests.
 - `TreeSitterMapperTests.cs` - Tree-sitter mapper integration
 - `Benchmarks/` - Performance benchmarks
 
-### UAST.Native.Tests
-Rust FFI binding tests.
+### UAST.Net.Tests
+.NET wrapper tests.
 - `InteropTests.cs` - P/Invoke interop validation
+- `ParserTests.cs` - Parsing functionality tests
 
 ### UAST.PowerShell.Tests
 PowerShell mapper tests.

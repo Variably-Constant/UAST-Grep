@@ -30,6 +30,8 @@ builtin-grammars = [
 ]
 # Enable Python bindings via PyO3 - builds the library as a Python extension module
 python = ["dep:pyo3"]
+# Enable arena allocation for reduced memory fragmentation and faster allocation
+arena = ["dep:bumpalo"]
 
 [dependencies]
 # Core tree-sitter - version 0.26 for latest ABI
@@ -47,6 +49,7 @@ once_cell = "1.19"      # Lazy static initialization
 thiserror = "2.0"       # Error handling
 parking_lot = "0.12"    # Fast mutexes
 rayon = "1.10"          # Parallel iteration
+crossbeam-channel = "0.5"  # Bounded channels for streaming results
 walkdir = "2.5"         # Directory traversal
 streaming-iterator = "0.1"  # Required by tree-sitter for QueryMatches
 libloading = "0.8"      # Dynamic DLL loading for grammar plugins
@@ -71,6 +74,9 @@ ureq = { version = "2.9", optional = true }       # HTTP client for downloading 
 
 # Python bindings (optional, enabled via 'python' feature)
 pyo3 = { version = "0.23", features = ["extension-module"], optional = true }
+
+# Arena allocator (optional, enabled via 'arena' feature)
+bumpalo = { version = "3.14", optional = true }
 
 [build-dependencies]
 cc = "1.0"  # Compile grammar C sources

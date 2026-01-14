@@ -9,7 +9,7 @@ Comprehensive coverage of **179 CWE identifiers** and mapping to **OWASP Top 10 
 | **CWE Identifiers** | 179 |
 | **OWASP Top 10 Categories** | 10/10 (100%) |
 | **Languages with CWE Rules** | 31 |
-| **Total Security Rules** | 1,587 |
+| **Total Security Rules** | ~1,430 |
 
 ---
 

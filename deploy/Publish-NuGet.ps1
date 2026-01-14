@@ -3,7 +3,7 @@
     Publishes the .NET package to NuGet.org.
 
 .DESCRIPTION
-    Pushes the UAST.Native NuGet package.
+    Pushes the UAST.Net NuGet package.
     Requires NUGET_API_KEY environment variable.
 
 .PARAMETER ApiKey
@@ -45,7 +45,7 @@ if (-not $ApiKey) {
 }
 
 # Find the package
-$packages = Get-ChildItem $ArtifactsDir -Filter "UAST.Native.*.nupkg" -ErrorAction SilentlyContinue
+$packages = Get-ChildItem $ArtifactsDir -Filter "UAST.Net.*.nupkg" -ErrorAction SilentlyContinue
 if (-not $packages -or $packages.Count -eq 0) {
     Write-Error "No NuGet package found in $ArtifactsDir"
     Write-Error "Run Build-Packages.ps1 -DotNet first."
@@ -59,7 +59,7 @@ Write-Host "Source:  $Source"
 Write-Host ""
 
 # Extract version from package name
-if ($package.Name -match 'UAST\.Native\.(\d+\.\d+\.\d+)\.nupkg') {
+if ($package.Name -match 'UAST\.Net\.(\d+\.\d+\.\d+)\.nupkg') {
     $version = $Matches[1]
     Write-Host "Version: $version"
 }
@@ -68,7 +68,7 @@ if ($package.Name -match 'UAST\.Native\.(\d+\.\d+\.\d+)\.nupkg') {
 Write-Host ""
 Write-Host "Checking NuGet.org..." -ForegroundColor Gray
 try {
-    $nugetInfo = Invoke-RestMethod "https://api.nuget.org/v3-flatcontainer/uast.native/index.json" -ErrorAction SilentlyContinue
+    $nugetInfo = Invoke-RestMethod "https://api.nuget.org/v3-flatcontainer/uast.net/index.json" -ErrorAction SilentlyContinue
     if ($nugetInfo.versions -contains $version) {
         Write-Warning "Version $version is already published on NuGet.org!"
         Write-Host "Bump the version before publishing."
@@ -96,7 +96,7 @@ dotnet nuget push $package.FullName --api-key $ApiKey --source $Source
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "Published to NuGet.org!" -ForegroundColor Green
-    Write-Host "View at: https://www.nuget.org/packages/UAST.Native/$version" -ForegroundColor Cyan
+    Write-Host "View at: https://www.nuget.org/packages/UAST.Net/$version" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Note: It may take a few minutes to appear in search results." -ForegroundColor Gray
 } else {

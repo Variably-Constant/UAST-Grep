@@ -96,16 +96,22 @@ impl<'a> UastConverter<'a> {
         uast_node.is_named = Some(node.is_named());
 
         // Extract name if present (for functions, classes, variables, etc.)
+        // Use byte range for memory efficiency instead of allocating String
         if let Some(name_node) = node.child_by_field_name("name") {
-            let name_text = self.get_node_text(name_node);
-            uast_node.name = Some(name_text.to_string());
+            let start = name_node.start_byte() as u32;
+            let end = name_node.end_byte() as u32;
+            if start < end {
+                uast_node.name_range = Some((start, end));
+            }
         }
 
-        // For leaf nodes or if include_all_text is set, include raw source text
+        // For leaf nodes or if include_all_text is set, store text range
+        // Use byte range for memory efficiency instead of allocating String
         if node.child_count() == 0 || self.options.include_all_text {
-            let text = self.get_node_text(node);
-            if !text.is_empty() {
-                uast_node.text = Some(text.to_string());
+            let start = node.start_byte() as u32;
+            let end = node.end_byte() as u32;
+            if start < end {
+                uast_node.text_range = Some((start, end));
             }
         }
 
@@ -165,11 +171,10 @@ impl<'a> UastConverter<'a> {
 
         for (ts_field, uast_field) in &field_mappings {
             if let Some(field_node) = node.child_by_field_name(ts_field) {
-                // Store field references as metadata
-                // The actual nodes are in children, this just notes which child is which field
                 let field_text = self.get_node_text(field_node);
                 if !field_text.is_empty() {
-                    // For operators, store the actual operator text
+                    // For operators, store the actual operator text as String
+                    // (operators are short like "+", "-", "==", so String is fine for properties)
                     if *ts_field == "operator" {
                         uast_node.properties.insert(
                             uast_field.to_string(),
@@ -226,7 +231,8 @@ impl<'a> UastConverter<'a> {
                 // The operator is already extracted via field mapping
             }
             UastKind::ForEachStatement | UastKind::ForInStatement | UastKind::ForOfStatement => {
-                // Extract iterator variable name
+                // Extract iterator variable name as String
+                // (properties need JSON-serializable values, and variable names are typically short)
                 if let Some(left) = node.child_by_field_name("left") {
                     let var_text = self.get_node_text(left);
                     uast_node.properties.insert("iteratorVariable".to_string(), json!(var_text));
@@ -475,6 +481,241 @@ pub fn create_uast_document_with_options(
 }
 
 // ============================================================================
+// Arena-based converter (feature = "arena")
+// ============================================================================
+
+#[cfg(feature = "arena")]
+pub use arena_convert::*;
+
+#[cfg(feature = "arena")]
+mod arena_convert {
+    use super::*;
+    use crate::uast::arena::{ArenaUastNode, PropertyKey, PropertyValue, UastArena};
+    use crate::uast::mappings::get_mappings;
+    use crate::uast::schema::UastKind;
+
+    /// Convert a tree-sitter tree to an arena-backed UAST tree.
+    ///
+    /// This is the most memory-efficient way to convert, as all nodes are
+    /// allocated from a single memory pool.
+    ///
+    /// # Arguments
+    /// * `arena` - The arena to allocate nodes from
+    /// * `tree` - The tree-sitter parse tree
+    /// * `source` - The source code
+    /// * `language` - The language identifier
+    ///
+    /// # Returns
+    /// A reference to the root arena node, which lives as long as the arena.
+    pub fn convert_tree_to_arena<'arena>(
+        arena: &'arena UastArena,
+        tree: &tree_sitter::Tree,
+        source: &str,
+        language: &'arena str,
+    ) -> &'arena ArenaUastNode<'arena> {
+        let converter = ArenaConverter::new(arena, source, language);
+        converter.convert_node(tree.root_node(), 0)
+    }
+
+    /// Arena-based converter that allocates all nodes from a bump allocator.
+    struct ArenaConverter<'arena> {
+        arena: &'arena UastArena,
+        language: &'arena str,
+        mappings: &'static crate::uast::mappings::NodeKindMappings,
+    }
+
+    impl<'arena> ArenaConverter<'arena> {
+        fn new(arena: &'arena UastArena, source: &str, language: &'arena str) -> Self {
+            // Allocate source in arena so it lives as long as the arena
+            // (used for text extraction via get_text()/get_name() on nodes)
+            let _source = arena.alloc_str(source);
+            let mappings = get_mappings(language);
+            Self { arena, language, mappings }
+        }
+
+        fn convert_node(
+            &self,
+            node: tree_sitter::Node,
+            depth: usize,
+        ) -> &'arena ArenaUastNode<'arena> {
+            // Convert children first
+            let mut children_vec: Vec<ArenaUastNode<'arena>> = Vec::new();
+
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.is_named() {
+                    // Recursively convert but get the owned node first
+                    let child_node = self.convert_node_owned(child, depth + 1);
+                    children_vec.push(child_node);
+                }
+            }
+
+            // Allocate children slice in arena
+            let children = self.arena.alloc_children(children_vec);
+
+            // Map the node kind using the same approach as UastConverter
+            let native_type = node.kind();
+            let kind_str = self.mappings.get(native_type);
+            let kind = UastKind::from_str(kind_str);
+
+            // Extract name range if present
+            let name_range = node.child_by_field_name("name").map(|name_node| {
+                (name_node.start_byte() as u32, name_node.end_byte() as u32)
+            });
+
+            // Text range for leaf nodes
+            let text_range = if node.child_count() == 0 {
+                Some((node.start_byte() as u32, node.end_byte() as u32))
+            } else {
+                None
+            };
+
+            // Extract properties
+            let properties = self.extract_properties(&node, kind);
+
+            // Allocate the native type string
+            let native_type_str = Some(self.arena.alloc_str(node.kind()));
+
+            // Create the arena node
+            let arena_node = ArenaUastNode {
+                kind,
+                span: SourceSpan::from_tree_sitter(node),
+                text_range,
+                name_range,
+                children,
+                properties,
+                native_type: native_type_str,
+                language: self.language,
+                is_named: node.is_named(),
+            };
+
+            self.arena.alloc_node(arena_node)
+        }
+
+        /// Convert a node and return the owned value (not a reference).
+        /// Used for building the children vector.
+        fn convert_node_owned(
+            &self,
+            node: tree_sitter::Node,
+            depth: usize,
+        ) -> ArenaUastNode<'arena> {
+            // Convert children first
+            let mut children_vec: Vec<ArenaUastNode<'arena>> = Vec::new();
+
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.is_named() {
+                    let child_node = self.convert_node_owned(child, depth + 1);
+                    children_vec.push(child_node);
+                }
+            }
+
+            // Allocate children slice in arena
+            let children = self.arena.alloc_children(children_vec);
+
+            // Map the node kind using the same approach as UastConverter
+            let native_type = node.kind();
+            let kind_str = self.mappings.get(native_type);
+            let kind = UastKind::from_str(kind_str);
+
+            // Extract name range if present
+            let name_range = node.child_by_field_name("name").map(|name_node| {
+                (name_node.start_byte() as u32, name_node.end_byte() as u32)
+            });
+
+            // Text range for leaf nodes
+            let text_range = if node.child_count() == 0 {
+                Some((node.start_byte() as u32, node.end_byte() as u32))
+            } else {
+                None
+            };
+
+            // Extract properties
+            let properties = self.extract_properties(&node, kind);
+
+            // Allocate the native type string
+            let native_type_str = Some(self.arena.alloc_str(node.kind()));
+
+            ArenaUastNode {
+                kind,
+                span: SourceSpan::from_tree_sitter(node),
+                text_range,
+                name_range,
+                children,
+                properties,
+                native_type: native_type_str,
+                language: self.language,
+                is_named: node.is_named(),
+            }
+        }
+
+        /// Extract properties for a node.
+        fn extract_properties(
+            &self,
+            node: &tree_sitter::Node,
+            kind: UastKind,
+        ) -> &'arena [(PropertyKey, PropertyValue)] {
+            let mut props: Vec<(PropertyKey, PropertyValue)> = Vec::new();
+
+            // Extract operator if present
+            if let Some(op_node) = node.child_by_field_name("operator") {
+                let start = op_node.start_byte() as u32;
+                let end = op_node.end_byte() as u32;
+                props.push((PropertyKey::Operator, PropertyValue::ByteRange(start, end)));
+            }
+
+            // Extract iterator variable for for-in/for-of loops
+            if let Some(left) = node.child_by_field_name("left") {
+                if matches!(kind, UastKind::ForEachStatement | UastKind::ForInStatement | UastKind::ForOfStatement) {
+                    let start = left.start_byte() as u32;
+                    let end = left.end_byte() as u32;
+                    props.push((PropertyKey::IteratorVariable, PropertyValue::ByteRange(start, end)));
+                }
+            }
+
+            // Check for async/generator modifiers
+            if matches!(kind, UastKind::FunctionDeclaration | UastKind::MethodDeclaration) {
+                for i in 0..node.child_count() as u32 {
+                    if let Some(child) = node.child(i) {
+                        match child.kind() {
+                            "async" => {
+                                props.push((PropertyKey::IsAsync, PropertyValue::Bool(true)));
+                            }
+                            "generator" | "*" => {
+                                props.push((PropertyKey::IsGenerator, PropertyValue::Bool(true)));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            // Check for variable declaration modifiers
+            if kind == UastKind::VariableDeclaration {
+                for i in 0..node.child_count() as u32 {
+                    if let Some(child) = node.child(i) {
+                        match child.kind() {
+                            "const" => {
+                                props.push((PropertyKey::IsConst, PropertyValue::Bool(true)));
+                            }
+                            "let" => {
+                                props.push((PropertyKey::IsLet, PropertyValue::Bool(true)));
+                            }
+                            "var" => {
+                                props.push((PropertyKey::IsVar, PropertyValue::Bool(true)));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            self.arena.alloc_properties(props)
+        }
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -558,7 +799,54 @@ mod tests {
             // Find the function declaration
             let func = uast.descendants_of_kind(UastKind::FunctionDeclaration);
             assert_eq!(func.len(), 1);
-            assert_eq!(func[0].name, Some("hello".to_string()));
+            // Name is now stored as byte range, use get_name() to extract
+            assert_eq!(func[0].get_name(source), Some("hello"));
+        }
+
+        #[test]
+        fn test_convert_uses_byte_ranges() {
+            let source = "fn hello() {}";
+            let tree = parse_rust(source);
+
+            let uast = convert_tree_to_uast(&tree, source, "rust");
+
+            // Find the function
+            let func = uast.descendants_of_kind(UastKind::FunctionDeclaration);
+            assert_eq!(func.len(), 1);
+
+            // Verify name is stored as range, not string
+            let func_node = func[0];
+            assert!(func_node.name_range.is_some(), "name should be stored as byte range");
+            assert!(func_node.name.is_none(), "name should NOT be stored as String");
+
+            // Verify we can extract the name using the range
+            assert_eq!(func_node.get_name(source), Some("hello"));
+        }
+
+        #[test]
+        fn test_convert_leaf_nodes_use_text_range() {
+            let source = "let x = 42;";
+            let tree = parse_rust(source);
+
+            let uast = convert_tree_to_uast(&tree, source, "rust");
+
+            // Find identifiers (leaf nodes)
+            let identifiers = uast.descendants_of_kind(UastKind::Identifier);
+
+            // All leaf nodes should have text_range set (not text String)
+            for ident in identifiers {
+                if ident.children.is_empty() {
+                    // This is a true leaf node - should have text_range, not text
+                    assert!(
+                        ident.text_range.is_some(),
+                        "Leaf nodes should have text_range set"
+                    );
+                    assert!(
+                        ident.text.is_none(),
+                        "Leaf nodes should NOT have text String allocated"
+                    );
+                }
+            }
         }
 
         #[test]
@@ -604,6 +892,90 @@ mod tests {
             // The root should have a native type
             assert!(uast.native_type.is_some());
             assert_eq!(uast.native_type.as_deref(), Some("source_file"));
+        }
+
+        #[cfg(feature = "arena")]
+        mod arena_tests {
+            use super::*;
+            use crate::uast::arena::UastArena;
+            use crate::uast::convert::convert_tree_to_arena;
+
+            fn parse_rust(source: &str) -> tree_sitter::Tree {
+                let mut parser = TsParser::new();
+                parser.set_language(&tree_sitter_rust::LANGUAGE.into()).unwrap();
+                parser.parse(source, None).unwrap()
+            }
+
+            #[test]
+            fn test_arena_convert_basic() {
+                let source = "fn hello() {}";
+                let tree = parse_rust(source);
+                let arena = UastArena::new();
+
+                let root = convert_tree_to_arena(&arena, &tree, source, "rust");
+
+                assert_eq!(root.kind, UastKind::SourceFile);
+                assert!(root.children.len() > 0);
+                assert!(arena.allocated_bytes() > 0);
+            }
+
+            #[test]
+            fn test_arena_convert_function() {
+                let source = "fn my_func(x: i32) -> i32 { x + 1 }";
+                let tree = parse_rust(source);
+                let arena = UastArena::new();
+
+                let root = convert_tree_to_arena(&arena, &tree, source, "rust");
+
+                // Find function
+                let funcs = root.descendants_of_kind(UastKind::FunctionDeclaration);
+                assert_eq!(funcs.len(), 1);
+
+                let func = funcs[0];
+                assert_eq!(func.get_name(source), Some("my_func"));
+            }
+
+            #[test]
+            fn test_arena_convert_preserves_structure() {
+                let source = "fn a() {} fn b() {}";
+                let tree = parse_rust(source);
+                let arena = UastArena::new();
+
+                let root = convert_tree_to_arena(&arena, &tree, source, "rust");
+
+                let funcs = root.descendants_of_kind(UastKind::FunctionDeclaration);
+                assert_eq!(funcs.len(), 2);
+            }
+
+            #[test]
+            fn test_arena_to_owned_roundtrip() {
+                let source = "fn test() { let x = 42; }";
+                let tree = parse_rust(source);
+                let arena = UastArena::new();
+
+                let arena_root = convert_tree_to_arena(&arena, &tree, source, "rust");
+                let owned_root = arena_root.to_owned(source);
+
+                // The owned version should have the same structure
+                assert_eq!(arena_root.kind, owned_root.kind);
+                assert_eq!(arena_root.children.len(), owned_root.children.len());
+            }
+
+            #[test]
+            fn test_arena_memory_efficiency() {
+                let source = "fn a() {} fn b() {} fn c() {} fn d() {} fn e() {}";
+                let tree = parse_rust(source);
+                let arena = UastArena::new();
+
+                let _root = convert_tree_to_arena(&arena, &tree, source, "rust");
+
+                // Arena should have allocated memory
+                let bytes = arena.allocated_bytes();
+                assert!(bytes > 0);
+
+                // Verify we can report memory usage
+                println!("Arena allocated {} bytes for {} chars of source", bytes, source.len());
+            }
         }
     }
 }

@@ -186,25 +186,25 @@ cargo build --release
 
 # Copy the native library
 # Windows:
-copy target\release\uast_core.dll ..\..\..\src\UAST.Native\runtimes\win-x64\native\
+copy target\release\uast_core.dll ..\..\..\src\UAST.Net\runtimes\win-x64\native\
 
 # Linux:
-cp target/release/libuast_core.so ../../src/UAST.Native/runtimes/linux-x64/native/
+cp target/release/libuast_core.so ../../src/UAST.Net/runtimes/linux-x64/native/
 
 # macOS:
-cp target/release/libuast_core.dylib ../../src/UAST.Native/runtimes/osx-x64/native/
+cp target/release/libuast_core.dylib ../../src/UAST.Net/runtimes/osx-x64/native/
 ```
 
 ### Build .NET Project
 
 ```bash
-cd UAST-Grep/src/UAST.Native
+cd UAST-Grep/src/UAST.Net
 
 # Build
 dotnet build -c Release
 
 # Run tests
-dotnet test ../UAST.Native.Tests -c Release
+dotnet test ../../tests/UAST.Net.Tests -c Release
 
 # Create NuGet package
 dotnet pack -c Release -o ../../artifacts
@@ -299,7 +299,7 @@ DllNotFoundException: Unable to load DLL 'uast_core'
 Ensure the native library is in the correct location:
 ```
 UAST-Grep/
-└── src/UAST.Native/
+└── src/UAST.Net/
     └── runtimes/
         ├── win-x64/native/uast_core.dll
         ├── linux-x64/native/libuast_core.so

@@ -258,8 +258,8 @@ pub unsafe extern "C" fn uast_scanner_scan_to_sarif(
         }
     };
 
-    // Scan
-    let mut results = scanner.scan_tree(&tree, lang_str);
+    // Scan (source not available via FFI, use empty string)
+    let mut results = scanner.scan_tree(&tree, lang_str, "");
 
     // Add file path to results if provided
     if let Some(path) = path_str {

@@ -65,8 +65,8 @@ pub fn execute(args: ParseArgs, quiet: bool, verbose: bool) -> Result<(), Box<dy
         .map_err(|e: String| e)?;
 
     match format {
-        OutputFormat::Json => {
-            // Use the UAST JSON mapper
+        OutputFormat::JsonStream | OutputFormat::JsonArray | OutputFormat::JsonPretty => {
+            // Use the UAST JSON mapper (all JSON variants produce the same output for parse)
             let json = parse_to_uast_json(&language, &source, Some(&args.file))?;
             println!("{}", json);
         }

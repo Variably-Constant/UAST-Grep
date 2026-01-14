@@ -32,7 +32,7 @@ uast-grep run -p FunctionDeclaration -l javascript ./src
 |---------|-------------|
 | **71 Languages** | 37 built-in + 34 on-demand WASM grammars |
 | **Cross-Language Patterns** | Write once, search any language with UAST patterns |
-| **Security Scanning** | 3,873 built-in rules with SARIF output and auto-fix |
+| **Security Scanning** | ~3,380 built-in rules with SARIF output and auto-fix |
 | **Single Binary** | No runtime dependencies - download and run |
 | **SARIF Output** | First-class CI/CD integration |
 | **Multiple Bindings** | CLI, Python (PyO3), .NET (P/Invoke) |

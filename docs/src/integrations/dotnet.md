@@ -7,7 +7,7 @@ The .NET API provides low-level P/Invoke bindings to the Rust core library.
 ### From NuGet
 
 ```bash
-dotnet add package UAST.Native
+dotnet add package UAST.Net
 ```
 
 ### From Source
@@ -26,13 +26,13 @@ cd ../..
 # Windows: copy native/uast_core/target/release/uast_core.dll to your project
 
 # Build .NET wrapper
-dotnet build src/UAST.Native -c Release
+dotnet build src/UAST.Net -c Release
 ```
 
 ## Quick Start
 
 ```csharp
-using UAST.Native;
+using UAST.Net;
 
 // Initialize the library
 UastNative.Init();
@@ -291,7 +291,7 @@ public struct UastPoint
 ```csharp
 using System;
 using System.Runtime.InteropServices;
-using UAST.Native;
+using UAST.Net;
 
 public class UastExample
 {
@@ -363,7 +363,7 @@ def goodbye():
 ```csharp
 using System;
 using System.Runtime.InteropServices;
-using UAST.Native;
+using UAST.Net;
 
 public class QueryExample
 {

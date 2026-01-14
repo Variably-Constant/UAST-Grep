@@ -71,6 +71,22 @@ rule:
   regex: "password|secret|api_key"
 ```
 
+### Kind + Regex Combination
+
+Combine kind filtering with regex for precise matching:
+
+```yaml
+# Match Comment nodes containing TODO (case-insensitive)
+rule:
+  kind: Comment
+  regex: "(?i)\\bTODO\\b"
+
+# Match string literals containing hardcoded paths
+rule:
+  kind: string_literal
+  regex: "([A-Z]:|/home|/root)[/\\\\]"
+```
+
 ## Composite Rules
 
 ### Any (OR)
@@ -114,48 +130,121 @@ rule:
 
 ## Relational Rules
 
-### Has
+### Has / NotHas
 
-Match if node contains a child matching the rule:
+Match if node contains (or doesn't contain) a descendant matching the rule:
 
 ```yaml
+# Function with a return statement
 rule:
   kind: function_definition
   has:
     pattern: "return §VALUE"
+
+# Empty if block (no Statement child)
+rule:
+  kind: IfStatement
+  notHas:
+    kind: Statement
 ```
 
-### Inside
+#### Nested Has (Deep Matching)
 
-Match if node is inside a matching parent:
+Match nodes with specific nesting depth. This is powerful for detecting:
+- Deep nesting (4+ nested ifs)
+- Long condition chains (6+ else-if branches)
+- Triple nested loops
 
 ```yaml
+# Detect 4+ levels of nested if statements
+rule:
+  kind: IfStatement
+  has:
+    kind: IfStatement
+    has:
+      kind: IfStatement
+      has:
+        kind: IfStatement
+```
+
+```yaml
+# Detect long if/else-if chains (6+ branches)
+rule:
+  kind: IfStatement
+  has:
+    kind: ElseIfClause
+    has:
+      kind: ElseIfClause
+      has:
+        kind: ElseIfClause
+        has:
+          kind: ElseIfClause
+          has:
+            kind: ElseIfClause
+```
+
+### Inside / NotInside
+
+Match if node is (or isn't) inside a matching ancestor:
+
+```yaml
+# Match only inside a specific context
 rule:
   pattern: "§A == §A"
   inside:
     kind: if_statement
+
+# Skip matches in test methods
+rule:
+  kind: Comment
+  regex: "(?i)\\bTODO\\b"
+  notInside:
+    kind: TestMethod
 ```
 
-### Follows
+### Follows / Precedes
 
-Match if node follows a matching sibling:
+Match based on sibling relationships:
 
 ```yaml
 rule:
   pattern: "print(§MSG)"
   follows:
     pattern: "try:"
-```
+    immediate: true  # Must be immediately after
 
-### Precedes
-
-Match if node precedes a matching sibling:
-
-```yaml
 rule:
   pattern: "§VAR = §VALUE"
   precedes:
     pattern: "del §VAR"
+```
+
+### Relation Options
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `stop_by` | `end` (default), `neighbor` | `end` searches all descendants/ancestors, `neighbor` only checks immediate children/parent |
+| `immediate` | `true`, `false` | For precedes/follows: require immediate siblings |
+
+**Tip**: Use `stop_by: neighbor` when detecting empty blocks to avoid false positives from nested structures.
+
+```yaml
+# Only check immediate parent
+inside:
+  kind: TryStatement
+  stop_by: neighbor
+
+# Only check immediate children (for empty block detection)
+has:
+  kind: Block
+  stop_by: neighbor
+  notHas:
+    kind: Statement
+
+# Must be immediately before the next sibling
+precedes:
+  kind: ElseClause
+  immediate: true
 ```
 
 ## Constraints
@@ -177,9 +266,21 @@ constraints:
 
 | Type | Description | Example |
 |------|-------------|---------|
-| `kind` | AST node type | `kind: string` |
-| `regex` | Text pattern | `regex: "^test_"` |
-| `not` | Negate constraint | `not: { kind: string }` |
+| `kind` | Required AST node type | `kind: string` |
+| `regex` | Required text pattern | `regex: "^test_"` |
+| `pattern` | Required sub-pattern | `pattern: "§A.§B"` |
+| `notKind` | Prohibited AST node type | `notKind: string_literal` |
+| `notRegex` | Prohibited text pattern | `notRegex: "^_"` |
+
+```yaml
+constraints:
+  VAR:
+    kind: "identifier"        # Must be identifier
+    regex: "^(test_|spec_)"   # Must match regex
+    notRegex: "^_internal"    # Must NOT match this
+  VALUE:
+    notKind: "string_literal" # Must NOT be a string
+```
 
 ## Examples Section
 
@@ -310,3 +411,13 @@ uast-grep parse test-file.py -l python
 5. **Use tags** - Enable filtering and categorization
 6. **Start simple** - Add complexity only when needed
 7. **Document edge cases** - Note in `note` field
+8. **Use `stop_by: neighbor` for empty-* rules** - When detecting empty blocks, use `stop_by: neighbor` to only check immediate children:
+   ```yaml
+   rule:
+     kind: IfStatement
+     has:
+       kind: Block
+       stop_by: neighbor  # Only check direct children
+       notHas:
+         kind: ExpressionStatement
+   ```

@@ -3,7 +3,7 @@
 //! This module implements the core pattern matching algorithm that traverses
 //! UAST trees and finds nodes matching patterns.
 
-use super::constraints::Constraint;
+use super::constraints::{Constraint, MatchContext};
 use super::pattern::{LiteralPattern, MetavarQuantifier, Pattern, PatternNode};
 use crate::uast::mappings::get_native_types_for_uast;
 use crate::uast::schema::{SourceSpan, UastKind, UastNode};
@@ -86,10 +86,11 @@ impl PatternMatcher {
     /// Try to match a pattern against a node.
     ///
     /// Returns `Some(MatchResult)` if the pattern matches, `None` otherwise.
-    pub fn try_match(&self, node: &UastNode, pattern: &Pattern) -> Option<MatchResult> {
+    /// The `source` parameter is used for lazy text extraction from byte ranges.
+    pub fn try_match(&self, node: &UastNode, pattern: &Pattern, source: &str) -> Option<MatchResult> {
         let mut env = HashMap::new();
 
-        if self.try_match_node(node, &pattern.root, &mut env) {
+        if self.try_match_node(node, &pattern.root, &mut env, source) {
             Some(MatchResult {
                 node: node.clone(),
                 captures: env,
@@ -101,31 +102,81 @@ impl PatternMatcher {
     }
 
     /// Find all matches in a tree (depth-first traversal).
-    pub fn find_all(&self, root: &UastNode, pattern: &Pattern) -> Vec<MatchResult> {
+    /// The `source` parameter is used for lazy text extraction from byte ranges.
+    pub fn find_all(&self, root: &UastNode, pattern: &Pattern, source: &str) -> Vec<MatchResult> {
         let mut results = Vec::new();
-        self.visit(root, pattern, &mut results);
+        self.visit(root, pattern, &mut results, source);
+        results
+    }
+
+    /// Find all matches in a tree with context tracking (depth-first traversal).
+    ///
+    /// This variant builds `MatchContext` during traversal, enabling constraints
+    /// like `inside`, `not_inside`, `precedes`, and `follows` to work properly.
+    ///
+    /// Returns a vector of (MatchResult, MatchContext) tuples.
+    pub fn find_all_with_context<'a>(
+        &self,
+        root: &'a UastNode,
+        pattern: &Pattern,
+        source: &str,
+    ) -> Vec<(MatchResult, MatchContext<'a>)> {
+        let mut results = Vec::new();
+        let mut ancestors = Vec::new();
+        self.visit_with_context(root, pattern, &mut results, source, &mut ancestors, 0);
         results
     }
 
     /// Visit all nodes collecting matches.
-    fn visit(&self, node: &UastNode, pattern: &Pattern, results: &mut Vec<MatchResult>) {
+    fn visit(&self, node: &UastNode, pattern: &Pattern, results: &mut Vec<MatchResult>, source: &str) {
         // Try to match at this node
-        if let Some(result) = self.try_match(node, pattern) {
+        if let Some(result) = self.try_match(node, pattern, source) {
             results.push(result);
         }
 
         // Recurse to children
         for child in &node.children {
-            self.visit(child, pattern, results);
+            self.visit(child, pattern, results, source);
         }
     }
 
+    /// Visit all nodes collecting matches with context tracking.
+    fn visit_with_context<'a>(
+        &self,
+        node: &'a UastNode,
+        pattern: &Pattern,
+        results: &mut Vec<(MatchResult, MatchContext<'a>)>,
+        source: &str,
+        ancestors: &mut Vec<&'a UastNode>,
+        sibling_index: usize,
+    ) {
+        // Build context for this node
+        let context = MatchContext::new(ancestors.clone(), sibling_index);
+
+        // Try to match at this node
+        if let Some(result) = self.try_match(node, pattern, source) {
+            results.push((result, context));
+        }
+
+        // Push current node as ancestor for children
+        ancestors.push(node);
+
+        // Recurse to children with their sibling indices
+        for (idx, child) in node.children.iter().enumerate() {
+            self.visit_with_context(child, pattern, results, source, ancestors, idx);
+        }
+
+        ancestors.pop();
+    }
+
     /// Core matching logic for a node against a pattern.
+    /// The `source` parameter is used for lazy text extraction from byte ranges.
     pub fn try_match_node(
         &self,
         node: &UastNode,
         pattern: &PatternNode,
         env: &mut HashMap<String, CapturedValue>,
+        source: &str,
     ) -> bool {
         match pattern {
             PatternNode::Kind(expected_kind) => {
@@ -138,7 +189,7 @@ impl PatternMatcher {
                 is_anonymous,
             } => {
                 // Check constraints for this metavar
-                if !self.check_constraints(name, node) {
+                if !self.check_constraints(name, node, source) {
                     return false;
                 }
 
@@ -150,7 +201,7 @@ impl PatternMatcher {
                 // Check for existing capture with same name
                 if let Some(existing) = env.get(name) {
                     // Must match the same structure
-                    return self.nodes_equal(node, existing.as_single().unwrap());
+                    return self.nodes_equal(node, existing.as_single().unwrap(), source);
                 }
 
                 // Capture the node
@@ -183,13 +234,13 @@ impl PatternMatcher {
             }
 
             PatternNode::Sequence(patterns) => {
-                self.try_match_children(&node.children, patterns, 0, 0, env)
+                self.try_match_children(&node.children, patterns, 0, 0, env, source)
             }
 
             PatternNode::AnyOf(alternatives) => {
                 for alt in alternatives {
                     let mut temp_env = env.clone();
-                    if self.try_match_node(node, alt, &mut temp_env) {
+                    if self.try_match_node(node, alt, &mut temp_env, source) {
                         // Merge captures
                         env.extend(temp_env);
                         return true;
@@ -200,7 +251,7 @@ impl PatternMatcher {
 
             PatternNode::AllOf(patterns) => {
                 for p in patterns {
-                    if !self.try_match_node(node, p, env) {
+                    if !self.try_match_node(node, p, env, source) {
                         return false;
                     }
                 }
@@ -209,7 +260,7 @@ impl PatternMatcher {
 
             PatternNode::Not(inner) => {
                 let mut temp_env = HashMap::new();
-                !self.try_match_node(node, inner, &mut temp_env)
+                !self.try_match_node(node, inner, &mut temp_env, source)
             }
 
             PatternNode::Structural {
@@ -226,14 +277,14 @@ impl PatternMatcher {
 
                 // Check properties
                 for (prop_name, prop_pattern) in properties {
-                    if !self.check_property(node, prop_name, prop_pattern, env) {
+                    if !self.check_property(node, prop_name, prop_pattern, env, source) {
                         return false;
                     }
                 }
 
                 // Check children
                 if !children.is_empty() {
-                    if !self.try_match_children(&node.children, children, 0, 0, env) {
+                    if !self.try_match_children(&node.children, children, 0, 0, env, source) {
                         return false;
                     }
                 }
@@ -241,7 +292,7 @@ impl PatternMatcher {
                 true
             }
 
-            PatternNode::Literal(lit) => self.match_literal(node, lit),
+            PatternNode::Literal(lit) => self.match_literal(node, lit, source),
         }
     }
 
@@ -253,6 +304,7 @@ impl PatternMatcher {
         node_idx: usize,
         pattern_idx: usize,
         env: &mut HashMap<String, CapturedValue>,
+        source: &str,
     ) -> bool {
         // Base case: all patterns consumed
         if pattern_idx >= patterns.len() {
@@ -306,6 +358,7 @@ impl PatternMatcher {
                         node_idx + capture_count,
                         pattern_idx + 1,
                         &mut temp_env,
+                        source,
                     ) {
                         env.extend(temp_env);
                         return true;
@@ -321,18 +374,21 @@ impl PatternMatcher {
             return false;
         }
 
-        if !self.try_match_node(&nodes[node_idx], pattern, env) {
+        if !self.try_match_node(&nodes[node_idx], pattern, env, source) {
             return false;
         }
 
-        self.try_match_children(nodes, patterns, node_idx + 1, pattern_idx + 1, env)
+        self.try_match_children(nodes, patterns, node_idx + 1, pattern_idx + 1, env, source)
     }
 
     /// Check constraints for a metavariable.
-    fn check_constraints(&self, var_name: &str, node: &UastNode) -> bool {
+    fn check_constraints(&self, var_name: &str, node: &UastNode, source: &str) -> bool {
         if let Some(constraints) = self.constraints.get(var_name) {
+            // Create empty context for constraint evaluation
+            // (ancestor/sibling constraints require context from caller)
+            let empty_context = MatchContext::new(vec![], 0);
             for constraint in constraints {
-                if !constraint.evaluate(node, self) {
+                if !constraint.evaluate(node, self, source, &empty_context) {
                     return false;
                 }
             }
@@ -347,24 +403,25 @@ impl PatternMatcher {
         prop_name: &str,
         pattern: &PatternNode,
         env: &mut HashMap<String, CapturedValue>,
+        source: &str,
     ) -> bool {
         // Check standard properties
         match prop_name {
             "name" | "Name" => {
-                if let Some(name) = &node.name {
+                if let Some(name) = node.get_name(source) {
                     match pattern {
                         PatternNode::Literal(LiteralPattern::String(expected)) => {
                             return name == expected;
                         }
                         PatternNode::Metavar { name: var_name, is_anonymous, .. } => {
                             if !*is_anonymous {
-                                // Capture as string - create a synthetic node
+                                // Capture as string - create a synthetic node with the name as text
                                 let synthetic = UastNode::new(
                                     UastKind::Identifier,
                                     &node.language,
                                     node.span,
                                 )
-                                .with_text(name.clone());
+                                .with_text(name.to_string());
                                 env.insert(var_name.clone(), CapturedValue::Single(synthetic));
                             }
                             return true;
@@ -383,7 +440,7 @@ impl PatternMatcher {
                 )
             }
             "text" | "Text" => {
-                if let Some(text) = &node.text {
+                if let Some(text) = node.get_text(source) {
                     match pattern {
                         PatternNode::Literal(LiteralPattern::String(expected)) => {
                             return text == expected;
@@ -418,54 +475,58 @@ impl PatternMatcher {
     }
 
     /// Match a literal pattern.
-    fn match_literal(&self, node: &UastNode, lit: &LiteralPattern) -> bool {
+    fn match_literal(&self, node: &UastNode, lit: &LiteralPattern, source: &str) -> bool {
         match lit {
             LiteralPattern::String(expected) => {
-                node.text.as_ref().map_or(false, |t| t == expected)
-                    || node.name.as_ref().map_or(false, |n| n == expected)
+                node.get_text(source).map_or(false, |t| t == expected)
+                    || node.get_name(source).map_or(false, |n| n == expected)
             }
             LiteralPattern::Integer(expected) => {
-                if let Some(text) = &node.text {
+                if let Some(text) = node.get_text(source) {
                     text.parse::<i64>().map_or(false, |n| n == *expected)
                 } else {
                     false
                 }
             }
             LiteralPattern::Float(expected) => {
-                if let Some(text) = &node.text {
+                if let Some(text) = node.get_text(source) {
                     text.parse::<f64>().map_or(false, |f| (f - expected).abs() < f64::EPSILON)
                 } else {
                     false
                 }
             }
             LiteralPattern::Boolean(expected) => {
-                if let Some(text) = &node.text {
+                if let Some(text) = node.get_text(source) {
                     text.eq_ignore_ascii_case(if *expected { "true" } else { "false" })
                 } else {
                     false
                 }
             }
             LiteralPattern::Null => {
-                node.text
-                    .as_ref()
+                node.get_text(source)
                     .map_or(false, |t| t.eq_ignore_ascii_case("null") || t.eq_ignore_ascii_case("nil"))
             }
         }
     }
 
     /// Check if two nodes are structurally equal.
-    pub fn nodes_equal(&self, a: &UastNode, b: &UastNode) -> bool {
+    /// The `source` parameter is used for lazy text extraction from byte ranges.
+    pub fn nodes_equal(&self, a: &UastNode, b: &UastNode, source: &str) -> bool {
         if a.kind != b.kind {
             return false;
         }
 
-        // Compare text if available
-        if a.text.is_some() && b.text.is_some() && a.text != b.text {
+        // Compare text if available using lazy extraction
+        let a_text = a.get_text(source);
+        let b_text = b.get_text(source);
+        if a_text.is_some() && b_text.is_some() && a_text != b_text {
             return false;
         }
 
-        // Compare name if available
-        if a.name.is_some() && b.name.is_some() && a.name != b.name {
+        // Compare name if available using lazy extraction
+        let a_name = a.get_name(source);
+        let b_name = b.get_name(source);
+        if a_name.is_some() && b_name.is_some() && a_name != b_name {
             return false;
         }
 
@@ -475,7 +536,7 @@ impl PatternMatcher {
         }
 
         for (ca, cb) in a.children.iter().zip(b.children.iter()) {
-            if !self.nodes_equal(ca, cb) {
+            if !self.nodes_equal(ca, cb, source) {
                 return false;
             }
         }
@@ -484,19 +545,21 @@ impl PatternMatcher {
     }
 
     /// Check if a node has a descendant matching a pattern.
+    /// The `source` parameter is used for lazy text extraction from byte ranges.
     pub fn has_matching_descendant(
         &self,
         node: &UastNode,
         pattern: &PatternNode,
         stop_at_neighbor: bool,
+        source: &str,
     ) -> bool {
         for child in &node.children {
             let mut env = HashMap::new();
-            if self.try_match_node(child, pattern, &mut env) {
+            if self.try_match_node(child, pattern, &mut env, source) {
                 return true;
             }
 
-            if !stop_at_neighbor && self.has_matching_descendant(child, pattern, false) {
+            if !stop_at_neighbor && self.has_matching_descendant(child, pattern, false, source) {
                 return true;
             }
         }
@@ -507,6 +570,9 @@ impl PatternMatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Empty source for tests that don't use text/name extraction
+    const EMPTY_SOURCE: &str = "";
 
     fn make_node(kind: UastKind, name: Option<&str>) -> UastNode {
         let mut node = UastNode::new(kind, "rust", SourceSpan::empty());
@@ -523,7 +589,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
     }
 
     #[test]
@@ -533,7 +599,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(!matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(!matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
     }
 
     #[test]
@@ -543,7 +609,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
     }
 
     #[test]
@@ -553,7 +619,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
         assert!(env.contains_key("FUNC"));
     }
 
@@ -564,7 +630,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
         assert!(!env.contains_key("_")); // Anonymous should not be captured
     }
 
@@ -578,7 +644,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
     }
 
     #[test]
@@ -591,7 +657,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
     }
 
     #[test]
@@ -601,7 +667,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_node(&node, &pattern, &mut env));
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, EMPTY_SOURCE));
     }
 
     #[test]
@@ -622,7 +688,7 @@ mod tests {
         );
 
         let matcher = PatternMatcher::new();
-        let matches = matcher.find_all(&root, &pattern);
+        let matches = matcher.find_all(&root, &pattern, EMPTY_SOURCE);
 
         assert_eq!(matches.len(), 2);
     }
@@ -657,7 +723,7 @@ mod tests {
         let matcher = PatternMatcher::new();
         let mut env = HashMap::new();
 
-        assert!(matcher.try_match_children(&root.children, &patterns, 0, 0, &mut env));
+        assert!(matcher.try_match_children(&root.children, &patterns, 0, 0, &mut env, EMPTY_SOURCE));
         assert!(env.contains_key("ARGS"));
 
         if let Some(CapturedValue::Multiple(nodes)) = env.get("ARGS") {
@@ -665,5 +731,37 @@ mod tests {
         } else {
             panic!("Expected Multiple capture");
         }
+    }
+
+    #[test]
+    fn test_lazy_text_extraction_in_matching() {
+        // Test matching with lazy text extraction
+        let source = "fn my_function() { }";
+        let node = UastNode::new(UastKind::FunctionDeclaration, "rust", SourceSpan::empty())
+            .with_text_range(0, 20); // Full source
+
+        let pattern = PatternNode::Literal(LiteralPattern::String("fn my_function() { }".to_string()));
+        let matcher = PatternMatcher::new();
+        let mut env = HashMap::new();
+
+        assert!(matcher.try_match_node(&node, &pattern, &mut env, source));
+    }
+
+    #[test]
+    fn test_nodes_equal_with_lazy_extraction() {
+        let source = "test_value";
+        let node_a = UastNode::new(UastKind::Identifier, "rust", SourceSpan::empty())
+            .with_text_range(0, 10);
+        let node_b = UastNode::new(UastKind::Identifier, "rust", SourceSpan::empty())
+            .with_text_range(0, 10);
+        let node_c = UastNode::new(UastKind::Identifier, "rust", SourceSpan::empty())
+            .with_text("other_value");
+
+        let matcher = PatternMatcher::new();
+
+        // Same text ranges should be equal
+        assert!(matcher.nodes_equal(&node_a, &node_b, source));
+        // Different text should not be equal
+        assert!(!matcher.nodes_equal(&node_a, &node_c, source));
     }
 }

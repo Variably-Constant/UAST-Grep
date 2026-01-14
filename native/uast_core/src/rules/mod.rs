@@ -57,10 +57,17 @@
 //!                         └─────────────────┘
 //! ```
 
+mod builtin;
 mod fix;
 mod parser;
 mod rule;
 mod scanner;
+
+// Re-export built-in rules
+pub use builtin::{
+    is_builtin_ruleset_name, list_builtin_rulesets, load_builtin_rules, BuiltinRuleset,
+    BUILTIN_PERFORMANCE_YAML, BUILTIN_QUALITY_YAML, BUILTIN_SECURITY_YAML,
+};
 
 // Re-export main types
 pub use fix::{apply_fix, apply_fixes, interpolate_fix, Fix, FixResult};
@@ -81,6 +88,9 @@ pub use scanner::{CompiledRule, ScanError, ScanResult, Scanner};
 mod integration_tests {
     use super::*;
     use crate::uast::schema::{SourceSpan, UastKind, UastNode};
+
+    // Empty source for tests that don't use lazy text extraction
+    const EMPTY_SOURCE: &str = "";
 
     fn make_test_tree() -> UastNode {
         // Create a simple AST: SourceFile -> FunctionDeclaration -> Block -> CallExpression
@@ -127,7 +137,7 @@ rule:
 
         // Scan
         let tree = make_test_tree();
-        let results = scanner.scan_tree(&tree, "rust");
+        let results = scanner.scan_tree(&tree, "rust", EMPTY_SOURCE);
 
         // Should find 1 function and 1 call
         assert_eq!(results.len(), 2);
@@ -156,7 +166,7 @@ fix: "writeln!"
         scanner.add_rules(rules).unwrap();
 
         let tree = make_test_tree();
-        let results = scanner.scan_tree(&tree, "rust");
+        let results = scanner.scan_tree(&tree, "rust", EMPTY_SOURCE);
 
         assert!(!results.is_empty());
         let result = &results[0];
@@ -182,7 +192,7 @@ rule:
         scanner.add_rules(rules).unwrap();
 
         let tree = make_test_tree();
-        let results = scanner.scan_tree(&tree, "rust");
+        let results = scanner.scan_tree(&tree, "rust", EMPTY_SOURCE);
 
         // Should find the function declaration
         assert!(!results.is_empty());
@@ -204,7 +214,7 @@ rule:
         scanner.add_rules(rules).unwrap();
 
         let tree = make_test_tree(); // Rust tree
-        let results = scanner.scan_tree(&tree, "rust");
+        let results = scanner.scan_tree(&tree, "rust", EMPTY_SOURCE);
 
         // Python rule should not match Rust code
         assert!(results.is_empty());
@@ -226,7 +236,7 @@ rule:
         scanner.add_rules(rules).unwrap();
 
         let tree = make_test_tree();
-        let results = scanner.scan_tree(&tree, "rust");
+        let results = scanner.scan_tree(&tree, "rust", EMPTY_SOURCE);
 
         // Universal rule should match any language
         assert!(!results.is_empty());

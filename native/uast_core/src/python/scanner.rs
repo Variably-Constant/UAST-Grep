@@ -132,7 +132,7 @@ impl PyRuleScanner {
         // Scan
         let results = self
             .scanner
-            .scan_source(&uast_root, language, file_path.map(Path::new));
+            .scan_source(&uast_root, language, file_path.map(Path::new), source);
 
         // Convert to Python results
         Ok(results.into_iter().map(PyScanResult::from).collect())
@@ -183,7 +183,7 @@ impl PyRuleScanner {
         // Scan
         let results = self
             .scanner
-            .scan_source(&uast_root, language, file_path.map(Path::new));
+            .scan_source(&uast_root, language, file_path.map(Path::new), source);
 
         // Convert to SARIF
         let writer = SarifWriter::new("UAST-Grep", env!("CARGO_PKG_VERSION"));

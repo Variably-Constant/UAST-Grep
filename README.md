@@ -122,7 +122,7 @@ maturin develop --features python
 ```bash
 # From source
 cd UAST-Grep
-dotnet build src/UAST.Core -c Release
+dotnet build src/UAST.Net -c Release
 ```
 
 ---
@@ -234,10 +234,10 @@ url: "https://cwe.mitre.org/data/definitions/89.html"
 
 | Pattern | Meaning |
 |---------|---------|
-| `$NAME` | Capture single node |
-| `$$NAME` | One or more nodes |
-| `$$$NAME` | Zero or more nodes |
-| `$_` | Anonymous capture |
+| `§NAME` | Capture single node |
+| `§§NAME` | One or more nodes |
+| `§§§NAME` | Zero or more nodes |
+| `§_` | Anonymous capture |
 
 See [Rule Syntax Documentation](https://variably-constant.github.io/UAST-Grep/rules/syntax.html) for complete reference.
 
@@ -302,9 +302,7 @@ UAST-Grep/
 │   │   └── python.rs          # PyO3 bindings
 │   └── grammars/             # 37 built-in grammars
 ├── src/
-│   ├── UAST.Core/            # .NET rule engine with embedded rules
-│   ├── UAST.Cli/             # .NET CLI (alternative to Rust)
-│   └── UAST.Native/          # .NET P/Invoke bindings
+│   └── UAST.Net/             # .NET wrapper (P/Invoke bindings)
 ├── python/                   # Python wrapper
 ├── rules/                    # Sample/custom YAML rules
 └── docs/                     # mdBook documentation
@@ -372,7 +370,7 @@ cd native/uast_core && cargo build --release
 # Run tests
 cargo test                              # Rust
 cd python && pytest                     # Python
-dotnet test tests/UAST.Core.Tests       # .NET
+dotnet test tests/UAST.Net.Tests        # .NET
 ```
 
 ---

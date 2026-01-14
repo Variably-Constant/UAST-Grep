@@ -51,6 +51,9 @@ pub enum UastKind {
     RecordDeclaration,
     DelegateDeclaration,
     VariableDeclaration,
+    LetDeclaration,
+    ConstDeclaration,
+    StaticDeclaration,
     FieldDeclaration,
     PropertyDeclaration,
     EventDeclaration,
@@ -157,7 +160,9 @@ pub enum UastKind {
 
     // Collections
     ArrayExpression,
+    ListExpression,
     ObjectExpression,
+    DictionaryExpression,
     PropertyNode,
     TupleExpression,
     RangeExpression,
@@ -326,6 +331,9 @@ impl UastKind {
             Self::RecordDeclaration => "RecordDeclaration",
             Self::DelegateDeclaration => "DelegateDeclaration",
             Self::VariableDeclaration => "VariableDeclaration",
+            Self::LetDeclaration => "LetDeclaration",
+            Self::ConstDeclaration => "ConstDeclaration",
+            Self::StaticDeclaration => "StaticDeclaration",
             Self::FieldDeclaration => "FieldDeclaration",
             Self::PropertyDeclaration => "PropertyDeclaration",
             Self::EventDeclaration => "EventDeclaration",
@@ -407,7 +415,9 @@ impl UastKind {
             Self::TypeofExpression => "TypeofExpression",
             Self::SizeofExpression => "SizeofExpression",
             Self::ArrayExpression => "ArrayExpression",
+            Self::ListExpression => "ListExpression",
             Self::ObjectExpression => "ObjectExpression",
+            Self::DictionaryExpression => "DictionaryExpression",
             Self::PropertyNode => "PropertyNode",
             Self::TupleExpression => "TupleExpression",
             Self::RangeExpression => "RangeExpression",
@@ -541,6 +551,9 @@ impl UastKind {
             "RecordDeclaration" => Self::RecordDeclaration,
             "DelegateDeclaration" => Self::DelegateDeclaration,
             "VariableDeclaration" => Self::VariableDeclaration,
+            "LetDeclaration" => Self::LetDeclaration,
+            "ConstDeclaration" => Self::ConstDeclaration,
+            "StaticDeclaration" => Self::StaticDeclaration,
             "FieldDeclaration" => Self::FieldDeclaration,
             "PropertyDeclaration" => Self::PropertyDeclaration,
             "EventDeclaration" => Self::EventDeclaration,
@@ -622,7 +635,9 @@ impl UastKind {
             "TypeofExpression" => Self::TypeofExpression,
             "SizeofExpression" => Self::SizeofExpression,
             "ArrayExpression" => Self::ArrayExpression,
+            "ListExpression" => Self::ListExpression,
             "ObjectExpression" => Self::ObjectExpression,
+            "DictionaryExpression" => Self::DictionaryExpression,
             "PropertyNode" => Self::PropertyNode,
             "TupleExpression" => Self::TupleExpression,
             "RangeExpression" => Self::RangeExpression,
@@ -868,6 +883,16 @@ pub struct UastNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
+    /// Byte range for text (start, end) - used for lazy text extraction.
+    /// When set, get_text() can extract the actual text from the source.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_range: Option<(u32, u32)>,
+
+    /// Byte range for name (start, end) - used for lazy name extraction.
+    /// When set, get_name() can extract the actual name from the source.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name_range: Option<(u32, u32)>,
+
     /// Child nodes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<UastNode>,
@@ -893,7 +918,9 @@ impl UastNode {
             language: language.into(),
             span,
             text: None,
+            text_range: None,
             name: None,
+            name_range: None,
             children: Vec::new(),
             properties: HashMap::new(),
             native_type: None,
@@ -908,7 +935,9 @@ impl UastNode {
             language: language.into(),
             span,
             text: None,
+            text_range: None,
             name: None,
+            name_range: None,
             children: Vec::new(),
             properties: HashMap::new(),
             native_type: Some(native_type.to_string()),
@@ -958,6 +987,62 @@ impl UastNode {
         self
     }
 
+    /// Get node text lazily from source using byte range.
+    /// Returns the text directly if stored, or extracts from source using range.
+    pub fn get_text<'a>(&'a self, source: &'a str) -> Option<&'a str> {
+        // First try direct text (for backward compatibility)
+        if self.text.is_some() {
+            return self.text.as_deref();
+        }
+        // Then try lazy extraction from text_range
+        if let Some((start, end)) = self.text_range {
+            let start = start as usize;
+            let end = end as usize;
+            if end <= source.len() && start <= end {
+                return Some(&source[start..end]);
+            }
+        }
+        // Finally try extraction from span offsets
+        let start = self.span.start_offset as usize;
+        let end = self.span.end_offset as usize;
+        if end <= source.len() && start <= end {
+            Some(&source[start..end])
+        } else {
+            None
+        }
+    }
+
+    /// Get node name lazily from source using byte range.
+    /// Returns the name directly if stored, or extracts from source using range.
+    pub fn get_name<'a>(&'a self, source: &'a str) -> Option<&'a str> {
+        // First try direct name (for backward compatibility)
+        if self.name.is_some() {
+            return self.name.as_deref();
+        }
+        // Then try lazy extraction from range
+        self.name_range.and_then(|(start, end)| {
+            let start = start as usize;
+            let end = end as usize;
+            if end <= source.len() && start <= end {
+                Some(&source[start..end])
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Set text via byte range (memory efficient).
+    pub fn with_text_range(mut self, start: u32, end: u32) -> Self {
+        self.text_range = Some((start, end));
+        self
+    }
+
+    /// Set name via byte range (memory efficient).
+    pub fn with_name_range(mut self, start: u32, end: u32) -> Self {
+        self.name_range = Some((start, end));
+        self
+    }
+
     /// Check if this is a declaration node.
     pub fn is_declaration(&self) -> bool {
         matches!(
@@ -973,6 +1058,9 @@ impl UastNode {
                 | UastKind::TraitDeclaration
                 | UastKind::EnumDeclaration
                 | UastKind::VariableDeclaration
+                | UastKind::LetDeclaration
+                | UastKind::ConstDeclaration
+                | UastKind::StaticDeclaration
                 | UastKind::FieldDeclaration
                 | UastKind::PropertyDeclaration
                 | UastKind::NamespaceDeclaration
@@ -1002,7 +1090,9 @@ impl UastNode {
                 | UastKind::NewExpression
                 | UastKind::LambdaExpression
                 | UastKind::ArrayExpression
+                | UastKind::ListExpression
                 | UastKind::ObjectExpression
+                | UastKind::DictionaryExpression
         )
     }
 
@@ -1273,5 +1363,48 @@ mod tests {
         let op = BinaryOperator::Add;
         let json = serde_json::to_string(&op).unwrap();
         assert_eq!(json, "\"add\"");
+    }
+
+    #[test]
+    fn test_lazy_text_extraction() {
+        let source = "fn hello() { }";
+        let span = SourceSpan::new(1, 0, 1, 14, 0, 14);
+        let node = UastNode::new(UastKind::FunctionDeclaration, "rust", span)
+            .with_text_range(3, 8); // "hello"
+
+        assert_eq!(node.get_text(source), Some("hello"));
+        assert!(node.text.is_none()); // No String allocation
+    }
+
+    #[test]
+    fn test_lazy_name_extraction() {
+        let source = "fn my_func() { }";
+        let span = SourceSpan::new(1, 0, 1, 16, 0, 16);
+        let node = UastNode::new(UastKind::FunctionDeclaration, "rust", span)
+            .with_name_range(3, 10); // "my_func"
+
+        assert_eq!(node.get_name(source), Some("my_func"));
+        assert!(node.name.is_none()); // No String allocation
+    }
+
+    #[test]
+    fn test_text_fallback_to_direct() {
+        let source = "fn test() { }";
+        let span = SourceSpan::new(1, 0, 1, 13, 0, 13);
+        let node = UastNode::new(UastKind::Identifier, "rust", span)
+            .with_text("direct_text");
+
+        // Should return direct text, not extract from source
+        assert_eq!(node.get_text(source), Some("direct_text"));
+    }
+
+    #[test]
+    fn test_text_range_out_of_bounds() {
+        let source = "short";
+        let span = SourceSpan::empty();
+        let node = UastNode::new(UastKind::Identifier, "rust", span)
+            .with_text_range(0, 100); // Beyond source length
+
+        assert_eq!(node.get_text(source), None);
     }
 }

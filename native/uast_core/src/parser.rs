@@ -220,22 +220,6 @@ impl Parser {
     pub fn reset(&mut self) {
         self.inner.reset();
     }
-
-    /// Set a timeout for parsing operations.
-    ///
-    /// If parsing takes longer than the specified duration, it will be
-    /// cancelled and `parse()` will return an error.
-    ///
-    /// # Arguments
-    ///
-    /// * `timeout_micros` - Timeout in microseconds, or 0 to disable
-    ///
-    /// Note: In tree-sitter 0.26+, this method was removed. Use cancellation
-    /// flags instead for long-running parse operations.
-    pub fn set_timeout_micros(&mut self, _timeout_micros: u64) {
-        // Timeout API was removed in tree-sitter 0.26
-        // Keeping method signature for API compatibility
-    }
 }
 
 // ============================================================================

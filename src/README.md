@@ -21,12 +21,12 @@ Command-line interface using System.CommandLine and Spectre.Console.
 - `native` - Direct tree-sitter pattern search
 - `ts-query` - Execute S-expression queries
 
-### UAST.Native
-Rust FFI bindings (P/Invoke to uast_core.dll).
-- `RustUastParser.cs` - High-level wrapper for Rust parsing
-- `NativeInterop.cs` - P/Invoke declarations
+### UAST.Net
+.NET wrapper for the Rust uast_core library (P/Invoke to uast_core.dll).
+- Uses pre-built DLL strategy for fast builds
+- Available as NuGet package
 
-### UAST.Parsers
+### UAST.Parsers (Deprecated)
 Language mappers converting tree-sitter nodes to UAST.
 - `TreeSitter/` - 70+ mappers (JavaScriptMapper, PythonMapper, etc.)
 - `PowerShell/` - Native PowerShell mapper using System.Management.Automation

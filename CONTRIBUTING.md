@@ -30,9 +30,9 @@ Open an issue with the `enhancement` label describing:
 New security, performance, or quality rules are always welcome!
 
 1. Rules go in the appropriate YAML file:
-   - `src/UAST.Core/Rules/BuiltIn/universal-security.yaml`
-   - `src/UAST.Core/Rules/BuiltIn/universal-performance.yaml`
-   - `src/UAST.Core/Rules/BuiltIn/universal-quality.yaml`
+   - `rules/universal-security.yaml`
+   - `rules/universal-performance.yaml`
+   - `rules/universal-quality.yaml`
 
 2. Follow the rule format:
    ```yaml
@@ -91,8 +91,8 @@ For new tree-sitter grammars:
 cd native/uast_core
 cargo build --release
 
-# .NET rule engine
-dotnet build src/UAST.Core -c Release
+# .NET wrapper
+dotnet build src/UAST.Net -c Release
 
 # Python bindings
 cd python
@@ -108,7 +108,7 @@ cd native/uast_core
 cargo test
 
 # .NET tests
-dotnet test tests/UAST.Core.Tests
+dotnet test tests/UAST.Net.Tests
 
 # Python tests
 cd python
@@ -149,10 +149,7 @@ UAST-Grep/
 │   │   └── sarif/          # SARIF output
 │   └── grammars/          # Built-in grammars
 ├── src/
-│   ├── UAST.Core/         # .NET rule engine
-│   │   └── Rules/BuiltIn/  # Embedded YAML rules
-│   ├── UAST.Cli/          # .NET CLI alternative
-│   └── UAST.Native/       # P/Invoke bindings
+│   └── UAST.Net/          # .NET wrapper (P/Invoke bindings)
 ├── python/               # Python wrapper
 ├── rules/                # Sample/custom rules
 └── docs/                 # mdBook documentation

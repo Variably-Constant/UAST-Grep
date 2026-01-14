@@ -1,15 +1,15 @@
 # Rules Catalog
 
-Complete index of all **3,873 rules** across security, performance, and quality categories.
+Complete index of all **~3,380 rules** across security, performance, and quality categories.
 
 ## Summary Statistics
 
 | Category | Rule Count | Coverage |
 |----------|------------|----------|
-| **Security** | 1,587 | 179 CWEs, 31 languages |
-| **Performance** | 1,334 | 31 languages |
-| **Quality** | 952 | 31 languages |
-| **Total** | **3,873** | |
+| **Security** | ~1,430 | 179 CWEs, 31 languages |
+| **Performance** | ~1,130 | 31 languages |
+| **Quality** | ~820 | 31 languages |
+| **Total** | **~3,380** | |
 
 ## Rules by Language
 
@@ -44,7 +44,7 @@ Complete index of all **3,873 rules** across security, performance, and quality 
 
 ---
 
-## Security Rules (1,587)
+## Security Rules (~1,430)
 
 ### By Vulnerability Category
 
@@ -153,7 +153,7 @@ Complete index of all **3,873 rules** across security, performance, and quality 
 
 ---
 
-## Performance Rules (1,334)
+## Performance Rules (~1,130)
 
 ### By Category
 
@@ -229,7 +229,7 @@ Complete index of all **3,873 rules** across security, performance, and quality 
 
 ---
 
-## Quality Rules (952)
+## Quality Rules (~820)
 
 ### By Category
 

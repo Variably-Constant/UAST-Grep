@@ -15,6 +15,7 @@ pub mod output;
 pub mod parse;
 pub mod run;
 pub mod scan;
+pub mod streaming;
 pub mod ts_query;
 pub mod verify;
 

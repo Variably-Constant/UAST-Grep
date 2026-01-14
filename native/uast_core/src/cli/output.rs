@@ -18,7 +18,12 @@ use crate::uast::schema::UastNode;
 pub enum OutputFormat {
     #[default]
     Text,
-    Json,
+    /// JSON streaming (JSONL) - one object per line, memory efficient (default for json)
+    JsonStream,
+    /// JSON array - buffered, can OOM on large scans
+    JsonArray,
+    /// JSON pretty-printed array - buffered, can OOM on large scans
+    JsonPretty,
     Sarif,
     Tree,
 }
@@ -27,12 +32,29 @@ impl std::str::FromStr for OutputFormat {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
+        let lower = s.to_lowercase();
+
+        // Handle json=style syntax
+        if lower.starts_with("json") {
+            if lower == "json" {
+                // Default: streaming (memory safe)
+                return Ok(OutputFormat::JsonStream);
+            }
+            if let Some(style) = lower.strip_prefix("json=") {
+                return match style {
+                    "stream" => Ok(OutputFormat::JsonStream),
+                    "array" => Ok(OutputFormat::JsonArray),
+                    "pretty" => Ok(OutputFormat::JsonPretty),
+                    _ => Err(format!("Unknown JSON style: '{}'. Use json, json=stream, json=array, or json=pretty", style)),
+                };
+            }
+        }
+
+        match lower.as_str() {
             "text" => Ok(OutputFormat::Text),
-            "json" => Ok(OutputFormat::Json),
             "sarif" => Ok(OutputFormat::Sarif),
             "tree" => Ok(OutputFormat::Tree),
-            _ => Err(format!("Unknown format: {}. Use text, json, sarif, or tree", s)),
+            _ => Err(format!("Unknown format: '{}'. Use text, json[=stream|array|pretty], or sarif", s)),
         }
     }
 }

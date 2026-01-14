@@ -118,9 +118,9 @@ UAST-Grep/
 │   │   └── __init__.py        # Public API
 │   ├── tests/                 # pytest tests
 │   └── pyproject.toml         # Python package config
-├── src/UAST.Native/           # .NET bindings
+├── src/UAST.Net/              # .NET bindings
 │   ├── UastNative.cs          # P/Invoke declarations
-│   └── UAST.Native.csproj     # .NET project
+│   └── UAST.Net.csproj        # .NET project
 ├── scripts/                   # Build scripts
 │   ├── Build-NativeGrammars.ps1
 │   └── Build-WasmGrammars.ps1

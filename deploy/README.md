@@ -152,7 +152,7 @@ The script updates version in ALL of these files:
 
 - `native/uast_core/Cargo.toml` - `version = "X.Y.Z"`
 - `native/uast_core/src/wasm_loader.rs` - `GRAMMAR_VERSION = "vX.Y.Z"`
-- `src/UAST.Native/UAST.Native.csproj` - `<Version>X.Y.Z</Version>`
+- `src/UAST.Net/UAST.Net.csproj` - `<Version>X.Y.Z</Version>`
 - `python/pyproject.toml` - `version = "X.Y.Z"`
 - `python/uast_grep/__init__.py` - `__version__ = "X.Y.Z"`
 
@@ -203,7 +203,7 @@ The script updates version in ALL of these files:
 .\Build-Packages.ps1 -Python
 
 # Output:
-#   artifacts/UAST.Native.X.Y.Z.nupkg
+#   artifacts/UAST.Net.X.Y.Z.nupkg
 #   artifacts/uast_grep-X.Y.Z-*.whl
 ```
 
@@ -276,7 +276,7 @@ The script updates version in ALL of these files:
 # Or with explicit API key
 .\Publish-NuGet.ps1 -ApiKey "your-api-key"
 
-# Verify at https://www.nuget.org/packages/UAST.Native
+# Verify at https://www.nuget.org/packages/UAST.Net
 ```
 
 ### NuGet Checklist
@@ -338,7 +338,7 @@ uast-grep --version
 # Create test project
 dotnet new console -n UastTest
 cd UastTest
-dotnet add package UAST.Native
+dotnet add package UAST.Net
 # Add test code and run
 dotnet run
 ```
@@ -416,7 +416,7 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - run: dotnet pack -c Release
-        working-directory: src/UAST.Native
+        working-directory: src/UAST.Net
       - run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
   publish-pypi:

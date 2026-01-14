@@ -6,15 +6,49 @@
 use super::fix::Fix;
 use super::rule::{ConstraintYaml, RulePatternYaml, RuleYaml, Severity};
 use crate::matching::{
-    parse_simple_pattern, CapturedValue, Constraint, HasConstraint, InsideConstraint,
-    KindConstraint, NotConstraint, NotHasConstraint, Pattern, PatternMatcher,
-    PatternNode, RegexConstraint, StopBehavior,
+    parse_simple_pattern, CapturedValue, Constraint, FollowsConstraint, HasConstraint,
+    InsideConstraint, KindConstraint, MatchContext, NotConstraint, NotHasConstraint,
+    NotInsideConstraint, Pattern, PatternMatcher, PatternNode, PrecedesConstraint, RegexConstraint,
+    StopBehavior,
 };
-use crate::uast::schema::{SourceSpan, UastNode};
+use crate::uast::mappings::get_mappings;
+use crate::uast::schema::{SourceSpan, UastKind, UastNode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use thiserror::Error;
+
+/// Resolve a kind string to a UastKind, with automatic native-to-UAST mapping fallback.
+///
+/// This function allows YAML rules to use either:
+/// - UAST PascalCase kinds (e.g., "FunctionDeclaration", "LetDeclaration")
+/// - Native tree-sitter snake_case kinds (e.g., "function_item", "let_declaration")
+///
+/// When a native kind is provided, it's looked up in the language's mappings
+/// and converted to the corresponding UAST kind.
+fn resolve_kind(kind_str: &str, language: &str) -> UastKind {
+    // First, try parsing as a direct UAST kind (PascalCase)
+    let uast_kind = UastKind::from_str(kind_str);
+
+    // If it's not Unknown, we found a valid UAST kind
+    if uast_kind != UastKind::Unknown {
+        return uast_kind;
+    }
+
+    // It might be a native tree-sitter kind (snake_case)
+    // Look it up in the language's mappings
+    let mappings = get_mappings(language);
+    let mapped_kind = mappings.get(kind_str);
+
+    // If the mapping returned something other than the input or "Unknown",
+    // parse the mapped UAST kind
+    if mapped_kind != kind_str && mapped_kind != "Unknown" {
+        return UastKind::from_str(mapped_kind);
+    }
+
+    // No valid mapping found - return Unknown
+    UastKind::Unknown
+}
 
 /// Error type for scanning failures.
 #[derive(Error, Debug)]
@@ -113,8 +147,23 @@ pub struct CompiledRule {
     /// Inside constraint if present.
     pub inside_constraint: Option<Box<dyn Constraint>>,
 
+    /// Not-inside constraint if present.
+    pub not_inside_constraint: Option<Box<dyn Constraint>>,
+
     /// Has constraint if present.
     pub has_constraint: Option<Box<dyn Constraint>>,
+
+    /// Precedes constraint if present.
+    pub precedes_constraint: Option<Box<dyn Constraint>>,
+
+    /// Follows constraint if present.
+    pub follows_constraint: Option<Box<dyn Constraint>>,
+
+    /// Regex constraint from rule-level regex (filters matched node's text).
+    pub regex_constraint: Option<Box<dyn Constraint>>,
+
+    /// Not-regex constraint from rule-level notRegex (excludes matches where text matches).
+    pub not_regex_constraint: Option<Box<dyn Constraint>>,
 }
 
 impl CompiledRule {
@@ -132,14 +181,49 @@ impl CompiledRule {
 
         // Compile relational constraints from the pattern
         let inside_constraint = compile_inside_constraint(&rule.rule, &rule.language, &rule.id)?;
+        let not_inside_constraint =
+            compile_not_inside_constraint(&rule.rule, &rule.language, &rule.id)?;
         let has_constraint = compile_has_constraint(&rule.rule, &rule.language, &rule.id)?;
+        let precedes_constraint =
+            compile_precedes_constraint(&rule.rule, &rule.language, &rule.id)?;
+        let follows_constraint =
+            compile_follows_constraint(&rule.rule, &rule.language, &rule.id)?;
+
+        // Compile rule-level regex constraint (filters matched node's source text)
+        let regex_constraint = if let Some(ref regex_str) = rule.rule.regex {
+            Some(Box::new(
+                RegexConstraint::new(regex_str).map_err(|e| ScanError::Regex {
+                    rule_id: rule.id.clone(),
+                    message: e.to_string(),
+                })?,
+            ) as Box<dyn Constraint>)
+        } else {
+            None
+        };
+
+        // Compile rule-level not-regex constraint (excludes matches where text matches)
+        let not_regex_constraint = if let Some(ref not_regex_str) = rule.rule.not_regex {
+            let regex_constraint =
+                RegexConstraint::new(not_regex_str).map_err(|e| ScanError::Regex {
+                    rule_id: rule.id.clone(),
+                    message: format!("notRegex: {}", e),
+                })?;
+            Some(Box::new(NotConstraint::new(Box::new(regex_constraint))) as Box<dyn Constraint>)
+        } else {
+            None
+        };
 
         Ok(CompiledRule {
             rule,
             pattern,
             constraints,
             inside_constraint,
+            not_inside_constraint,
             has_constraint,
+            precedes_constraint,
+            follows_constraint,
+            regex_constraint,
+            not_regex_constraint,
         })
     }
 
@@ -226,9 +310,9 @@ fn compile_rule_pattern(
         ));
     }
 
-    // Handle kind
+    // Handle kind - resolve native kinds to UAST kinds automatically
     if let Some(ref kind) = yaml.kind {
-        let kind_enum = crate::uast::schema::UastKind::from_str(kind);
+        let kind_enum = resolve_kind(kind, language);
         return Ok(Pattern::new(
             PatternNode::Kind(kind_enum),
             kind.clone(),
@@ -310,21 +394,11 @@ fn compile_inside_constraint(
     rule_id: &str,
 ) -> Result<Option<Box<dyn Constraint>>, ScanError> {
     if let Some(ref inside) = yaml.inside {
-        let pattern_node = if let Some(ref pattern_str) = inside.pattern {
-            let pattern =
-                parse_simple_pattern(pattern_str, language).map_err(|e| ScanError::Pattern {
-                    rule_id: rule_id.to_string(),
-                    message: format!("inside pattern: {}", e),
-                })?;
-            pattern.root
-        } else if let Some(ref kind) = inside.kind {
-            PatternNode::Kind(crate::uast::schema::UastKind::from_str(kind))
-        } else {
-            return Err(ScanError::Pattern {
+        let pattern_node = build_simple_relation_pattern(inside, language, rule_id)
+            .map_err(|e| ScanError::Pattern {
                 rule_id: rule_id.to_string(),
-                message: "inside constraint must have pattern or kind".to_string(),
-            });
-        };
+                message: format!("inside constraint: {}", e),
+            })?;
 
         let stop_by = match inside.stop_by.as_str() {
             "neighbor" => StopBehavior::Neighbor,
@@ -337,6 +411,94 @@ fn compile_inside_constraint(
     Ok(None)
 }
 
+/// Build a simple pattern node from a RelationYaml (pattern, kind, or any).
+fn build_simple_relation_pattern(
+    relation: &super::rule::RelationYaml,
+    language: &str,
+    rule_id: &str,
+) -> Result<PatternNode, ScanError> {
+    if let Some(ref pattern_str) = relation.pattern {
+        let pattern =
+            parse_simple_pattern(pattern_str, language).map_err(|e| ScanError::Pattern {
+                rule_id: rule_id.to_string(),
+                message: format!("relation pattern: {}", e),
+            })?;
+        Ok(pattern.root)
+    } else if let Some(ref kind) = relation.kind {
+        Ok(PatternNode::Kind(resolve_kind(kind, language)))
+    } else if let Some(ref any_relations) = relation.any {
+        // Handle `any: [...]` inside relations (e.g., inside: { any: [...] })
+        let mut patterns = Vec::new();
+        for sub_relation in any_relations {
+            let sub_pattern = build_simple_relation_pattern(sub_relation, language, rule_id)?;
+            patterns.push(sub_pattern);
+        }
+        Ok(PatternNode::AnyOf(patterns))
+    } else {
+        Err(ScanError::Pattern {
+            rule_id: rule_id.to_string(),
+            message: "relation must have pattern, kind, or any".to_string(),
+        })
+    }
+}
+
+/// Recursively build a HasConstraint from a RelationYaml.
+///
+/// This converts:
+/// ```yaml
+/// has:
+///   kind: IfStatement
+///   has:
+///     kind: IfStatement
+/// ```
+/// Into a nested HasConstraint chain where we find a descendant IfStatement
+/// that ITSELF has a descendant IfStatement.
+fn build_has_constraint_recursive(
+    relation: &super::rule::RelationYaml,
+    language: &str,
+    rule_id: &str,
+) -> Result<HasConstraint, ScanError> {
+    // Get the base pattern for this level
+    let pattern_node = build_simple_relation_pattern(relation, language, rule_id)?;
+
+    let stop_by = match relation.stop_by.as_str() {
+        "neighbor" => StopBehavior::Neighbor,
+        _ => StopBehavior::End,
+    };
+
+    // Parse regex if present
+    let regex = if let Some(ref regex_str) = relation.regex {
+        Some(regex::Regex::new(regex_str).map_err(|e| ScanError::Pattern {
+            rule_id: rule_id.to_string(),
+            message: format!("invalid regex in has constraint: {}", e),
+        })?)
+    } else {
+        None
+    };
+
+    // Check if there's a nested has constraint
+    if let Some(ref nested_has) = relation.has {
+        // Recursively build the nested constraint
+        let nested_constraint = build_has_constraint_recursive(nested_has, language, rule_id)?;
+        let mut constraint = HasConstraint::with_nested(pattern_node, stop_by, nested_constraint);
+        constraint.regex = regex;
+        Ok(constraint)
+    } else if let Some(ref nested_not_has) = relation.not_has {
+        // Handle notHas inside has - find nodes that DON'T have certain descendants
+        let not_has_pattern = build_simple_relation_pattern(nested_not_has, language, rule_id)?;
+        let not_has_stop_by = match nested_not_has.stop_by.as_str() {
+            "neighbor" => StopBehavior::Neighbor,
+            _ => StopBehavior::End,
+        };
+        let mut constraint = HasConstraint::with_not_has(pattern_node, stop_by, not_has_pattern, not_has_stop_by);
+        constraint.regex = regex;
+        Ok(constraint)
+    } else {
+        // No nesting, use with_regex constructor
+        Ok(HasConstraint::with_regex(pattern_node, stop_by, regex))
+    }
+}
+
 /// Compile a has constraint from the pattern YAML.
 fn compile_has_constraint(
     yaml: &RulePatternYaml,
@@ -344,48 +506,14 @@ fn compile_has_constraint(
     rule_id: &str,
 ) -> Result<Option<Box<dyn Constraint>>, ScanError> {
     if let Some(ref has) = yaml.has {
-        let pattern_node = if let Some(ref pattern_str) = has.pattern {
-            let pattern =
-                parse_simple_pattern(pattern_str, language).map_err(|e| ScanError::Pattern {
-                    rule_id: rule_id.to_string(),
-                    message: format!("has pattern: {}", e),
-                })?;
-            pattern.root
-        } else if let Some(ref kind) = has.kind {
-            PatternNode::Kind(crate::uast::schema::UastKind::from_str(kind))
-        } else {
-            return Err(ScanError::Pattern {
-                rule_id: rule_id.to_string(),
-                message: "has constraint must have pattern or kind".to_string(),
-            });
-        };
-
-        let stop_by = match has.stop_by.as_str() {
-            "neighbor" => StopBehavior::Neighbor,
-            _ => StopBehavior::End,
-        };
-
-        return Ok(Some(Box::new(HasConstraint::new(pattern_node, stop_by))));
+        // Use recursive builder for nested has support
+        let constraint = build_has_constraint_recursive(has, language, rule_id)?;
+        return Ok(Some(Box::new(constraint)));
     }
 
-    // Also check for notHas
+    // Also check for notHas (simpler - doesn't support nesting yet)
     if let Some(ref not_has) = yaml.not_has {
-        let pattern_node = if let Some(ref pattern_str) = not_has.pattern {
-            let pattern = parse_simple_pattern(pattern_str, language).map_err(|e| {
-                ScanError::Pattern {
-                    rule_id: rule_id.to_string(),
-                    message: format!("notHas pattern: {}", e),
-                }
-            })?;
-            pattern.root
-        } else if let Some(ref kind) = not_has.kind {
-            PatternNode::Kind(crate::uast::schema::UastKind::from_str(kind))
-        } else {
-            return Err(ScanError::Pattern {
-                rule_id: rule_id.to_string(),
-                message: "notHas constraint must have pattern or kind".to_string(),
-            });
-        };
+        let pattern_node = build_simple_relation_pattern(not_has, language, rule_id)?;
 
         let stop_by = match not_has.stop_by.as_str() {
             "neighbor" => StopBehavior::Neighbor,
@@ -393,6 +521,77 @@ fn compile_has_constraint(
         };
 
         return Ok(Some(Box::new(NotHasConstraint::new(pattern_node, stop_by))));
+    }
+
+    Ok(None)
+}
+
+/// Compile a not_inside constraint from the pattern YAML.
+fn compile_not_inside_constraint(
+    yaml: &RulePatternYaml,
+    language: &str,
+    rule_id: &str,
+) -> Result<Option<Box<dyn Constraint>>, ScanError> {
+    if let Some(ref not_inside) = yaml.not_inside {
+        let pattern_node = build_simple_relation_pattern(not_inside, language, rule_id)
+            .map_err(|e| ScanError::Pattern {
+                rule_id: rule_id.to_string(),
+                message: format!("not_inside constraint: {}", e),
+            })?;
+
+        let stop_by = match not_inside.stop_by.as_str() {
+            "neighbor" => StopBehavior::Neighbor,
+            _ => StopBehavior::End,
+        };
+
+        return Ok(Some(Box::new(NotInsideConstraint::new(
+            pattern_node,
+            stop_by,
+        ))));
+    }
+
+    Ok(None)
+}
+
+/// Compile a precedes constraint from the pattern YAML.
+fn compile_precedes_constraint(
+    yaml: &RulePatternYaml,
+    language: &str,
+    rule_id: &str,
+) -> Result<Option<Box<dyn Constraint>>, ScanError> {
+    if let Some(ref precedes) = yaml.precedes {
+        let pattern_node = build_simple_relation_pattern(precedes, language, rule_id)
+            .map_err(|e| ScanError::Pattern {
+                rule_id: rule_id.to_string(),
+                message: format!("precedes constraint: {}", e),
+            })?;
+
+        return Ok(Some(Box::new(PrecedesConstraint::new(
+            pattern_node,
+            precedes.immediate,
+        ))));
+    }
+
+    Ok(None)
+}
+
+/// Compile a follows constraint from the pattern YAML.
+fn compile_follows_constraint(
+    yaml: &RulePatternYaml,
+    language: &str,
+    rule_id: &str,
+) -> Result<Option<Box<dyn Constraint>>, ScanError> {
+    if let Some(ref follows) = yaml.follows {
+        let pattern_node = build_simple_relation_pattern(follows, language, rule_id)
+            .map_err(|e| ScanError::Pattern {
+                rule_id: rule_id.to_string(),
+                message: format!("follows constraint: {}", e),
+            })?;
+
+        return Ok(Some(Box::new(FollowsConstraint::new(
+            pattern_node,
+            follows.immediate,
+        ))));
     }
 
     Ok(None)
@@ -454,7 +653,8 @@ impl Scanner {
     }
 
     /// Scan a UAST tree against all applicable rules.
-    pub fn scan_tree(&self, tree: &UastNode, language: &str) -> Vec<ScanResult> {
+    /// The `source` parameter is used for lazy text extraction from byte ranges.
+    pub fn scan_tree(&self, tree: &UastNode, language: &str, source: &str) -> Vec<ScanResult> {
         let mut results = Vec::new();
         let language_lower = language.to_lowercase();
 
@@ -467,7 +667,7 @@ impl Scanner {
 
         // Apply each rule
         for compiled_rule in applicable_rules {
-            let rule_results = self.apply_rule(compiled_rule, tree);
+            let rule_results = self.apply_rule(compiled_rule, tree, source);
             results.extend(rule_results);
         }
 
@@ -477,13 +677,15 @@ impl Scanner {
     /// Scan source code (requires external parsing).
     ///
     /// This method is for scanning when you already have a parsed UAST tree.
+    /// The `source` parameter is used for lazy text extraction from byte ranges.
     pub fn scan_source(
         &self,
         tree: &UastNode,
         language: &str,
         file_path: Option<&Path>,
+        source: &str,
     ) -> Vec<ScanResult> {
-        let mut results = self.scan_tree(tree, language);
+        let mut results = self.scan_tree(tree, language, source);
 
         // Add file path to all results
         if let Some(path) = file_path {
@@ -497,7 +699,7 @@ impl Scanner {
     }
 
     /// Apply a single rule to a tree.
-    fn apply_rule(&self, compiled_rule: &CompiledRule, tree: &UastNode) -> Vec<ScanResult> {
+    fn apply_rule(&self, compiled_rule: &CompiledRule, tree: &UastNode, source: &str) -> Vec<ScanResult> {
         let mut results = Vec::new();
 
         // Create a pattern matcher with the rule's constraints
@@ -510,24 +712,24 @@ impl Scanner {
             }
         }
 
-        // Find all matches
-        let matches = matcher.find_all(tree, &compiled_rule.pattern);
+        // Find all matches with context tracking for ancestor/sibling constraints
+        let matches = matcher.find_all_with_context(tree, &compiled_rule.pattern, source);
 
-        for match_result in matches {
-            // Check additional relational constraints
-            if !self.check_relational_constraints(compiled_rule, &match_result.node, &matcher) {
+        for (match_result, context) in matches {
+            // Check additional relational constraints with the actual context
+            if !self.check_relational_constraints(compiled_rule, &match_result.node, &matcher, source, &context) {
                 continue;
             }
 
             // Interpolate message with captures
             let message =
-                interpolate_message(&compiled_rule.rule.message, &match_result.captures);
+                interpolate_message(&compiled_rule.rule.message, &match_result.captures, source);
 
             // Create fix if present
             let fix = compiled_rule.rule.fix.as_ref().map(|fix_template| {
                 Fix::new(
                     match_result.span,
-                    interpolate_message(fix_template, &match_result.captures),
+                    interpolate_message(fix_template, &match_result.captures, source),
                 )
             });
 
@@ -546,11 +748,11 @@ impl Scanner {
             for (name, value) in &match_result.captures {
                 let text = match value {
                     CapturedValue::Single(node) => {
-                        node.text.clone().unwrap_or_default()
+                        node.get_text(source).unwrap_or_default().to_string()
                     }
                     CapturedValue::Multiple(nodes) => nodes
                         .iter()
-                        .filter_map(|n| n.text.clone())
+                        .filter_map(|n| n.get_text(source).map(|s| s.to_string()))
                         .collect::<Vec<_>>()
                         .join(", "),
                 };
@@ -563,23 +765,60 @@ impl Scanner {
         results
     }
 
-    /// Check relational constraints (inside, has).
+    /// Check relational constraints (inside, not_inside, has, precedes, follows) with full context.
     fn check_relational_constraints(
         &self,
         compiled_rule: &CompiledRule,
         node: &UastNode,
         matcher: &PatternMatcher,
+        source: &str,
+        context: &MatchContext,
     ) -> bool {
         // Check inside constraint
         if let Some(ref constraint) = compiled_rule.inside_constraint {
-            if !constraint.evaluate(node, matcher) {
+            if !constraint.evaluate(node, matcher, source, context) {
+                return false;
+            }
+        }
+
+        // Check not_inside constraint
+        if let Some(ref constraint) = compiled_rule.not_inside_constraint {
+            if !constraint.evaluate(node, matcher, source, context) {
                 return false;
             }
         }
 
         // Check has constraint
         if let Some(ref constraint) = compiled_rule.has_constraint {
-            if !constraint.evaluate(node, matcher) {
+            if !constraint.evaluate(node, matcher, source, context) {
+                return false;
+            }
+        }
+
+        // Check precedes constraint
+        if let Some(ref constraint) = compiled_rule.precedes_constraint {
+            if !constraint.evaluate(node, matcher, source, context) {
+                return false;
+            }
+        }
+
+        // Check follows constraint
+        if let Some(ref constraint) = compiled_rule.follows_constraint {
+            if !constraint.evaluate(node, matcher, source, context) {
+                return false;
+            }
+        }
+
+        // Check rule-level regex constraint (filters matched node's source text)
+        if let Some(ref constraint) = compiled_rule.regex_constraint {
+            if !constraint.evaluate(node, matcher, source, context) {
+                return false;
+            }
+        }
+
+        // Check rule-level not-regex constraint (excludes matches where text matches)
+        if let Some(ref constraint) = compiled_rule.not_regex_constraint {
+            if !constraint.evaluate(node, matcher, source, context) {
                 return false;
             }
         }
@@ -589,20 +828,29 @@ impl Scanner {
 }
 
 /// Interpolate metavariable captures into a message template.
+/// The `source` parameter is used for lazy text extraction from byte ranges.
 fn interpolate_message(
     template: &str,
     captures: &HashMap<String, CapturedValue>,
+    source: &str,
 ) -> String {
     let mut result = template.to_string();
 
     for (name, value) in captures {
         let text = match value {
             CapturedValue::Single(node) => {
-                node.text.clone().or_else(|| node.name.clone()).unwrap_or_default()
+                node.get_text(source)
+                    .or_else(|| node.get_name(source))
+                    .unwrap_or_default()
+                    .to_string()
             }
             CapturedValue::Multiple(nodes) => nodes
                 .iter()
-                .filter_map(|n| n.text.clone().or_else(|| n.name.clone()))
+                .filter_map(|n| {
+                    n.get_text(source)
+                        .or_else(|| n.get_name(source))
+                        .map(|s| s.to_string())
+                })
                 .collect::<Vec<_>>()
                 .join(", "),
         };
@@ -619,6 +867,9 @@ fn interpolate_message(
 mod tests {
     use super::*;
     use crate::uast::schema::UastKind;
+
+    // Empty source for tests that don't use lazy text extraction
+    const EMPTY_SOURCE: &str = "";
 
     fn make_test_node(kind: UastKind, name: Option<&str>, text: Option<&str>) -> UastNode {
         let mut node = UastNode::new(kind, "rust", SourceSpan::empty());
@@ -687,7 +938,7 @@ mod tests {
         let root = UastNode::new(UastKind::SourceFile, "rust", SourceSpan::empty())
             .with_child(func);
 
-        let results = scanner.scan_tree(&root, "rust");
+        let results = scanner.scan_tree(&root, "rust", EMPTY_SOURCE);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].rule_id, "find-functions");
     }
@@ -744,7 +995,7 @@ mod tests {
             .with_child(func)
             .with_child(if_stmt);
 
-        let results = scanner.scan_tree(&root, "rust");
+        let results = scanner.scan_tree(&root, "rust", EMPTY_SOURCE);
         assert_eq!(results.len(), 2);
     }
 
@@ -758,7 +1009,7 @@ mod tests {
             CapturedValue::Single(UastNode::new(UastKind::Identifier, "rust", SourceSpan::empty()).with_text("foo")),
         );
 
-        let message = interpolate_message("Found variable $NAME in code", &captures);
+        let message = interpolate_message("Found variable $NAME in code", &captures, EMPTY_SOURCE);
         assert_eq!(message, "Found variable foo in code");
     }
 

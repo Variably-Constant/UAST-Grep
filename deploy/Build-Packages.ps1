@@ -51,12 +51,12 @@ if ($DotNet) {
     Write-Host ""
     Write-Host "Building .NET package..." -ForegroundColor Yellow
 
-    $csprojPath = Join-Path $ProjectRoot 'src/UAST.Native/UAST.Native.csproj'
+    $csprojPath = Join-Path $ProjectRoot 'src/UAST.Net/UAST.Net.csproj'
 
     if (-not (Test-Path $csprojPath)) {
         Write-Warning ".NET project not found: $csprojPath"
         $results += [PSCustomObject]@{
-            Package = '.NET (UAST.Native)'
+            Package = '.NET (UAST.Net)'
             Status = 'NOT FOUND'
             Output = ''
         }
@@ -71,11 +71,11 @@ if ($DotNet) {
             dotnet pack -c Release -o $artifactsDir --no-build
             if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed" }
 
-            $nupkg = Get-ChildItem $artifactsDir -Filter "UAST.Native.*.nupkg" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            $nupkg = Get-ChildItem $artifactsDir -Filter "UAST.Net.*.nupkg" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
             if ($nupkg) {
                 Write-Host "  Created: $($nupkg.Name)" -ForegroundColor Green
                 $results += [PSCustomObject]@{
-                    Package = '.NET (UAST.Native)'
+                    Package = '.NET (UAST.Net)'
                     Status = 'SUCCESS'
                     Output = $nupkg.FullName
                 }
@@ -84,7 +84,7 @@ if ($DotNet) {
         catch {
             Write-Host "  Failed: $_" -ForegroundColor Red
             $results += [PSCustomObject]@{
-                Package = '.NET (UAST.Native)'
+                Package = '.NET (UAST.Net)'
                 Status = 'FAILED'
                 Output = ''
             }

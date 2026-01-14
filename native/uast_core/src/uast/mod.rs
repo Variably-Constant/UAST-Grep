@@ -28,6 +28,12 @@ pub mod mappings;
 mod mapper;
 pub mod schema;
 
+#[cfg(feature = "arena")]
+pub mod arena;
+
+#[cfg(feature = "arena")]
+pub use arena::{ArenaUastNode, PropertyKey, PropertyValue, UastArena};
+
 // Re-export builtin language utilities
 pub use builtin::{
     available_builtin_extensions, available_builtin_languages, get_builtin_language,

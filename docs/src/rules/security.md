@@ -1,6 +1,6 @@
 # Security Rules
 
-Pre-built security rules with **1,587 rules** covering **179 CWE identifiers** across **31 languages** plus universal rules that work on all 71 supported languages.
+Pre-built security rules with **~1,430 rules** covering **179 CWE identifiers** across **31 languages** plus universal rules that work on all 71 supported languages.
 
 > **See Also:** [Rules Catalog](rules-catalog.md) for the complete rule index | [CWE & OWASP Coverage](cwe-owasp-coverage.md) for compliance mapping
 

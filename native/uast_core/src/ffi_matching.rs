@@ -270,9 +270,9 @@ pub unsafe extern "C" fn uast_pattern_match(
         }
     };
 
-    // Find matches
+    // Find matches (source not available via FFI, use empty string)
     let matcher = PatternMatcher::new();
-    let matches = matcher.find_all(&root, &compiled);
+    let matches = matcher.find_all(&root, &compiled, "");
 
     // Serialize matches to JSON
     let match_results: Vec<MatchResultJson> = matches

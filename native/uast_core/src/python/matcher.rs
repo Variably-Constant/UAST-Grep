@@ -94,12 +94,12 @@ impl PyPatternMatcher {
 
         // Match
         let matcher = PatternMatcher::new();
-        let matches = matcher.find_all(&uast_root, &pattern);
+        let matches = matcher.find_all(&uast_root, &pattern, source);
 
         // Convert to Python results
         Ok(matches
             .into_iter()
-            .map(|m| PyMatchResult::from_match_result(m, tree_arc.clone()))
+            .map(|m| PyMatchResult::from_match_result(m, tree_arc.clone(), source))
             .collect())
     }
 
@@ -113,9 +113,10 @@ impl PyPatternMatcher {
     fn matches_tree(&self, tree: &PyUastTree) -> PyResult<Vec<PyMatchResult>> {
         let tree_arc = Arc::new(ParsedTree::clone_from(tree.inner()));
         let language = tree.inner().language_name();
+        let source = tree.inner().source();
 
         // Convert to UAST
-        let uast_root = convert_node_to_uast(tree.inner().root_node(), tree.inner().source(), language);
+        let uast_root = convert_node_to_uast(tree.inner().root_node(), source, language);
 
         // Parse and compile the pattern
         let lang = self.language.as_deref().unwrap_or(language);
@@ -123,12 +124,12 @@ impl PyPatternMatcher {
 
         // Match
         let matcher = PatternMatcher::new();
-        let matches = matcher.find_all(&uast_root, &pattern);
+        let matches = matcher.find_all(&uast_root, &pattern, source);
 
         // Convert to Python results
         Ok(matches
             .into_iter()
-            .map(|m| PyMatchResult::from_match_result(m, tree_arc.clone()))
+            .map(|m| PyMatchResult::from_match_result(m, tree_arc.clone(), source))
             .collect())
     }
 
@@ -166,19 +167,19 @@ pub struct PyMatchResult {
 }
 
 impl PyMatchResult {
-    pub fn from_match_result(result: MatchResult, _tree: Arc<ParsedTree>) -> Self {
+    pub fn from_match_result(result: MatchResult, _tree: Arc<ParsedTree>, source: &str) -> Self {
         let captures: HashMap<String, String> = result
             .captures
             .iter()
             .map(|(name, value)| {
                 let text = match value {
                     CapturedValue::Single(node) => {
-                        node.text.clone().unwrap_or_default()
+                        node.get_text(source).unwrap_or_default().to_string()
                     }
                     CapturedValue::Multiple(nodes) => {
                         nodes
                             .iter()
-                            .filter_map(|n| n.text.clone())
+                            .filter_map(|n| n.get_text(source).map(|s| s.to_string()))
                             .collect::<Vec<_>>()
                             .join(", ")
                     }
@@ -189,7 +190,7 @@ impl PyMatchResult {
 
         PyMatchResult {
             kind: result.node.kind.to_string(),
-            text: result.node.text.clone().unwrap_or_default(),
+            text: result.node.get_text(source).unwrap_or_default().to_string(),
             span: PySourceSpan {
                 start_line: result.span.start_line,
                 start_column: result.span.start_column,

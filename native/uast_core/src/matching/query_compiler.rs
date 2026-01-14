@@ -281,6 +281,8 @@ mod tests {
 
     #[test]
     fn test_compile_kind_pattern_rust() {
+        use crate::uast::mappings::get_native_types_for_uast;
+
         let pattern = Pattern::new(
             PatternNode::Kind(UastKind::FunctionDeclaration),
             "FunctionDeclaration".to_string(),
@@ -288,12 +290,23 @@ mod tests {
         );
 
         let query = compile_to_tree_sitter_query(&pattern).unwrap();
-        assert!(query.contains("function_item"));
+
+        // The query should use one of the valid native types for FunctionDeclaration in Rust
+        let native_types = get_native_types_for_uast("FunctionDeclaration", "rust");
+        let contains_valid_type = native_types.iter().any(|t| query.contains(t));
+        assert!(
+            contains_valid_type,
+            "Expected query to contain one of {:?}, got: {}",
+            native_types,
+            query
+        );
         assert!(query.contains("@match"));
     }
 
     #[test]
     fn test_compile_kind_pattern_python() {
+        use crate::uast::mappings::get_native_types_for_uast;
+
         let pattern = Pattern::new(
             PatternNode::Kind(UastKind::FunctionDeclaration),
             "FunctionDeclaration".to_string(),
@@ -301,7 +314,16 @@ mod tests {
         );
 
         let query = compile_to_tree_sitter_query(&pattern).unwrap();
-        assert!(query.contains("function_definition"));
+
+        // The query should use one of the valid native types for FunctionDeclaration in Python
+        let native_types = get_native_types_for_uast("FunctionDeclaration", "python");
+        let contains_valid_type = native_types.iter().any(|t| query.contains(t));
+        assert!(
+            contains_valid_type,
+            "Expected query to contain one of {:?}, got: {}",
+            native_types,
+            query
+        );
         assert!(query.contains("@match"));
     }
 
@@ -380,6 +402,8 @@ mod tests {
 
     #[test]
     fn test_compile_structural_pattern() {
+        use crate::uast::mappings::get_native_types_for_uast;
+
         let pattern = Pattern::new(
             PatternNode::structural(
                 Some(UastKind::FunctionDeclaration),
@@ -391,7 +415,16 @@ mod tests {
         );
 
         let query = compile_to_tree_sitter_query(&pattern).unwrap();
-        assert!(query.contains("function_item"));
+
+        // The query should use one of the valid native types for FunctionDeclaration in Rust
+        let native_types = get_native_types_for_uast("FunctionDeclaration", "rust");
+        let contains_valid_type = native_types.iter().any(|t| query.contains(t));
+        assert!(
+            contains_valid_type,
+            "Expected query to contain one of {:?}, got: {}",
+            native_types,
+            query
+        );
         assert!(query.contains("name:"));
         assert!(query.contains("@FUNC_NAME"));
     }

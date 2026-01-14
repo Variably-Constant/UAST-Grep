@@ -109,7 +109,7 @@ print(f"Supported languages: {len(supported_languages())}")
 ### From NuGet
 
 ```bash
-dotnet add package UAST.Native
+dotnet add package UAST.Net
 ```
 
 ### From Source
@@ -124,13 +124,13 @@ cargo build --release
 cd ../..
 
 # Build .NET wrapper
-dotnet build src/UAST.Native -c Release
+dotnet build src/UAST.Net -c Release
 ```
 
 ### Verify Installation
 
 ```csharp
-using UAST.Native;
+using UAST.Net;
 
 UastNative.Init();
 Console.WriteLine($"Version: {UastNativeExtensions.GetVersion()}");

@@ -412,11 +412,11 @@ pub fn add(a: i32, b: i32) -> i32 {
 
     #[test]
     fn test_parse_unregistered_language() {
-        // Without builtin-grammars, or for unknown languages
-        let source = "console.log('hello');";
-        let result = parse_to_uast_json("javascript", source, None);
-        // Should fail because JavaScript is not a built-in grammar
-        assert!(result.is_err());
+        // Test with a truly unknown language that is not a built-in or WASM grammar
+        let source = "some random code";
+        let result = parse_to_uast_json("definitely_not_a_real_language_xyz", source, None);
+        // Should fail because this is not a built-in grammar and doesn't exist
+        assert!(result.is_err(), "Expected error for unknown language");
     }
 
     #[test]

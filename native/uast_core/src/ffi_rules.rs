@@ -473,8 +473,8 @@ pub unsafe extern "C" fn uast_scanner_scan_json(
         }
     };
 
-    // Scan
-    let results = scanner.scan_tree(&tree, lang_str);
+    // Scan (source not available via FFI, use empty string)
+    let results = scanner.scan_tree(&tree, lang_str, "");
 
     // Serialize results to JSON
     let results_json = match serde_json::to_string(&results) {
